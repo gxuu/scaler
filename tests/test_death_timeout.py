@@ -2,8 +2,6 @@ import logging
 import time
 import unittest
 
-from tests.utility import get_available_tcp_port, logging_test_name
-
 from scaler import Client, Cluster, SchedulerClusterCombo
 from scaler.io.config import (
     DEFAULT_GARBAGE_COLLECT_INTERVAL_SECONDS,
@@ -14,6 +12,7 @@ from scaler.io.config import (
 )
 from scaler.utility.logging.utility import setup_logger
 from scaler.utility.zmq_config import ZMQConfig
+from tests.utility import get_available_tcp_port, logging_test_name
 
 # This is a manual test because it can loop infinitely if it fails
 
@@ -40,6 +39,7 @@ class TestDeathTimeout(unittest.TestCase):
             logging_paths=("/dev/stdout",),
             logging_level="INFO",
             logging_config_file=None,
+            workers_queue_sizes=[2, 2],
         )
         cluster.start()
         time.sleep(15)
@@ -49,7 +49,7 @@ class TestDeathTimeout(unittest.TestCase):
         # Test 2: Running the Combo and sending shutdown
         address = f"tcp://127.0.0.1:{get_available_tcp_port()}"
         cluster = SchedulerClusterCombo(
-            address=address, n_workers=2, per_worker_queue_size=2, event_loop="builtin", protected=False
+            address=address, n_workers=2, workers_queue_sizes=[2, 2], event_loop="builtin", protected=False
         )
         client = Client(address=address)
 
@@ -79,7 +79,7 @@ class TestDeathTimeout(unittest.TestCase):
         cluster = SchedulerClusterCombo(
             address=address,
             n_workers=1,
-            per_worker_queue_size=2,
+            workers_queue_sizes=[2],
             event_loop="builtin",
             client_timeout_seconds=client_timeout_seconds,
         )

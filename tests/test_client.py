@@ -5,12 +5,11 @@ import time
 import unittest
 from concurrent.futures import CancelledError
 
-from tests.utility import get_available_tcp_port, logging_test_name
-
 from scaler import Client, SchedulerClusterCombo
 from scaler.utility.exceptions import MissingObjects, ProcessorDiedError
 from scaler.utility.logging.scoped_logger import ScopedLogger
 from scaler.utility.logging.utility import setup_logger
+from tests.utility import get_available_tcp_port, logging_test_name
 
 
 def noop(sec: int):
@@ -37,7 +36,13 @@ class TestClient(unittest.TestCase):
         logging_test_name(self)
         self.address = f"tcp://127.0.0.1:{get_available_tcp_port()}"
         self._workers = 3
-        self.cluster = SchedulerClusterCombo(address=self.address, n_workers=self._workers, event_loop="builtin")
+        self._workers_queue_sizes = [10, 100, 1000]
+        self.cluster = SchedulerClusterCombo(
+            address=self.address,
+            n_workers=self._workers,
+            workers_queue_sizes=self._workers_queue_sizes,
+            event_loop="builtin",
+        )
 
     def tearDown(self) -> None:
         self.cluster.shutdown()

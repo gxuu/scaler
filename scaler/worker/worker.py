@@ -45,6 +45,7 @@ class Worker(multiprocessing.get_context("spawn").Process):  # type: ignore
         hard_processor_suspend: bool,
         logging_paths: Tuple[str, ...],
         logging_level: str,
+        queue_size: int,
     ):
         multiprocessing.Process.__init__(self, name="Agent")
 
@@ -62,6 +63,7 @@ class Worker(multiprocessing.get_context("spawn").Process):  # type: ignore
 
         self._logging_paths = logging_paths
         self._logging_level = logging_level
+        self._queue_size = queue_size
 
         self._context: Optional[zmq.asyncio.Context] = None
         self._connector_external: Optional[AsyncConnector] = None
@@ -93,7 +95,7 @@ class Worker(multiprocessing.get_context("spawn").Process):  # type: ignore
             identity=None,
         )
 
-        self._heartbeat_manager = VanillaHeartbeatManager()
+        self._heartbeat_manager = VanillaHeartbeatManager(self._queue_size)
         self._profiling_manager = VanillaProfilingManager()
         self._task_manager = VanillaTaskManager(task_timeout_seconds=self._task_timeout_seconds)
         self._timeout_manager = VanillaTimeoutManager(death_timeout_seconds=self._death_timeout_seconds)
@@ -173,6 +175,8 @@ class Worker(multiprocessing.get_context("spawn").Process):  # type: ignore
             pass
         except (ClientShutdownException, TimeoutError) as e:
             logging.info(f"Worker[{self.pid}]: {str(e)}")
+        except Exception as e:
+            logging.exception(f"Worker[{self.pid}]: failed with unhandled exception:\n{(e)}")
 
         await self._connector_external.send(DisconnectRequest.new_msg(self._connector_external.identity))
 
