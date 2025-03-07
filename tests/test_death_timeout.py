@@ -39,7 +39,7 @@ class TestDeathTimeout(unittest.TestCase):
             logging_paths=("/dev/stdout",),
             logging_level="INFO",
             logging_config_file=None,
-            workers_queue_sizes=[2, 2],
+            workers_queue_sizes=[2, 2],  
         )
         cluster.start()
         time.sleep(15)
