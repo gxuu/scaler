@@ -72,11 +72,6 @@ class QueuedAllocator(TaskAllocator):
         if number_of_idle_workers == 0:
             return {}
 
-<<<<<<< HEAD
-=======
-        mean_queued = math.ceil(sum(queued_tasks_per_worker.values()) / len(queued_tasks_per_worker))
-
->>>>>>> 33e2f45056d09191c7aec5d7b02f52047c90cc14
         balance_count = {worker: max(0, count - self._workers_to_queue_size[worker] // 2) for worker, count in queued_tasks_per_worker.items()}
 
         over_mean_advice_total = sum(balance_count.values())
