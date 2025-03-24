@@ -1,0 +1,23 @@
+
+we will support one thing when there are many things
+we will support one type when there are many
+we will make it fast rather than slow
+
+next step:
+ - figure out the main logic of say addrss monitor
+ - is scheduler a singleton?
+ - how to store *manager? 
+
+ How many schedulers are there? 
+ How many managers are there
+
+here's the plan:
+ - impl every member
+ - impl every function decl
+ - actual impl
+
+
+1. Figure out how to compare workers
+ - Define StateWorker won't work
+ - Define as bytes or std::span<std::byte> won't work
+ - Define as integer or other comparable types *probably* won't work
