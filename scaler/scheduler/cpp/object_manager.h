@@ -1,3 +1,4 @@
+
 #pragma once
 #include <capnp/blob.h>
 #include <capnp/common.h>
@@ -17,11 +18,6 @@
 #include "utility/object_tracker.h"
 #include "utility/typedefs.h"
 #include "worker_manager.h"
-
-struct client_manager;
-struct worker_manager;
-struct async_connector;
-struct object_manager;
 
 struct _object_creation {
   bytes                            object_id;

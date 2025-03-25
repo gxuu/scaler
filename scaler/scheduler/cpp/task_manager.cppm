@@ -7,11 +7,10 @@ module;
 // #include "graphtask_manager.h"
 #include "utility/typedefs.h"
 
+export module Scaler:Scheduler;
 import WorkerManager;
 import AsyncBinder;
 import AsyncConnector;
-
-export module TaskManager;
 
 export struct task_manager {
   int                                _max_number_of_tasks_waiting;

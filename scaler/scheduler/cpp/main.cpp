@@ -13,7 +13,6 @@
 #include "client_manager.h"
 #include "context.h"
 #include "graphtask_manager.h"
-#include "object_manager.h"
 #include "scheduler.h"
 #include "status_reporter.h"
 #include "task_manager.h"

@@ -4,7 +4,6 @@
 
 #include "async_binder.h"
 #include "client_manager.h"
-#include "object_manager.h"
 #include "task_manager.h"
 #include "worker_manager.h"
 

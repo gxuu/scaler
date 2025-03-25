@@ -7,19 +7,20 @@ module;
 #include <kj/common.h>
 
 #include <memory>
+#include <ranges>
 #include <zmq.hpp>
 
 #include "async_connector.h"
-// #include "client_manager.h"
+#include "client_manager.h"
 #include "common.capnp.h"
 #include "message.capnp.h"
 #include "utility/object_tracker.h"
 #include "utility/typedefs.h"
 #include "worker_manager.h"
 
-module Scaler:Scheduler;
+export module ObjectManager;
 
-struct _object_creation {
+export struct _object_creation {
   bytes                            object_id;
   bytes                            object_creator;
   ObjectContent::ObjectContentType object_type;
