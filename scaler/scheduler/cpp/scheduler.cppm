@@ -23,6 +23,13 @@ export import :object_manager;
 export import :graphtask_manager;
 export import :status_reporter;
 
+// TODO: We will move scheduler impl into cpp file
+// export struct worker_manager;
+// export struct client_manager;
+// export struct object_manager;
+// export struct graphtask_manager;
+// export struct status_reporter;
+
 export class scheduler {
 public:
   std::shared_ptr<address_monitor>   _address_monitor;

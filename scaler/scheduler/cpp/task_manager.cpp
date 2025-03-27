@@ -4,7 +4,6 @@ module;
 #include <capnp/serialize.h>
 #include <message.capnp.h>
 
-#include <utility>
 #include <zmq.hpp>
 
 #include "capnp/common.h"
@@ -12,7 +11,8 @@ module;
 
 module scheduler;
 import :task_manager;
-import :client_manager;
+// import :client_manager;
+// import :worker_manager;
 
 void task_manager::routine() {
   // std::queue<std::pair<zmq::message_t, capnp::ReaderFor<Task>>> _unassigned;

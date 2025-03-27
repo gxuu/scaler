@@ -37,20 +37,20 @@ target_sources(scheduler_cpp
   FILE_SET cxx_modules 
   TYPE CXX_MODULES 
   FILES
-  scheduler.cppm
   task_manager.cppm
   worker_manager.cppm
   client_manager.cppm
   object_manager.cppm
   graphtask_manager.cppm
   status_reporter.cppm
+  scheduler.cppm
 )
 
 
 target_sources(scheduler_cpp PRIVATE
-  task_manager.cpp
-  worker_manager.cpp
   object_manager.cpp
+  worker_manager.cpp
+  task_manager.cpp
   # client_manager.cpp
   main.cpp
 )

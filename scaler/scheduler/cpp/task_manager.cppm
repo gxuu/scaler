@@ -11,10 +11,10 @@ module;
 #include "utility/typedefs.h"
 
 export module scheduler:task_manager;
-import :client_manager;
-import :object_manager;
-import :worker_manager;
 
+export struct client_manager;
+export struct object_manager;
+export struct worker_manager;
 export struct graphtask_manager;
 
 export struct task_manager {
