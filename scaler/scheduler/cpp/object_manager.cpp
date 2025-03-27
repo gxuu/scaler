@@ -1,4 +1,29 @@
-#include "object_manager.h"
+module;
+
+#include <capnp/blob.h>
+#include <capnp/common.h>
+#include <capnp/message.h>
+#include <capnp/serialize.h>
+#include <kj/common.h>
+
+#include <memory>
+#include <queue>
+#include <ranges>
+#include <zmq.hpp>
+
+#include "async_binder.h"
+#include "async_connector.h"
+// #include "client_manager.h"
+#include <set>
+
+#include "common.capnp.h"
+#include "message.capnp.h"
+#include "utility/object_tracker.h"
+#include "utility/typedefs.h"
+// #include "worker_manager.h"
+
+module scheduler;
+import :object_manager;
 
 // make it a data class for comparison and other wonderful thing
 

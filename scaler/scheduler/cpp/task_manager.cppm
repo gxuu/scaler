@@ -1,16 +1,21 @@
 module;
-#pragma once
+
 #include <capnp/common.h>
 
+#include <queue>
+#include <set>
 #include <zmq.hpp>
 
-// #include "graphtask_manager.h"
+#include "async_binder.h"
+#include "async_connector.h"
 #include "utility/typedefs.h"
 
-export module Scaler:Scheduler;
-import WorkerManager;
-import AsyncBinder;
-import AsyncConnector;
+export module scheduler:task_manager;
+import :client_manager;
+import :object_manager;
+import :worker_manager;
+
+export struct graphtask_manager;
 
 export struct task_manager {
   int                                _max_number_of_tasks_waiting;

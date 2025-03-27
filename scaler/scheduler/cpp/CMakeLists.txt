@@ -1,13 +1,10 @@
 
-cmake_minimum_required(VERSION 3.28 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.30 FATAL_ERROR)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-add_compile_options("-fmodules-ts")
 
 project(
   scheduler_cpp
@@ -34,33 +31,28 @@ target_link_libraries(scheduler_cpp PUBLIC cppzmq)
 # Or use static library to link
 # target_link_libraries(scheduler_cpp cppzmq-static)
 
-
-target_sources(scheduler_cpp PRIVATE
-  # address_monitor.h
-  # async_binder.h
-  # async_connector.h
-  # client_manager.h
-  # context.h
-  # graphtask_manager.h
-  # scheduler.h
-  # status_reporter.h
-  worker_manager.cpp
-  task_manager.cpp
-  object_manager.cpp
-  main.cpp
-)
-
 # scaler.scheduler, scaler.utility, scaler.ui, scaler.object_usage, scaler.io, scaler.protocol
-
 target_sources(scheduler_cpp 
   PRIVATE
   FILE_SET cxx_modules 
   TYPE CXX_MODULES 
   FILES
-  scaler.cppm
-  worker_manager.cppp
-  client_manager.cppp
-  object_manager.cppp
+  scheduler.cppm
+  task_manager.cppm
+  worker_manager.cppm
+  client_manager.cppm
+  object_manager.cppm
+  graphtask_manager.cppm
+  status_reporter.cppm
+)
+
+
+target_sources(scheduler_cpp PRIVATE
+  task_manager.cpp
+  worker_manager.cpp
+  object_manager.cpp
+  # client_manager.cpp
+  main.cpp
 )
 
 

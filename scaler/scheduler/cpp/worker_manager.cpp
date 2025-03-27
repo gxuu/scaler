@@ -1,5 +1,16 @@
 
-#include "worker_manager.h"
+module;
+#include <capnp/common.h>
+#include <capnp/message.h>
+
+#include <zmq.hpp>
+
+#include "message.capnp.h"
+#include "queued_allocator.h"
+
+module scheduler;
+import :worker_manager;
+import :task_manager;
 
 void worker_manager::on_task_result(capnp::ReaderFor<Message> message) {
   bytes task_id(message.getTaskResult().getTaskId().asBytes().begin(),
