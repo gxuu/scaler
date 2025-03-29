@@ -51,7 +51,8 @@ target_sources(scheduler_cpp PRIVATE
   object_manager.cpp
   worker_manager.cpp
   task_manager.cpp
-  # client_manager.cpp
+  scheduler.cpp
+  client_manager.cpp
   main.cpp
 )
 

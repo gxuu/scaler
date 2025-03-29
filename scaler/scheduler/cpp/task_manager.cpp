@@ -11,8 +11,8 @@ module;
 
 module scheduler;
 import :task_manager;
-// import :client_manager;
-// import :worker_manager;
+import :client_manager;
+import :worker_manager;
 
 void task_manager::routine() {
   // std::queue<std::pair<zmq::message_t, capnp::ReaderFor<Task>>> _unassigned;

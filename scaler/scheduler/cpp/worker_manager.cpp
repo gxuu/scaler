@@ -13,7 +13,7 @@ module;
 
 module scheduler;
 import :worker_manager;
-// import :task_manager;
+import :task_manager;
 
 void worker_manager::on_heartbeat(zmq::message_t& source, capnp::ReaderFor<Message> message) {
   bytes b((unsigned char*)source.data(), (unsigned char*)source.data() + source.size());

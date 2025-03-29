@@ -5,12 +5,17 @@ module;
 #include "async_binder.h"
 
 export module scheduler:status_reporter;
-import :client_manager;
-import :object_manager;
-import :task_manager;
-import :worker_manager;
+// import :client_manager;
+// import :object_manager;
+// import :task_manager;
+// import :worker_manager;
 
-struct status_reporter {
+export struct client_manager;
+export struct object_manager;
+export struct task_manager;
+export struct worker_manager;
+
+export struct status_reporter {
   std::shared_ptr<async_binder>   _binder;
   std::shared_ptr<client_manager> _client_manager;
   std::shared_ptr<object_manager> _object_manager;
