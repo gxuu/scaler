@@ -1,0 +1,14 @@
+
+Current status:
+ - Worked on the simplest case (one worker, one client, non nested task)
+ - Basic project organization done
+
+Roadmap:
+ // - Allow configuration instead of hard wire everything. 
+ //   - Multiple workers should be supported after this
+ //   - User should be able to set ip address and port
+ Do cleanup.
+ - Implement graph based task based on sharpener6's commit
+   - Graph based task should work
+ - Debug phase
+ - Optimization for speed and RAM footprint
