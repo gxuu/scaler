@@ -140,10 +140,12 @@ class VanillaGraphTaskManager(GraphTaskManager, Looper, Reporter):
         tasks = dict()
         depended_task_id_to_task_id: ManyToManyDict[bytes, bytes] = ManyToManyDict()
         for task in graph_task.graph:
+            print("iteration for task")
             self._task_id_to_graph_task_id[task.task_id] = graph_task.task_id
             tasks[task.task_id] = _TaskInfo(_NodeTaskState.Inactive, task)
 
             required_task_ids = {arg.data for arg in task.function_args if arg.type == Task.Argument.ArgumentType.Task}
+            print(f"len of required task id = {len(required_task_ids)}")
             for required_task_id in required_task_ids:
                 depended_task_id_to_task_id.add(required_task_id, task.task_id)
 
@@ -178,6 +180,7 @@ class VanillaGraphTaskManager(GraphTaskManager, Looper, Reporter):
 
         ready_task_ids = graph_info.sorter.get_ready()
         if not ready_task_ids:
+            print("ready_task_ids not")
             return
 
         for task_id in ready_task_ids:
@@ -300,6 +303,7 @@ class VanillaGraphTaskManager(GraphTaskManager, Looper, Reporter):
         ]
 
     def __get_argument(self, graph_task_id: bytes, argument: Task.Argument) -> Task.Argument:
+        print("__get_argument")
         if argument.type == Task.Argument.ArgumentType.ObjectID:
             return argument
 

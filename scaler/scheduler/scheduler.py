@@ -103,27 +103,33 @@ class Scheduler:
         # =====================================================================================
         # receive from upstream
         if isinstance(message, ClientHeartbeat):
+            print("ClientHeartbeat")
             await self._client_manager.on_heartbeat(source, message)
             return
 
         if isinstance(message, GraphTask):
+            print("GraphTask")
             await self._graph_manager.on_graph_task(source, message)
             return
 
         if isinstance(message, GraphTaskCancel):
+            print("GraphTaskCancel")
             await self._graph_manager.on_graph_task_cancel(source, message)
             return
 
         if isinstance(message, Task):
+            print("Task")
             await self._task_manager.on_task_new(source, message)
             return
 
         if isinstance(message, TaskCancel):
+            print("TaskCancel")
             await self._task_manager.on_task_cancel(source, message)
             return
 
         # scheduler receives client shutdown request from upstream
         if isinstance(message, ClientDisconnect):
+            print("ClientDisconnect")
             await self._client_manager.on_client_disconnect(source, message)
             return
 
@@ -131,16 +137,19 @@ class Scheduler:
         # receive from downstream
         # receive worker heartbeat from downstream
         if isinstance(message, WorkerHeartbeat):
+            print("WorkerHeartbeat")
             await self._worker_manager.on_heartbeat(source, message)
             return
 
         # receive task result from downstream
         if isinstance(message, TaskResult):
+            print("TaskResult")
             await self._worker_manager.on_task_result(message)
             return
 
         # scheduler receives worker disconnect request from downstream
         if isinstance(message, DisconnectRequest):
+            print("DisconnectRequest")
             await self._worker_manager.on_disconnect(source, message)
             return
 
@@ -148,10 +157,12 @@ class Scheduler:
         # object related
         # scheduler receives object request from upstream
         if isinstance(message, ObjectInstruction):
+            print("ObjectInstruction")
             await self._object_manager.on_object_instruction(source, message)
             return
 
         if isinstance(message, ObjectRequest):
+            print("ObjectRequest")
             await self._object_manager.on_object_request(source, message)
             return
 
