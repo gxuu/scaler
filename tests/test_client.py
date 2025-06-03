@@ -34,7 +34,6 @@ class TestClient(unittest.TestCase):
     def setUp(self) -> None:
         setup_logger()
         logging_test_name(self)
-        self.address = f"tcp://127.0.0.1:{get_available_tcp_port()}"
         self._workers = 3
         self._workers_queue_sizes = [10, 100, 1000]
         self.cluster = SchedulerClusterCombo(

@@ -11,6 +11,7 @@ from scaler.io.config import (
     DEFAULT_TRIM_MEMORY_THRESHOLD_BYTES,
 )
 from scaler.utility.logging.utility import setup_logger
+from scaler.utility.network_util import get_available_tcp_port
 from scaler.utility.zmq_config import ZMQConfig
 from tests.utility import get_available_tcp_port, logging_test_name
 
