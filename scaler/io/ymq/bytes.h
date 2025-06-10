@@ -1,6 +1,10 @@
 #pragma once
 
 // C
+#include <string.h>  // memcmp
+
+#include <algorithm>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -21,31 +25,53 @@ class Bytes {
         if (_tag != Owned)
             return;
 
-        if (is_empty())
-            return;
-
         delete[] _data;
-        this->_data = NULL;
     }
 
     Bytes(uint8_t* m_data, size_t m_len, Ownership tag): _data(m_data), _len(m_len), _tag(tag) {}
 
 public:
-    // move-only
-    // TODO: make copyable
-    Bytes(const Bytes&)            = delete;
-    Bytes& operator=(const Bytes&) = delete;
+    // TODO: Figure out what should this tag do
+    Bytes(char* data, size_t len, Ownership tag = Ownership::Owned)
+        : _data(datadup((uint8_t*)data, len)), _len(len), _tag(tag) {}
+
+    Bytes(): _data {}, _len {}, _tag {} {}
+
+    Bytes(const Bytes& other) {
+        this->_data = datadup(other._data, other._len);
+        this->_len  = other._len;
+        this->_tag  = Owned;
+    }
+
+    Bytes& operator=(const Bytes& other) {
+        Bytes tmp(other);
+        swap(*this, tmp);
+        return *this;
+    }
+
+    friend void swap(Bytes& x, Bytes& y) noexcept {
+        using std::swap;
+        swap(x._tag, y._tag);
+        swap(x._len, y._len);
+        swap(x._data, y._data);
+    }
+
     Bytes(Bytes&& other) noexcept: _data(other._data), _len(other._len), _tag(other._tag) {
-        other._data = NULL;
+        other._data = nullptr;
         other._len  = 0;
     }
+
+    friend std::strong_ordering operator<=>(const Bytes& x, const Bytes& y) {
+        return std::lexicographical_compare_three_way(x._data, x._data + x._len, y._data, y._data + y._len);
+    }
+
     Bytes& operator=(Bytes&& other) noexcept {
         if (this != &other) {
             this->free();  // free current data
 
             _data = other._data;
             _len  = other._len;
-            _tag    = other._tag;
+            _tag  = other._tag;
 
             other._data = NULL;
             other._len  = 0;
@@ -55,15 +81,16 @@ public:
 
     ~Bytes() { this->free(); }
 
-    bool operator==(const Bytes& other) const {
-        if (_len != other._len)
-            return false;
+    // No, not needed
+    // bool operator==(const Bytes& other) const {
+    //     if (_len != other._len)
+    //         return false;
 
-        if (_data == other._data)
-            return true;
+    //     if (_data == other._data)
+    //         return true;
 
-        return std::memcmp(_data, other._data, _len) == 0;
-    }
+    //     return std::memcmp(_data, other._data, _len) == 0;
+    // }
 
     bool operator!() const { return is_empty(); }
 
@@ -80,20 +107,13 @@ public:
     Bytes ref() { return Bytes {this->_data, this->_len, Borrowed}; }
 
     static Bytes alloc(size_t m_len) {
-        if (m_len == 0)
-            return empty();
-
-        return Bytes {new uint8_t[m_len], m_len, Owned};
+        auto ptr = new uint8_t[m_len];
+        return Bytes {ptr, m_len, Owned};
     }
 
-    static Bytes empty() { return Bytes {NULL, 0, Owned}; }
+    static Bytes empty() { return Bytes {(uint8_t*)nullptr, 0, Owned}; }
 
-    static Bytes copy(const uint8_t* m_data, size_t m_len) {
-        if (m_len == 0)
-            return empty();
-
-        return Bytes {datadup(m_data, m_len), m_len, Owned};
-    }
+    static Bytes copy(const uint8_t* m_data, size_t m_len) { return Bytes {datadup(m_data, m_len), m_len, Owned}; }
 
     static Bytes clone(const Bytes& bytes) {
         if (bytes.is_empty())
@@ -122,6 +142,7 @@ public:
 
     size_t len() const { return _len; }
     const uint8_t* data() const { return _data; }
+    uint8_t* data() { return _data; }
 
     friend class Buffer;
 };
