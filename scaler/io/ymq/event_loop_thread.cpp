@@ -25,8 +25,7 @@ std::shared_ptr<IOSocket> EventLoopThread::createIOSocket(std::string identity, 
     return ptr;
 }
 
-// TODO: Think about non null pointer
+// TODO: Something happen with the running thread; Think about non null pointer.
 void EventLoopThread::removeIOSocket(IOSocket* target) {
-    // TODO: Something happen with the running thread
     _identityToIOSocket.erase(target->identity());
 }

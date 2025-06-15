@@ -8,8 +8,6 @@
 
 // First-party
 #include "scaler/io/ymq/file_descriptor.h"
-// #include "event_manager.hpp"
-// #include "scaler/io/ymq/event_loop_thread.h"
 
 class EventLoopThread;
 class EventManager;
@@ -18,6 +16,9 @@ class TcpClient {
     std::shared_ptr<EventLoopThread> _eventLoopThread; /* shared ownership */
     std::unique_ptr<EventManager> _eventManager;
     int _connFd;
+    std::string _localIOSocketIdentity;
+    sockaddr _remoteAddr;
+
     // Implementation defined method. connect(3) should happen here.
     // This function will call user defined onConnectReturn()
     // It will handle error it can handle. If it is unreasonable to
@@ -28,17 +29,16 @@ class TcpClient {
     void onError() {}
 
 public:
-    std::string _IOSocketIdentity;
+    bool _connected;
+
     TcpClient(const TcpClient&)            = delete;
     TcpClient& operator=(const TcpClient&) = delete;
-    // TODO: Modify this behavior
-    TcpClient(std::shared_ptr<EventLoopThread> eventLoopThread);
+    TcpClient(std::shared_ptr<EventLoopThread> eventLoopThread, std::string localIOSocketIdentity, sockaddr remoteAddr);
 
     using ConnectReturnCallback = std::function<void(FileDescriptor, sockaddr, int)>;
     ConnectReturnCallback onConnectReturn;
 
-    void onCreated(std::string identity);
-    void onCreated(std::string identity, sockaddr addr);
+    void onCreated();
 
     void retry(/* Arguments */);
     ~TcpClient();

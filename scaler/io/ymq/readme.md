@@ -30,8 +30,8 @@ Each person maintains a todo and done list.
  - LEAVE A FEW BLANKS HERE TO AVOID CONFLICT
 
 ## TODO:
- - Add example usage of this lib to scaler/tests
- - Implement the detail of IOSocket, especially `onAdded` behavior
+ - Guaranteed message delivery
+ - Retry on disconnect 
 
 
 ## magniloquency

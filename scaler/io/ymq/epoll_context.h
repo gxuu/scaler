@@ -70,24 +70,31 @@ class EventManager;
 using DelayedFunctionQueue = std::queue<std::function<void()>>;
 using Function             = std::function<void()>;
 
+// In the constructor, the epoll context should register eventfd/timerfd from
+// This way, the queues need not know about the event manager. We don't use callbacks.
 class EpollContext {
     int _epfd;
     TimedQueue _timingFunctions;
     DelayedFunctionQueue _delayedFunctions;
     InterruptiveConcurrentQueue<std::function<void()>> _interruptiveFunctions;
+    static const size_t _isInterruptiveFd = 0;
+    static const size_t _isTimingFd       = 1;
 
 public:
     using Identifier = int;  // TBD
 
-    // TODO: This is obviously not the right way of doing it
     EpollContext() {
         _epfd = epoll_create1(0);
+        epoll_event event {};
 
-        epoll_event event;
         event.events   = EPOLLIN | EPOLLET;
-        event.data.ptr = _interruptiveFunctions._eventManager.get();
-
+        event.data.u64 = _isInterruptiveFd;
         epoll_ctl(_epfd, EPOLL_CTL_ADD, _interruptiveFunctions.eventFd(), &event);
+
+        event          = {};
+        event.events   = EPOLLIN | EPOLLET;
+        event.data.u64 = _isTimingFd;
+        epoll_ctl(_epfd, EPOLL_CTL_ADD, _timingFunctions.timingFd(), &event);
     }
 
     void loop();
@@ -96,9 +103,10 @@ public:
     void registerEventManager(EventManager& em);
     void removeEventManager(EventManager& em);
 
-    void executeNow(Function func) { _interruptiveFunctions.enqueue(func); }
+    void executeNow(Function func) { _interruptiveFunctions.enqueue(std::move(func)); }
     void executeLater(Function func, Identifier) { _delayedFunctions.emplace(std::move(func)); }
-    void executeAt(Timestamp timestamp, Function callback) { _timingFunctions.push(timestamp, callback); }
+    void executeAt(Timestamp timestamp, Function callback) { _timingFunctions.push(timestamp, std::move(callback)); }
+
     // TODO: figure out how this work with existing util
     bool cancelExecution(Identifier identifier);
 

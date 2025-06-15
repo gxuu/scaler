@@ -55,13 +55,10 @@ void EpollContext::loop() {
     for (auto it = events.begin(); it != events.begin() + n; ++it) {
         epoll_event current_event = *it;
         auto* event               = (EventManager*)current_event.data.ptr;
-        // TODO: Change the event type to more meaningful stuff
-        if (event->type == 123) {
-            // Handle where f is empty
+        if (event == (void*)_isInterruptiveFd) {
             std::function<void()> f;
             _interruptiveFunctions.dequeue(f);
             f();
-            continue;
         } else {
             event->onEvents(current_event.events);
         }

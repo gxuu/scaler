@@ -20,7 +20,6 @@ class EventManager {
     // FileDescriptor _fd;
 
 public:
-    int type;
     int events;
     int revents;
     void updateEvents();
@@ -52,7 +51,4 @@ public:
     OnEventCallback onError;
     // EventManager(): _fd {} {}
     EventManager(std::shared_ptr<EventLoopThread>);
-
-    // TODO: Especially worry about the dtor
-    ~EventManager() {}
 };

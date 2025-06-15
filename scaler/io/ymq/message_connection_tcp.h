@@ -13,18 +13,18 @@
 class EventLoopThread;
 class EventManager;
 
-struct TcpWriteOperation {
-    std::function<void()> _callback;
-    std::function<void(std::vector<char>&, size_t)> _libCallback;
-    std::vector<char> _buf;
-    size_t _writeCursor;
-};
-
-struct TcpReadOperation {
-    std::function<void()> _callback;
-    std::function<void(std::vector<char>&, size_t)> _libCallback;
-    std::vector<char> _buf;
-};
+// struct TcpWriteOperation {
+//     std::function<void()> _callback;
+//     std::function<void(std::vector<char>&, size_t)> _libCallback;
+//     std::vector<char> _buf;
+//     size_t _writeCursor;
+// };
+//
+// struct TcpReadOperation {
+//     std::function<void()> _callback;
+//     std::function<void(std::vector<char>&, size_t)> _libCallback;
+//     std::vector<char> _buf;
+// };
 
 class MessageConnectionTCP: public MessageConnection {
     int _connFd;
@@ -38,11 +38,11 @@ class MessageConnectionTCP: public MessageConnection {
     std::vector<char> _recvBuf;
     size_t _readCursor = 0;
 
-    std::queue<TcpWriteOperation> _writeOps;
-    std::queue<TcpReadOperation> _readOps;
+    // std::queue<TcpWriteOperation> _writeOps;
+    // std::queue<TcpReadOperation> _readOps;
 
-    std::optional<TcpWriteOperation> _writeOp;
-    std::optional<TcpReadOperation> _readOp;
+    // std::optional<TcpWriteOperation> _writeOp;
+    // std::optional<TcpReadOperation> _readOp;
 
     std::shared_ptr<EventLoopThread> _eventLoopThread;
     std::unique_ptr<EventManager> _eventManager;
@@ -64,14 +64,14 @@ public:
     void send(Bytes data, SendMessageContinuation k) { todo(); }
     void recv(RecvMessageContinuation k) { todo(); }
 
-    // TODO: Think about writeOps and readOps in general
+    // NODO: Think about writeOps and readOps in general
     void send(std::shared_ptr<std::vector<char>> msg) {
-        if (!_writeOps.size()) {
-            int n = write(_connFd, msg->data(), msg->size());
-        } else {
-            TcpWriteOperation writeOp;
-            // writeOp._callback = [msg] {write() }
-        }
+        // if (!_writeOps.size()) {
+        //     int n = write(_connFd, msg->data(), msg->size());
+        // } else {
+        //     TcpWriteOperation writeOp;
+        //     // writeOp._callback = [msg] {write() }
+        // }
     }
 
     void recv(std::vector<char>& buf) {}

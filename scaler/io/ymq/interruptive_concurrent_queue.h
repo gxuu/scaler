@@ -94,7 +94,6 @@
 // #include "common.h"
 
 // Third-party
-#include "scaler/io/ymq/event_manager.h"
 #include "third_party/concurrentqueue.h"
 
 using moodycamel::ConcurrentQueue;
@@ -107,17 +106,10 @@ class InterruptiveConcurrentQueue {
     ConcurrentQueue<T> _queue;
 
 public:
-    // TODO: Think about a better way of constructing event manager
-    // In general, think about what should we do with this bizzard thing
-    std::unique_ptr<EventManager> _eventManager;
-    InterruptiveConcurrentQueue(): _queue(), _eventManager(std::make_unique<EventManager>(nullptr)) {
-        _eventFd            = eventfd(0, EFD_SEMAPHORE);
-        _eventManager->type = 123;
-    }
+    InterruptiveConcurrentQueue(): _queue() { _eventFd = eventfd(0, EFD_SEMAPHORE); }
 
     int eventFd() { return _eventFd; }
 
-    // TODO: Think about a better way of handling error message
     void enqueue(const T& item) {
         _queue.enqueue(item);
 
