@@ -87,13 +87,13 @@ void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) {
     if (c == _deadConnection.end())
         return;
 
-    _fdToConnection[fd]->_writeOperations       = std::move((*c)->_writeOperations);
-    _fdToConnection[fd]->_receivedMessages      = std::move((*c)->_receivedMessages);
-    _fdToConnection[fd]->_pendingReadOperations = std::move((*c)->_pendingReadOperations);
+    _fdToConnection[fd]->_writeOperations       = (*c)->_writeOperations;
+    _fdToConnection[fd]->_receivedMessages      = (*c)->_receivedMessages;
+    _fdToConnection[fd]->_pendingReadOperations = (*c)->_pendingReadOperations;
 
     assert((*c)->_remoteIOSocketIdentity);
 
-    _fdToConnection[fd]->_remoteIOSocketIdentity = std::move((*c)->_remoteIOSocketIdentity);
+    _fdToConnection[fd]->_remoteIOSocketIdentity = (*c)->_remoteIOSocketIdentity;
 
     _deadConnection.erase(c);
 }
@@ -105,17 +105,25 @@ void IOSocket::sendMessage(Message message, SendMessageCallback callback) {
         [this, addressPtr, addressLen, payloadPtr, payloadLen, callback = std::move(callback)] {
             // TODO: What should we do when we cannot find the connection? We cannot
             // check whether the identity presents outside the eventloop.
-            try {
-                auto* conn = this->_identityToConnection.at(std::string(addressPtr, addressLen));
+            auto payload = std::make_shared<std::vector<char>>(8);
+            payload->insert(payload->end(), payloadPtr, payloadPtr + payloadLen);
+            *(uint64_t*)payload->data() = payloadLen;
 
-                auto payload = std::make_shared<std::vector<char>>(8);
-                payload->insert(payload->end(), payloadPtr, payloadPtr + payloadLen);
-                *(uint64_t*)payload->data() = payloadLen;
-
+            MessageConnectionTCP* conn = nullptr;
+            std::string address        = std::string(addressPtr, addressLen);
+            if (this->_identityToConnection.contains(address)) {
+                conn = this->_identityToConnection[address];
                 conn->sendMessage(std::move(payload), std::move(callback));
-            } catch (...) {
-                ;
-                callback(-1);
+            } else {
+                auto it = std::ranges::find(_deadConnection, address, &MessageConnectionTCP::_remoteIOSocketIdentity);
+                if (it != _deadConnection.end()) {
+                    conn = it->get();
+                    conn->_writeOperations.push({std::move(payload), 0, std::move(callback)});
+                } else {
+                    printf("LOGIC ERROR\n");
+                    callback(-1);
+                    return;
+                }
             }
         });
 }

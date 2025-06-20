@@ -155,6 +155,7 @@ ReadExhuasted:
 
 void MessageConnectionTCP::onWrite() {
     // TODO: do not assume the identity to be less than 128bytes
+    printf("%s\n", __PRETTY_FUNCTION__);
     if (!_sendLocalIdentity) {
         // Other sizes are possible, but the size needs to be >= 8, in order for idBuf
         // to be aligned with 8 bytes boundary because of strict aliasing
@@ -168,6 +169,7 @@ void MessageConnectionTCP::onWrite() {
     }
 
     while (!_writeOperations.empty()) {
+        printf("BADASS %d\n", __LINE__);
         auto& writeOp       = _writeOperations.front();
         const size_t bufLen = writeOp._buf->size();
         while (writeOp._cursor != bufLen) {
