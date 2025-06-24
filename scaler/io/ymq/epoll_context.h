@@ -75,10 +75,9 @@ class EpollContext {
     int _epfd;
     TimedQueue _timingFunctions;
     DelayedFunctionQueue _delayedFunctions;
-    InterruptiveConcurrentQueue<std::function<void()>> _interruptiveFunctions;
+    InterruptiveConcurrentQueue<Function> _interruptiveFunctions;
     static const size_t _isInterruptiveFd = 0;
     static const size_t _isTimingFd       = 1;
-    std::vector<std::function<void()>> _afterLoopFunctions;
 
 public:
     using Identifier = int;  // TBD

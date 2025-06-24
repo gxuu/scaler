@@ -49,10 +49,6 @@ void EpollContext::loop() {
     }
 
     execPendingFunctions();
-
-    for (auto& func: _afterLoopFunctions) {
-        func();
-    }
 }
 
 int EpollContext::addFdToLoop(int fd, uint64_t events, EventManager* manager) {
