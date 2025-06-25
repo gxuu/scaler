@@ -3,6 +3,7 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cassert>
 #include <functional>
 #include <queue>

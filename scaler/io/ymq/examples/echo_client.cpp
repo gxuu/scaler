@@ -63,7 +63,7 @@ int main() {
         clientSocket->recvMessage([recv_promise](Message msg) { recv_promise->set_value(std::move(msg)); });
 
         Message reply = recv_future.get();
-        std::string reply_str(reply.payload.data(), reply.payload.data() + reply.payload.len());
+        std::string reply_str(reply.payload.data, reply.payload.data + reply.payload.len);
         printf("Received echo: '%s'\n", reply_str.c_str());
     }
 
