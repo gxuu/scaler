@@ -92,31 +92,24 @@ void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) {
 }
 
 void IOSocket::sendMessage(Message message, SendMessageCallback callback) {
-    auto [addressPtr, addressLen] = message.address.release();
-    auto [payloadPtr, payloadLen] = message.payload.release();
-    _eventLoopThread->_eventLoop.executeNow(
-        [this, addressPtr, addressLen, payloadPtr, payloadLen, callback = std::move(callback)] {
-            auto payload = std::make_shared<std::vector<char>>(8);
-            payload->insert(payload->end(), payloadPtr, payloadPtr + payloadLen);
-            *(uint64_t*)payload->data() = payloadLen;
+    _eventLoopThread->_eventLoop.executeNow([this, message = std::move(message), callback = std::move(callback)] {
+        MessageConnectionTCP* conn = nullptr;
+        std::string address        = std::string((char*)message.address.data(), message.address.len());
 
-            MessageConnectionTCP* conn = nullptr;
-            std::string address        = std::string(addressPtr, addressLen);
-
-            if (this->_identityToConnection.contains(address)) {
-                conn = this->_identityToConnection[address].get();
+        if (this->_identityToConnection.contains(address)) {
+            conn = this->_identityToConnection[address].get();
+        } else {
+            auto it =
+                std::ranges::find(_unestablishedConnection, address, &MessageConnectionTCP::_remoteIOSocketIdentity);
+            if (it != _unestablishedConnection.end()) {
+                conn = it->get();
             } else {
-                auto it = std::ranges::find(
-                    _unestablishedConnection, address, &MessageConnectionTCP::_remoteIOSocketIdentity);
-                if (it != _unestablishedConnection.end()) {
-                    conn = it->get();
-                } else {
-                    onConnectionCreated(0, {}, {}, false, address);
-                    conn = _unestablishedConnection.back().get();
-                }
+                onConnectionCreated(0, {}, {}, false, address);
+                conn = _unestablishedConnection.back().get();
             }
-            conn->sendMessage(std::move(payload), std::move(callback));
-        });
+        }
+        conn->sendMessage(std::move(message), std::move(callback));
+    });
 }
 
 void IOSocket::recvMessage(RecvMessageCallback callback) {

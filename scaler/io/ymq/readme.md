@@ -41,7 +41,7 @@ Each person maintains a todo and done list.
  - test the user provided callback logic and think about sync issue
  - connect do not happen twice, monitor for read/write instead
  - remove the end of each loop hook, this is stupid
- -
+ - test the abnormal breakup (break up due to network issue instead of killing)
  - Per action cancellation
  - refactor: Ownership, Public/Private, destructor
  -
@@ -49,22 +49,21 @@ Each person maintains a todo and done list.
  - LEAVE A FEW BLANKS HERE TO AVOID CONFLICT
 
 ## TODO:
- - CRTP, and so on
- -
- - cleanup: Change InterruptiveConcurrentQueue behavior (use FileDescriptor class)
+ - update numbers -> constants
  - think about this function call onConnectionIdentityReceived etc. It's way too intrusive.
  - make IO with send/recv msg
- - test the abnormal breakup (break up due to network issue instead of killing)
- -
- -
  - cleanup: Error handling
  -
+ -
+ -
  - cleanup: Do not constraint thee size of identity (current maximum being 128-8 bytes)
- - cleanup: Do not use std::string as identity type
  -
  - Provide a vector-like data structure that can release memory to achieve zc
  -
- -
+ - cleanup: Change InterruptiveConcurrentQueue behavior (use FileDescriptor class)
+ - Optimize performance in `updateWriteOperations`
+ - Namespace support, and move third_party code to top directory.
+ - cleanup: Do not use std::string as identity type
  -
  - LEAVE A FEW BLANKS HERE TO AVOID CONFLICT
 
