@@ -23,11 +23,11 @@ void EpollContext::loop() {
         epoll_event current_event = *it;
         auto* event               = (EventManager*)current_event.data.ptr;
         if (event == (void*)_isInterruptiveFd) {
-            std::function<void()> f;
-            _interruptiveFunctions.dequeue(f);
-            f();
+            auto vec = _interruptiveFunctions.dequeue();
+            std::ranges::for_each(vec, [](const auto& x) { x(); });
         } else if (event == (void*)_isTimingFd) {
-            _timingFunctions.onRead();
+            auto vec = _timingFunctions.dequeue();
+            std::ranges::for_each(vec, [](const auto& x) { x(); });
         } else {
             event->onEvents(current_event.events);
         }

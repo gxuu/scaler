@@ -13,8 +13,6 @@
 class IOSocket;
 
 class EventLoopThread: public std::enable_shared_from_this<EventLoopThread> {
-    std::jthread thread;
-
 public:
     std::map<std::string, std::shared_ptr<IOSocket>> _identityToIOSocket;
     using PollingContext = Configuration::PollingContext;
@@ -34,4 +32,7 @@ public:
     EventLoopThread(const EventLoopThread&)            = delete;
     EventLoopThread& operator=(const EventLoopThread&) = delete;
     EventLoopThread()                                  = default;
+
+private:
+    std::jthread thread;
 };

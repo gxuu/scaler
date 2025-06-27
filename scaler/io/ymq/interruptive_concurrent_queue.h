@@ -1,99 +1,11 @@
-// #pragma once
-//
-// // System
-// #include <sys/eventfd.h>
-//
-// // C++
-// #include <memory>
-// #include <optional>
-//
-// // First-party
-// // #include "common.h"
-// #include "event_loop_thread.h"
-// #include "event_manager.h"
-// #include "file_descriptor.h"
-//
-// // Third-party
-// #include "scaler/io/ymq/event_manager.h"
-// #include "third_party/concurrentqueue.h"
-//
-// using moodycamel::ConcurrentQueue;
-//
-// class EventManager;
-// class EventLoopThread;
-//
-// template <typename T>
-// class InterruptiveConcurrentQueue {
-//     ConcurrentQueue<T> _queue;
-//     FileDescriptor _eventFd;
-//     std::unique_ptr<EventManager> _eventManager;
-//
-// public:
-//     InterruptiveConcurrentQueue(EventLoopThread& thread, std::function<void(T)> callback): _queue() {
-//         auto fd = FileDescriptor::eventfd(0, EFD_SEMAPHORE);
-//
-//         if (!fd) {
-//             throw std::system_error(fd.error(), std::system_category(), "Failed to create eventfd");
-//         }
-//
-//         _eventFd = std::move(*fd);
-//
-//         _eventManager = std::make_unique<EventManager>(
-//             thread, std::move(_eventFd), [this, callback](FileDescriptor& fd, Events events) {
-//                 if (events.readable) {
-//                     // Signal that an item is available
-//                     T item;
-//                     this->dequeue(item);
-//                     callback(item);
-//                 }
-//             });
-//     }
-//
-//     // unmovable, uncopyable
-//     InterruptiveConcurrentQueue(const InterruptiveConcurrentQueue&)            = delete;
-//     InterruptiveConcurrentQueue& operator=(const InterruptiveConcurrentQueue&) = delete;
-//     InterruptiveConcurrentQueue(InterruptiveConcurrentQueue&&)                 = delete;
-//     InterruptiveConcurrentQueue& operator=(InterruptiveConcurrentQueue&&)      = delete;
-//
-//     void addToEventLoop(EventLoopThread& eventLoopThread) {}
-//
-//     // returns a non-owned file descriptor
-//     FileDescriptor eventFd() const { return _eventFd; }
-//
-//     void enqueue(const T& item) {
-//         _queue.enqueue(item);
-//         _eventFd.eventfd_signal();
-//     }
-//
-//     // note: this method will block until an item is available
-//     std::optional<Errno> dequeue(T& item) {
-//         if (auto result = _eventFd.eventfd_wait(); !result) {
-//             // If the eventfd wait failed, we return false
-//             return result;
-//         }
-//
-//         for (;;) {
-//             if (_queue.try_dequeue(item)) {
-//                 return std::nullopt;  // success
-//             }
-//         }
-//     }
-// };
-
 #pragma once
 
-// System
 #include <sys/eventfd.h>
 
 // C++
 #include <cstdlib>
-#include <memory>
-#include <optional>
+#include <vector>
 
-// First-party
-// #include "common.h"
-
-// Third-party
 #include "third_party/concurrentqueue.h"
 
 using moodycamel::ConcurrentQueue;
@@ -106,9 +18,15 @@ class InterruptiveConcurrentQueue {
     ConcurrentQueue<T> _queue;
 
 public:
-    InterruptiveConcurrentQueue(): _queue() { _eventFd = eventfd(0, EFD_SEMAPHORE); }
+    InterruptiveConcurrentQueue(): _queue() {
+        _eventFd = eventfd(0, EFD_NONBLOCK);
+        if (_eventFd == -1) {
+            printf("eventfd goes wrong\n");
+            exit(1);
+        }
+    }
 
-    int eventFd() { return _eventFd; }
+    int eventFd() const { return _eventFd; }
 
     void enqueue(const T& item) {
         _queue.enqueue(item);
@@ -122,20 +40,26 @@ public:
 
     // TODO: Change the behavior according to the original version
     // note: this method will block until an item is available
-    void dequeue(T& item) {
-        uint64_t u;
+    std::vector<T> dequeue() {
+        uint64_t u {};
         if (::eventfd_read(_eventFd, &u) < 0) {
-            printf("eventfd_read goes wrong\n");
-            exit(1);
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                printf("eventfd_read goes wrong\n");
+                exit(1);
+            } else {
+                return {};
+            }
         }
 
-        _queue.try_dequeue(item);
-        // for (;;) {
-        //     if (_queue.try_dequeue(item)) {
-        //         return;
-        //         // exit(1);
-        //     }
-        // }
+        std::vector<T> vecT(u);
+        for (auto i = 0uz; i < u; ++i) {
+            // We have only single consumer, so this guarantees success or something BAD
+            if (!_queue.try_dequeue(vecT[i])) {
+                printf("Try dequeu goes wrong\n");
+                exit(1);
+            }
+        }
+        return vecT;
     }
 
     // unmovable, uncopyable
@@ -143,4 +67,6 @@ public:
     InterruptiveConcurrentQueue& operator=(const InterruptiveConcurrentQueue&) = delete;
     InterruptiveConcurrentQueue(InterruptiveConcurrentQueue&&)                 = delete;
     InterruptiveConcurrentQueue& operator=(InterruptiveConcurrentQueue&&)      = delete;
+
+    ~InterruptiveConcurrentQueue() { close(_eventFd); }
 };

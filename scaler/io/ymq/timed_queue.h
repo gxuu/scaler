@@ -24,7 +24,6 @@ public:
     using Callback   = Configuration::TimedQueueCallback;
     using Identifier = Configuration::ExecutionCancellationIdentifier;
     using TimedFunc  = std::tuple<Timestamp, Callback, Identifier>;
-    using cmp        = decltype([](const auto& x, const auto& y) { return std::get<0>(x) < std::get<0>(y); });
 
     TimedQueue(): timer_fd(createTimerfd()), _currentId {} { assert(timer_fd); }
     ~TimedQueue() {
@@ -44,14 +43,16 @@ public:
 
     void cancelExecution(Identifier id) { _cancelledFunctions.push_back(id); }
 
-    void onRead() {
+    std::vector<Callback> dequeue() {
         uint64_t numItems;
         ssize_t n = read(timer_fd, &numItems, sizeof numItems);
         if (n != sizeof numItems) {
             assert(false);
             // Handle read error or spurious wakeup
-            return;
+            return {};
         }
+
+        std::vector<Callback> callbacks;
 
         Timestamp now;
         while (pq.size()) {
@@ -62,7 +63,7 @@ public:
                 if (cancelled != _cancelledFunctions.end()) {
                     std::erase(_cancelledFunctions, id);
                 } else {
-                    cb();
+                    callbacks.push_back(std::move(cb));
                 }
             } else
                 break;
@@ -77,6 +78,7 @@ public:
                 // handle error
             }
         }
+        return callbacks;
     }
 
     int timingFd() const { return timer_fd; }
@@ -84,6 +86,7 @@ public:
 private:
     int timer_fd;
     Identifier _currentId;
-    std::priority_queue<TimedFunc, std::vector<TimedFunc>, cmp> pq;
+    constexpr static auto cmp = [](const auto& x, const auto& y) { return std::get<0>(x) < std::get<0>(y); };
+    std::priority_queue<TimedFunc, std::vector<TimedFunc>, decltype(cmp)> pq;
     std::vector<Identifier> _cancelledFunctions;
 };

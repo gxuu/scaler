@@ -48,19 +48,14 @@ public:
 
     void loop();
 
-    // TODO: Implement
-    void stop();
-
     int addFdToLoop(int fd, uint64_t events, EventManager* manager);
     void removeFdFromLoop(int fd);
 
     void executeNow(Function func) { _interruptiveFunctions.enqueue(std::move(func)); }
     void executeLater(Function func) { _delayedFunctions.emplace(std::move(func)); }
-
     Identifier executeAt(Timestamp timestamp, Function callback) {
         return _timingFunctions.push(timestamp, std::move(callback));
     }
-
     void cancelExecution(Identifier identifier) { _timingFunctions.cancelExecution(identifier); }
 
 private:
