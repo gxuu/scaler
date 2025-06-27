@@ -75,7 +75,7 @@ Each person maintains a todo and done list.
  - allow user to change how many times they want to retry
  - resolve github comment
  - add proper logging message
- -
+ - cleanup: make sure when eventloop is destructed all resources is freed
  -
  -
  -
