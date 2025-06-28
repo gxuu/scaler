@@ -6,6 +6,7 @@
 #include <cassert>
 #include <functional>
 #include <queue>
+#include <ranges>
 
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/timestamp.h"

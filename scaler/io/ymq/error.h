@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <exception>  // std::terminate
 #include <format>
 #include <print>
 #include <sstream>
