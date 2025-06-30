@@ -80,6 +80,8 @@ private:
     sockaddr _localAddr;
     std::string _localIOSocketIdentity;
 
+    // TODO: Maybe we should change this to std::deque so that
+    // when sending messages we get O(lg n) complexity.
     std::vector<TcpWriteOperation> _writeOperations;
     size_t _sendCursor;
 

@@ -67,7 +67,7 @@ std::expected<void, int> MessageConnectionTCP::tryReadMessages() {
         size_t readSize = 0;
 
         if (_receivedReadOperations.empty() || isCompleteMessage(_receivedReadOperations.front())) {
-            _receivedReadOperations.push({});
+            _receivedReadOperations.emplace();
         }
 
         auto& message = _receivedReadOperations.back();
@@ -238,19 +238,19 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages() {
 // prefix sum in each write operation, and perform binary search instead of linear search
 // to find the first write operation we haven't complete. - gxu
 void MessageConnectionTCP::updateWriteOperations(size_t n) {
-    auto target = _writeOperations.begin();
+    auto firstIncomplete = _writeOperations.begin();
     _sendCursor += n;
-    // Post condition of the loop: target contains the first write op we haven't complete.
+    // Post condition of the loop: firstIncomplete contains the first write op we haven't complete.
     for (auto it = _writeOperations.begin(); it != _writeOperations.end(); ++it) {
         size_t msgSize = it->_payload.len() + HEADER_SIZE;
         if (_sendCursor < msgSize) {
-            target = it;
+            firstIncomplete = it;
             break;
         }
 
         if (_sendCursor == msgSize) {
-            target      = it + 1;
-            _sendCursor = 0;
+            firstIncomplete = it + 1;
+            _sendCursor     = 0;
             break;
         }
 
@@ -260,7 +260,7 @@ void MessageConnectionTCP::updateWriteOperations(size_t n) {
     // NOTE: [complete, _nwriteOperations.end()) is a range of completed write operations.
     // After rotate, the _writeOperations contains something like this:
     //  [Incomplete0, Incomplete1, ..., complete, complete1, ..., completeN]
-    auto complete = std::rotate(_writeOperations.begin(), target, _writeOperations.end());
+    auto complete = std::rotate(_writeOperations.begin(), firstIncomplete, _writeOperations.end());
 
     for (auto tmp = complete; tmp != _writeOperations.end(); ++tmp) {
         tmp->_callbackAfterCompleteWrite(0);
