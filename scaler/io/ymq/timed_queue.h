@@ -26,7 +26,7 @@ public:
     using Identifier = Configuration::ExecutionCancellationIdentifier;
     using TimedFunc  = std::tuple<Timestamp, Callback, Identifier>;
 
-    TimedQueue(): _timerFd(createTimerfd()), _currentId {} { assert(timer_fd); }
+    TimedQueue(): _timerFd(createTimerfd()), _currentId {} { assert(_timerFd); }
     ~TimedQueue() {
         if (_timerFd > 0)
             close(_timerFd);
