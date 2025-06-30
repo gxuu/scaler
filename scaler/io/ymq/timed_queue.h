@@ -26,16 +26,16 @@ public:
     using Identifier = Configuration::ExecutionCancellationIdentifier;
     using TimedFunc  = std::tuple<Timestamp, Callback, Identifier>;
 
-    TimedQueue(): timer_fd(createTimerfd()), _currentId {} { assert(timer_fd); }
+    TimedQueue(): _timerfd(createTimerfd()), _currentId {} { assert(timer_fd); }
     ~TimedQueue() {
-        if (timer_fd > 0)
-            close(timer_fd);
+        if (_timerfd > 0)
+            close(_timerfd);
     }
 
     Identifier push(Timestamp timestamp, Callback cb) {
         auto ts = convertToItimerspec(timestamp);
         if (pq.empty() || timestamp < std::get<0>(pq.top())) {
-            int ret = timerfd_settime(timer_fd, 0, &ts, nullptr);
+            int ret = timerfd_settime(_timerfd, 0, &ts, nullptr);
             assert(ret == 0);
         }
         pq.push({timestamp, cb, _currentId});
@@ -46,7 +46,7 @@ public:
 
     std::vector<Callback> dequeue() {
         uint64_t numItems;
-        ssize_t n = read(timer_fd, &numItems, sizeof numItems);
+        ssize_t n = read(_timerfd, &numItems, sizeof numItems);
         if (n != sizeof numItems) {
             assert(false);
             // Handle read error or spurious wakeup
@@ -73,7 +73,7 @@ public:
         if (!pq.empty()) {
             auto nextTs = std::get<0>(pq.top());
             auto ts     = convertToItimerspec(nextTs);
-            int ret     = timerfd_settime(timer_fd, 0, &ts, nullptr);
+            int ret     = timerfd_settime(_timerfd, 0, &ts, nullptr);
             if (ret == -1) {
                 assert(false);
                 // handle error
@@ -82,10 +82,10 @@ public:
         return callbacks;
     }
 
-    int timingFd() const { return timer_fd; }
+    int timingFd() const { return _timerfd; }
 
 private:
-    int timer_fd;
+    int _timerfd;
     Identifier _currentId;
     constexpr static auto cmp = [](const auto& x, const auto& y) { return std::get<0>(x) < std::get<0>(y); };
     std::priority_queue<TimedFunc, std::vector<TimedFunc>, decltype(cmp)> pq;
