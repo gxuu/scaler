@@ -1,9 +1,9 @@
 #pragma once
 
+#include <deque>
 #include <memory>
 #include <optional>
 #include <queue>
-#include <vector>
 
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/io_socket.h"
@@ -80,9 +80,7 @@ private:
     sockaddr _localAddr;
     std::string _localIOSocketIdentity;
 
-    // TODO: Maybe we should change this to std::deque so that
-    // when sending messages we get O(lg n) complexity.
-    std::vector<TcpWriteOperation> _writeOperations;
+    std::deque<TcpWriteOperation> _writeOperations;
     size_t _sendCursor;
 
     std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks;

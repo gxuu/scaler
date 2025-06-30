@@ -257,16 +257,13 @@ void MessageConnectionTCP::updateWriteOperations(size_t n) {
         _sendCursor -= msgSize;
     }
 
-    // NOTE: [complete, _nwriteOperations.end()) is a range of completed write operations.
-    // After rotate, the _writeOperations contains something like this:
-    //  [Incomplete0, Incomplete1, ..., complete, complete1, ..., completeN]
-    auto complete = std::rotate(_writeOperations.begin(), firstIncomplete, _writeOperations.end());
-
-    for (auto tmp = complete; tmp != _writeOperations.end(); ++tmp) {
-        tmp->_callbackAfterCompleteWrite(0);
+    for (auto it = _writeOperations.begin(); it != firstIncomplete; ++it) {
+        it->_callbackAfterCompleteWrite(0);
     }
 
-    _writeOperations.erase(complete, _writeOperations.end());
+    while (firstIncomplete != _writeOperations.begin())
+        _writeOperations.pop_front();
+
     // _writeOperations.shrink_to_fit();
 }
 
