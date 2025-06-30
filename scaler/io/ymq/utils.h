@@ -9,19 +9,19 @@
 #include <expected>
 #include <iostream>
 
-#include "scaler/io/ymq/error.h"
-
 inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address) {
     // Check and strip the "tcp://" prefix
     const std::string prefix = "tcp://";
     if (address.substr(0, prefix.size()) != prefix) {
-        unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
+        exit(-1);
+        // unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
     }
 
     std::string addr_part = address.substr(prefix.size());
     size_t colon_pos      = addr_part.find(':');
     if (colon_pos == std::string::npos) {
-        unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
+        exit(-1);
+        // unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
     }
 
     std::string ip       = addr_part.substr(0, colon_pos);
@@ -30,13 +30,17 @@ inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
     int port = 0;
     try {
         port = std::stoi(port_str);
-    } catch (...) { unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address); }
+    } catch (...) {
+        exit(-1);
+        // unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
+    }
 
     sockaddr_in out_addr {};
     out_addr.sin_family = AF_INET;
     out_addr.sin_port   = htons(port);
     if (inet_pton(AF_INET, ip.c_str(), &out_addr.sin_addr) <= 0) {
-        unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
+        exit(-1);
+        // unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
     }
 
     return *(sockaddr*)&out_addr;
@@ -45,7 +49,8 @@ inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
 inline int setNoDelay(int fd) {
     int optval = 1;
     if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval)) == -1) {
-        unrecoverableError({errno}, "From", "setsockopt", "TCP_NODELAY cannot be set.");
+        exit(-1);
+        // unrecoverableError({errno}, "From", "setsockopt", "TCP_NODELAY cannot be set.");
     }
 
     return fd;
