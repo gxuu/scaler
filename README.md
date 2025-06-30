@@ -1,16 +1,17 @@
 <div align="center">
-  <a href="https://github.com/citi">
-    <img src="https://github.com/citi.png" alt="Citi" width="80" height="80">
+  <a href="https://github.com/finos/opengris-scaler">
+    <img src="https://github.com/finos/branding/blob/master/project-logos/active-project-logos/OpenGRIS/Scaler/2025_OpenGRIS_Scaler.svg" alt="OpenGRIS Scaler" width="180" height="80">
   </a>
-
-<h3 align="center">Citi/scaler</h3>
 
   <p align="center">
     Efficient, lightweight, and reliable distributed computation engine.
   </p>
 
   <p align="center">
-    <a href="https://citi.github.io/scaler/">
+    <a href="https://community.finos.org/docs/governance/Software-Projects/stages/incubating">
+      <img src="https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg">
+    </a>
+    <a href="https://finos.github.io/opengris-scaler/">
       <img src="https://img.shields.io/badge/Documentation-0f1632">
     </a>
     <a href="./LICENSE">
@@ -25,7 +26,7 @@
 
 <br />
 
-**Scaler provides a simple, efficient, and reliable way to perform distributed computing** using a centralized scheduler,
+**OpenGRIS Scaler provides a simple, efficient, and reliable way to perform distributed computing** using a centralized scheduler,
 with a stable and language-agnostic protocol for client and worker communications.
 
 ```python
@@ -42,7 +43,7 @@ with Client(address="tcp://127.0.0.1:2345") as client:
     print(sum(results))  # 661.46
 ```
 
-Scaler is a suitable Dask replacement, offering significantly better scheduling performance for jobs with a large number
+OpenGRIS Scaler is a suitable Dask replacement, offering significantly better scheduling performance for jobs with a large number
 of lightweight tasks while improving on load balancing, messaging, and deadlocks.
 
 ## Features
@@ -77,6 +78,7 @@ The official documentation is available at [citi.github.io/scaler/](https://citi
 Scaler has 3 main components:
 
 - A **scheduler**, responsible for routing tasks to available computing resources.
+- An **object storage server** that stores the task data objects (task arguments and task results).
 - A set of **workers** that form a _cluster_. Workers are independent computing units, each capable of executing a single task.
 - **Clients** running inside applications, responsible for submitting tasks to the scheduler.
 
@@ -98,19 +100,28 @@ This will start a scheduler with 4 workers on port `2345`.
 
 ### Setting up a computing cluster from the CLI
 
-The scheduler and workers can also be started from the command line with `scaler_scheduler` and `scaler_cluster`.
+The object storage server, scheduler and workers can also be started from the command line with
+`scaler_object_storage_server`, `scaler_scheduler` and `scaler_cluster`.
 
-First, start the Scaler scheduler:
+First, start the object storage server:
+
+```bash
+$ scaler_object_storage_server tcp://127.0.0.1:2346
+```
+
+Then, start the scheduler, and make it connect to the object storage server:
 
 ```bash
 $ scaler_scheduler tcp://127.0.0.1:2345
-[INFO]2023-03-19 12:16:10-0400: logging to ('/dev/stdout',)
-[INFO]2023-03-19 12:16:10-0400: use event loop: 2
-[INFO]2023-03-19 12:16:10-0400: Scheduler: monitor address is ipc:///tmp/127.0.0.1_2345_monitor
+[INFO]2025-06-06 13:13:15+0200: logging to ('/dev/stdout',)
+[INFO]2025-06-06 13:13:15+0200: use event loop: builtin
+[INFO]2025-06-06 13:13:15+0200: Scheduler: listen to scheduler address tcp://127.0.0.1:2345
+[INFO]2025-06-06 13:13:15+0200: Scheduler: connect to object storage server tcp://127.0.0.1:2346
+[INFO]2025-06-06 13:13:15+0200: Scheduler: listen to scheduler monitor address tcp://127.0.0.1:2347
 ...
 ```
 
-Then, start a set of workers (a.k.a. a Scaler *cluster*) that connects to the previously started scheduler:
+Finally, start a set of workers (a.k.a. a Scaler *cluster*) that connects to the previously started scheduler:
 
 ```bash
 $ scaler_cluster -n 4 tcp://127.0.0.1:2345
@@ -125,9 +136,10 @@ $ scaler_cluster -n 4 tcp://127.0.0.1:2345
 
 Multiple Scaler clusters can be connected to the same scheduler, providing distributed computation over multiple servers.
 
-`-h` lists the available options for the scheduler and the cluster executables:
+`-h` lists the available options for the object storage server, scheduler and the cluster executables:
 
 ```bash
+$ scaler_object_storage_server -h
 $ scaler_scheduler -h
 $ scaler_cluster -h
 ```
@@ -323,7 +335,7 @@ Use `scaler_top` to connect to the scheduler's monitor address (printed by the s
 diagnostics/metrics information about the scheduler and its workers.
 
 ```bash
-$ scaler_top ipc:///tmp/127.0.0.1_2345_monitor
+$ scaler_top tcp://127.0.0.1:2347
 ```
 
 It will look similar to `top`, but provides information about the current Scaler setup:
@@ -370,7 +382,7 @@ which column is being used for sorting
 `scaler_ui` provides a web monitoring interface for Scaler.
 
 ```bash
-$ scaler_ui ipc:///tmp/127.0.0.1_2345_monitor --port 8081
+$ scaler_ui tcp://127.0.0.1:2347 --port 8081
 ```
 
 This will open a web server on port `8081`.
@@ -388,23 +400,29 @@ appreciated**.
 We welcome you to:
 
 - Fix typos or touch up documentation
-- Share your opinions on [existing issues](https://github.com/citi/scaler/issues)
-- Help expand and improve our library by [opening a new issue](https://github.com/citi/scaler/issues/new)
+- Share your opinions on [existing issues](https://github.com/finos/opengris-scaler/issues)
+- Help expand and improve our library by [opening a new issue](https://github.com/finos/opengris-scaler/issues/new)
 
-Please review our [community contribution guidelines](https://github.com/Citi/.github/blob/main/CONTRIBUTING.md) and
-[functional contribution guidelines](./CONTRIBUTING.md) to get started 👍.
+Please review [functional contribution guidelines](./CONTRIBUTING.md) to get started 👍.
+
+_NOTE:_ Commits and pull requests to FINOS repositories will only be accepted from those contributors with an active, executed Individual Contributor License Agreement (ICLA) with FINOS OR contributors who are covered under an existing and active Corporate Contribution License Agreement (CCLA) executed with FINOS. Commits from individuals not covered under an ICLA or CCLA will be flagged and blocked by the ([EasyCLA](https://community.finos.org/docs/governance/Software-Projects/easycla)) tool. Please note that some CCLAs require individuals/employees to be explicitly named on the CCLA.
+
+*Need an ICLA? Unsure if you are covered under an existing CCLA? Email [help@finos.org](mailto:help@finos.org)*
 
 ## Code of Conduct
 
-We are committed to making open source an enjoyable and respectful experience for our community. See
-[`CODE_OF_CONDUCT`](https://github.com/Citi/.github/blob/main/CODE_OF_CONDUCT.md) for more information.
+Please see the FINOS [Community Code of Conduct](https://www.finos.org/code-of-conduct).
 
 ## License
+
+Copyright 2023 Citigroup, Inc.
 
 This project is distributed under the [Apache-2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See
 [`LICENSE`](./LICENSE) for more information.
 
+SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
+
 ## Contact
 
-If you have a query or require support with this project, [raise an issue](https://github.com/Citi/scaler/issues).
+If you have a query or require support with this project, [raise an issue](https://github.com/finos/opengris-scaler/issues).
 Otherwise, reach out to [opensource@citi.com](mailto:opensource@citi.com).
