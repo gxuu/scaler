@@ -13,18 +13,52 @@
 #include "scaler/io/ymq/tcp_server.h"
 #include "scaler/io/ymq/typedefs.h"
 
-class TcpReadOperation;
-class MessageConnectionTCP;
-
-// NOTE: Don't do this. It pollutes the env. I tried to remove it, but it reports err
-// in pymod module. Consider include the corresponding file and define types there. - gxu
-using Identity = Configuration::IOSocketIdentity;
-
 class EventLoopThread;
 class MessageConnectionTCP;
 
 class IOSocket {
 public:
+    using ConnectReturnCallback = Configuration::ConnectReturnCallback;
+    using BindReturnCallback    = Configuration::BindReturnCallback;
+    using SendMessageCallback   = Configuration::SendMessageCallback;
+    using RecvMessageCallback   = Configuration::RecvMessageCallback;
+    using Identity              = Configuration::IOSocketIdentity;
+
+    IOSocket(std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType);
+    IOSocket(const IOSocket&)            = delete;
+    IOSocket& operator=(const IOSocket&) = delete;
+    IOSocket(IOSocket&&)                 = delete;
+    IOSocket& operator=(IOSocket&&)      = delete;
+    ~IOSocket();
+
+    // NOTE: BELOW FIVE FUNCTIONS ARE USERSPACE API
+    void sendMessage(Message message, SendMessageCallback onMessageSent);
+    void recvMessage(RecvMessageCallback onRecvMessage);
+
+    void connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn);
+    void connectTo(std::string networkAddress, ConnectReturnCallback onConnectReturn);
+
+    void bindTo(std::string networkAddress, BindReturnCallback onBindReturn);
+
+    Identity identity() const { return _identity; }
+    IOSocketType socketType() const { return _socketType; }
+
+    // From Connection Class only
+    void onConnectionDisconnected(MessageConnectionTCP* conn);
+    // From Connection Class only
+    void onConnectionIdentityReceived(MessageConnectionTCP* conn);
+
+    // This function is called whenever a connecition is created (not established)
+    void onConnectionCreated(
+        int fd,
+        sockaddr localAddr,
+        sockaddr remoteAddr,
+        bool responsibleForRetry,
+        std::optional<std::string> remoteIOSocketIdentity = std::nullopt);
+
+    // From TcpClient class only
+    void removeConnectedTcpClient();
+
     std::shared_ptr<EventLoopThread> _eventLoopThread;
 
 private:
@@ -54,47 +88,5 @@ private:
 
     // NOTE: This variable needs to present in the IOSocket level because the user
     // does not care which connection a message is coming from.
-    std::shared_ptr<std::queue<TcpReadOperation>> _pendingReadOperations;
-
-public:
-    using ConnectReturnCallback = Configuration::ConnectReturnCallback;
-    using BindReturnCallback    = Configuration::BindReturnCallback;
-    using SendMessageCallback   = Configuration::SendMessageCallback;
-    using RecvMessageCallback   = Configuration::RecvMessageCallback;
-
-    IOSocket(std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType);
-
-    // NOTE: BELOW FIVE FUNCTIONS ARE USERSPACE API
-    void sendMessage(Message message, SendMessageCallback callback);
-    void recvMessage(RecvMessageCallback callback);
-
-    void connectTo(sockaddr addr, ConnectReturnCallback callback);
-    void connectTo(std::string networkAddress, ConnectReturnCallback callback);
-
-    void bindTo(std::string networkAddress, BindReturnCallback callback);
-
-    // From Connection Class only
-    void onConnectionDisconnected(MessageConnectionTCP* conn);
-    // From Connection Class only
-    void onConnectionIdentityReceived(MessageConnectionTCP* conn);
-
-    // This function is called whenever a connecition is created (not established)
-    void onConnectionCreated(
-        int fd,
-        sockaddr localAddr,
-        sockaddr remoteAddr,
-        bool responsibleForRetry,
-        std::optional<std::string> remoteIOSocketIdentity = std::nullopt);
-
-    // From TcpClient class only
-    void removeConnectedTcpClient();
-
-    Identity identity() const { return _identity; }
-    IOSocketType socketType() const { return _socketType; }
-
-    IOSocket(const IOSocket&)            = delete;
-    IOSocket& operator=(const IOSocket&) = delete;
-    IOSocket(IOSocket&&)                 = delete;
-    IOSocket& operator=(IOSocket&&)      = delete;
-    ~IOSocket();
+    std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessages;
 };

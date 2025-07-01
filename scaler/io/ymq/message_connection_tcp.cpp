@@ -15,11 +15,16 @@
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/io_socket.h"
 
-static bool isCompleteMessage(const std::vector<char>& vec) {
-    if (vec.size() < 8)
+static constexpr const size_t HEADER_SIZE = sizeof(uint64_t);
+
+bool MessageConnectionTCP::isCompleteMessage(const TcpReadOperation& x) {
+    if (x._cursor < HEADER_SIZE) {
         return false;
-    uint64_t size = *(uint64_t*)vec.data();
-    return vec.size() == size + 8;
+    }
+    if (x._cursor == x._header + HEADER_SIZE && x._payload.data()) {
+        return true;
+    }
+    return false;
 }
 
 MessageConnectionTCP::MessageConnectionTCP(
@@ -29,7 +34,7 @@ MessageConnectionTCP::MessageConnectionTCP(
     sockaddr remoteAddr,
     std::string localIOSocketIdentity,
     bool responsibleForRetry,
-    std::shared_ptr<std::queue<TcpReadOperation>> pendingReadOperations,
+    std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks,
     std::optional<std::string> remoteIOSocketIdentity)
     : _eventLoopThread(eventLoopThread)
     , _eventManager(std::make_unique<EventManager>())
@@ -38,9 +43,9 @@ MessageConnectionTCP::MessageConnectionTCP(
     , _remoteAddr(std::move(remoteAddr))
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
     , _remoteIOSocketIdentity(std::move(remoteIOSocketIdentity))
-    , _sendLocalIdentity(false)
     , _responsibleForRetry(responsibleForRetry)
-    , _pendingReadOperations(pendingReadOperations) {
+    , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
+    , _sendCursor {} {
     _eventManager->onRead  = [this] { this->onRead(); };
     _eventManager->onWrite = [this] { this->onWrite(); };
     _eventManager->onClose = [this] { this->onClose(); };
@@ -51,230 +56,234 @@ void MessageConnectionTCP::onCreated() {
     if (_connFd != 0) {
         this->_eventLoopThread->_eventLoop.addFdToLoop(
             _connFd, EPOLLIN | EPOLLOUT | EPOLLET, this->_eventManager.get());
+        _writeOperations.emplace_back(Bytes {_localIOSocketIdentity.data(), _localIOSocketIdentity.size()}, [](int) {});
+    }
+}
+
+// on Return, unexpected value shall be interpreted as this - 0 = close, other -> errno
+std::expected<void, int> MessageConnectionTCP::tryReadMessages() {
+    while (true) {
+        char* readTo    = nullptr;
+        size_t readSize = 0;
+
+        if (_receivedReadOperations.empty() || isCompleteMessage(_receivedReadOperations.front())) {
+            _receivedReadOperations.emplace();
+        }
+
+        auto& message = _receivedReadOperations.back();
+        if (message._cursor < HEADER_SIZE) {
+            readTo   = (char*)&message._header + message._cursor;
+            readSize = HEADER_SIZE - message._cursor;
+        } else if (message._cursor == HEADER_SIZE) {
+            message._payload = Bytes::alloc(message._header);
+            readTo           = (char*)message._payload.data();
+            readSize         = message._payload.len();
+        } else {
+            readTo   = (char*)message._payload.data() + (message._cursor - HEADER_SIZE);
+            readSize = message._payload.len() - (message._cursor - HEADER_SIZE);
+        }
+
+        // We have received an empty message, which is allowed
+        if (readSize == 0) {
+            return {};
+        }
+
+        int n = read(_connFd, readTo, readSize);
+        if (n == 0) {
+            return std::unexpected {0};
+        } else if (n == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return {};  // Expected, we read until exhuastion
+            } else {
+                return std::unexpected {errno};
+            }
+        } else {
+            message._cursor += n;
+        }
+    }
+    return {};
+}
+
+void MessageConnectionTCP::updateReadOperation() {
+    while (_pendingRecvMessageCallbacks->size() && _receivedReadOperations.size()) {
+        if (isCompleteMessage(_receivedReadOperations.front())) {
+            Bytes address(_remoteIOSocketIdentity->data(), _remoteIOSocketIdentity->size());
+            Bytes payload(std::move(_receivedReadOperations.front()._payload));
+            _receivedReadOperations.pop();
+
+            auto recvMessageCallback = std::move(_pendingRecvMessageCallbacks->front());
+            _pendingRecvMessageCallbacks->pop();
+
+            recvMessageCallback(Message(std::move(address), std::move(payload)));
+
+        } else {
+            assert(_pendingRecvMessageCallbacks->size());
+            break;
+        }
     }
 }
 
 void MessageConnectionTCP::onRead() {
-    // TODO:
-    // - do not assume the identity to be less than 128bytes
-    // - do not make remoteIOSocketIdentity a failing point
+    auto res = tryReadMessages();
+    if (!res) {
+        if (res.error() == 0) {
+            onClose();
+            return;
+        }
+        printf("SOMETHING REALLY BAD HAPPENED\n");
+        exit(1);
+    }
+
     if (!_remoteIOSocketIdentity) {
-        // Other sizes are possible, but the size needs to be >= 8, in order for idBuf
-        // to be aligned with 8 bytes boundary because of strict aliasing
-        uint64_t header {};
-        int n = read(_connFd, &header, 8);
-        char idBuf[128] {};
-        n           = read(_connFd, idBuf, header);
-        char* first = idBuf;
-        std::string remoteID(first, first + header);
-        _remoteIOSocketIdentity.emplace(std::move(remoteID));
-        auto& sock = this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
-        sock->onConnectionIdentityReceived(this);
-    }
-
-    while (true) {
-        const size_t headerSize = 8;
-        size_t leftOver         = 0;
-        size_t first            = 0;
-
-        // Good case
-        if (_receivedMessages.empty() || isCompleteMessage(_receivedMessages.back())) {
-            _receivedMessages.push({});
-            _receivedMessages.back().resize(1024);
-            leftOver = headerSize;
-            first    = 0;
-        } else {
-            // Bad case, we currently have an incomplete message
-            auto& message = _receivedMessages.back();
-            if (message.size() < headerSize) {
-                leftOver = headerSize - message.size();
-                first    = message.size();
-                message.resize(1024);
-            } else {
-                size_t payloadSize = *(uint64_t*)message.data();
-
-                if (message.size() == 1024) {
-                    message.resize(std::min((payloadSize), 8lu));
-                }
-
-                leftOver = payloadSize - (message.size() - headerSize);
-
-                first = message.size();
-                message.resize(payloadSize + headerSize);
-            }
-        }
-
-        auto& message = _receivedMessages.back();
-
-        while (leftOver) {
-            assert(first + leftOver <= message.size());
-            int res = read(_connFd, message.data() + first, leftOver);
-
-            if (res == 0) {
-                onClose();
-                return;
-            }
-
-            if (res == -1 && errno == EAGAIN) {
-                perror("read");
-                message.resize(first);
-                // Reviewer: To jump out of double loop, reconsider when you say no. - gxu
-                goto ReadExhuasted;
-            }
-
-            leftOver -= res;
-            first += res;
-            if (first == headerSize) {
-                // reading the payload
-                leftOver = *(uint64_t*)message.data();
-                message.resize(leftOver + headerSize);
-            }
-        }
-        assert(isCompleteMessage(_receivedMessages.back()));
-    }
-
-ReadExhuasted:
-    printf("READ EXHAUSTED\n");
-    while (_pendingReadOperations->size() && _receivedMessages.size()) {
-        if (isCompleteMessage(_receivedMessages.front())) {
-            *_pendingReadOperations->front()._buf = std::move(_receivedMessages.front());
-            _receivedMessages.pop();
-
-            Bytes address(_remoteIOSocketIdentity->data(), _remoteIOSocketIdentity->size());
-            Bytes payload(
-                _pendingReadOperations->front()._buf->data() + 8, _pendingReadOperations->front()._buf->size() - 8);
-
-            _pendingReadOperations->front()._callbackAfterCompleteRead(Message(std::move(address), std::move(payload)));
-
-            _pendingReadOperations->pop();
-        } else {
-            assert(_pendingReadOperations->size());
-            break;
+        if (_receivedReadOperations.size() && isCompleteMessage(_receivedReadOperations.front())) {
+            auto id = std::move(_receivedReadOperations.front());
+            _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
+            _receivedReadOperations.pop();
+            auto sock = this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
+            sock->onConnectionIdentityReceived(this);
         }
     }
+
+    updateReadOperation();
 }
 
 void MessageConnectionTCP::onWrite() {
+    // This is because after disconnected, onRead will be called first, and that will set
+    // _connFd to 0. There's no way to not call onWrite in this case. So we return early.
     if (_connFd == 0) {
         return;
     }
 
-    // TODO: do not assume the identity to be less than 128bytes
-    if (!_sendLocalIdentity) {
-        char idBuf[128] {};
-        *(uint64_t*)idBuf  = _localIOSocketIdentity.size();
-        auto identityBegin = idBuf + sizeof(uint64_t);
-        auto [_, last]     = std::ranges::copy(_localIOSocketIdentity, identityBegin);
-        write(_connFd, idBuf, std::distance(idBuf, last));
-        _sendLocalIdentity = true;
+    auto res = trySendQueuedMessages();
+    if (res) {
+        updateWriteOperations(res.value());
+        return;
     }
 
-    while (!_writeOperations.empty()) {
-        auto& writeOp       = _writeOperations.front();
-        const size_t bufLen = writeOp._buf->size();
-        while (writeOp._cursor != bufLen) {
-            const size_t leftOver = writeOp._buf->size() - writeOp._cursor;
-            const char* begin     = writeOp._buf->data() + writeOp._cursor;
-            auto bytes            = write(_connFd, begin, leftOver);
-
-            if (bytes == -1) {
-                if (errno == EAGAIN)
-                    break;
-                else {
-                    perror("write");
-                    writeOp._callbackAfterCompleteWrite(errno);
-                }
-            }
-
-            writeOp._cursor += bytes;
-        }
-
-        if (writeOp._cursor == bufLen) {
-            std::string str(
-                _writeOperations.front()._buf->data() + 8,
-                _writeOperations.front()._buf->data() + _writeOperations.front()._buf->size());
-
-            writeOp._callbackAfterCompleteWrite(0);
-            _writeOperations.pop();
-        } else {
-            break;
-        }
+    // EPIPE: Shutdown for writing or disconnected, since we don't provide the former,
+    // it means the later.
+    if (res.error() == ECONNRESET || res.error() == EPIPE) {
+        onClose();
+        return;
+    } else {
+        printf("SOMETHING REALLY BAD\n");
+        exit(1);
     }
 }
 
 void MessageConnectionTCP::onClose() {
-    _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
-    close(_connFd);
-    auto& sock = _eventLoopThread->_identityToIOSocket.at(_localIOSocketIdentity);
-    sock->onConnectionDisconnected(this);
-    _connFd = 0;
+    if (_connFd) {
+        _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
+        close(_connFd);
+        _connFd    = 0;
+        auto& sock = _eventLoopThread->_identityToIOSocket.at(_localIOSocketIdentity);
+        sock->onConnectionDisconnected(this);
+    }
 };
 
-// TODO: Maybe change this to message_t
-void MessageConnectionTCP::sendMessage(std::shared_ptr<std::vector<char>> msg, std::function<void(int)> callback) {
-    // detect if the write operations queue is empty, if it is, simply write to exhaustion
-    // if it is not, queue write operations to the end of the queue
-    TcpWriteOperation writeOp;
-    writeOp._buf                        = msg;
-    writeOp._cursor                     = 0;
-    writeOp._callbackAfterCompleteWrite = std::move(callback);
+std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages() {
+    std::vector<struct iovec> iovecs;
+    iovecs.reserve(IOV_MAX);
 
-    if (_connFd == 0) {
-        _writeOperations.push(std::move(writeOp));
-        return;
-    }
-
-    if (_writeOperations.size()) {
-        _writeOperations.push(std::move(writeOp));
-        return;
-    }
-
-    const size_t bufLen = writeOp._buf->size();
-    while (writeOp._cursor != bufLen) {
-        const size_t leftOver = writeOp._buf->size() - writeOp._cursor;
-        const char* begin     = writeOp._buf->data() + writeOp._cursor;
-        auto bytes            = write(_connFd, begin, leftOver);
-
-        if (bytes == -1) {
-            if (errno == EAGAIN) {
-                _writeOperations.push(std::move(writeOp));
-            } else {
-                perror("write");
-                writeOp._callbackAfterCompleteWrite(errno);
-            }
+    for (auto it = _writeOperations.begin(); it != _writeOperations.end(); ++it) {
+        if (iovecs.size() > IOV_MAX - 2) {
             break;
         }
 
-        writeOp._cursor += bytes;
+        iovec iovHeader {};
+        iovec iovPayload {};
+        if (it == _writeOperations.begin()) {
+            if (_sendCursor < HEADER_SIZE) {
+                iovHeader.iov_base  = (char*)(&it->_header) + _sendCursor;
+                iovHeader.iov_len   = HEADER_SIZE - _sendCursor;
+                iovPayload.iov_base = (void*)(it->_payload.data());
+                iovPayload.iov_len  = it->_payload.len();
+            } else {
+                iovHeader.iov_base  = nullptr;
+                iovHeader.iov_len   = 0;
+                iovPayload.iov_base = (char*)(it->_payload.data()) + (_sendCursor - HEADER_SIZE);
+                iovPayload.iov_len  = it->_payload.len() + (_sendCursor - HEADER_SIZE);
+            }
+        } else {
+            iovHeader.iov_base  = (void*)(&it->_header);
+            iovHeader.iov_len   = HEADER_SIZE;
+            iovPayload.iov_base = (void*)(it->_payload.data());
+            iovPayload.iov_len  = it->_payload.len();
+        }
+
+        iovecs.push_back(iovHeader);
+        iovecs.push_back(iovPayload);
     }
 
-    if (writeOp._cursor == bufLen) {
-        writeOp._callbackAfterCompleteWrite(0);
+    if (iovecs.empty()) {
+        return 0;
     }
+
+    struct msghdr msg {};
+    msg.msg_iov    = iovecs.data();
+    msg.msg_iovlen = iovecs.size();
+
+    ssize_t bytesSent = ::sendmsg(_connFd, &msg, MSG_NOSIGNAL);
+    if (bytesSent == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return 0;
+        } else
+            return std::unexpected {errno};
+    }
+
+    return bytesSent;
+}
+
+// TODO: There is a classic optimization that can (and should) be done. That is, we store
+// prefix sum in each write operation, and perform binary search instead of linear search
+// to find the first write operation we haven't complete. - gxu
+void MessageConnectionTCP::updateWriteOperations(size_t n) {
+    auto firstIncomplete = _writeOperations.begin();
+    _sendCursor += n;
+    // Post condition of the loop: firstIncomplete contains the first write op we haven't complete.
+    for (auto it = _writeOperations.begin(); it != _writeOperations.end(); ++it) {
+        size_t msgSize = it->_payload.len() + HEADER_SIZE;
+        if (_sendCursor < msgSize) {
+            firstIncomplete = it;
+            break;
+        }
+
+        if (_sendCursor == msgSize) {
+            firstIncomplete = it + 1;
+            _sendCursor     = 0;
+            break;
+        }
+
+        _sendCursor -= msgSize;
+    }
+
+    for (auto it = _writeOperations.begin(); it != firstIncomplete; ++it) {
+        it->_callbackAfterCompleteWrite(0);
+    }
+
+    while (firstIncomplete != _writeOperations.begin())
+        _writeOperations.pop_front();
+
+    // _writeOperations.shrink_to_fit();
+}
+
+void MessageConnectionTCP::sendMessage(Message msg, SendMessageCallback onMessageSent) {
+    TcpWriteOperation writeOp(std::move(msg), std::move(onMessageSent));
+    _writeOperations.push_back(std::move(writeOp));
+
+    if (_connFd == 0) {
+        return;
+    }
+    onWrite();
 }
 
 bool MessageConnectionTCP::recvMessage() {
-    if (_receivedMessages.empty() || _pendingReadOperations->empty() || !isCompleteMessage(_receivedMessages.front())) {
+    if (_receivedReadOperations.empty() || _pendingRecvMessageCallbacks->empty() ||
+        !isCompleteMessage(_receivedReadOperations.front())) {
         return false;
     }
 
-    while (_pendingReadOperations->size() && _receivedMessages.size()) {
-        if (isCompleteMessage(_receivedMessages.front())) {
-            *_pendingReadOperations->front()._buf = std::move(_receivedMessages.front());
-            _receivedMessages.pop();
-
-            Bytes address(_remoteIOSocketIdentity->data(), _remoteIOSocketIdentity->size());
-            Bytes payload(
-                _pendingReadOperations->front()._buf->data() + 8, _pendingReadOperations->front()._buf->size() - 8);
-
-            _pendingReadOperations->front()._callbackAfterCompleteRead(Message(std::move(address), std::move(payload)));
-
-            _pendingReadOperations->pop();
-        } else {
-            assert(_pendingReadOperations->size());
-            break;
-        }
-    }
+    updateReadOperation();
     return true;
 }
 
@@ -286,11 +295,7 @@ MessageConnectionTCP::~MessageConnectionTCP() {
         _connFd = 0;
     }
 
-    while (_writeOperations.size()) {
-        auto writeOp = std::move(_writeOperations.front());
-        _writeOperations.pop();
-        writeOp._callbackAfterCompleteWrite(-1);
-    }
+    std::ranges::for_each(_writeOperations, [](const auto& x) { x._callbackAfterCompleteWrite(-1); });
 
     // TODO: What to do with this?
     // std::queue<std::vector<char>> _receivedMessages;

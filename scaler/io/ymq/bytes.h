@@ -25,48 +25,53 @@ struct Bytes {
         if (tag != Owned)
             return;
 
-        if (is_empty())
-            return;
-
-        delete[] data;
-        this->data = NULL;
+        delete[] _data;
     }
 
     Bytes(uint8_t* m_data, size_t m_len, Ownership tag): data(m_data), len(m_len), tag(tag) {}
 
+public:
     // TODO: Figure out what should this tag do
     Bytes(char* data, size_t len, Ownership tag = Ownership::Owned)
-        : data(datadup((uint8_t*)data, len)), len(len), tag(tag) {}
+        : _data(datadup((uint8_t*)data, len)), _len(len), _tag(tag) {}
 
-    Bytes(): data {}, len {}, tag {} {}
+    Bytes(): _data {}, _len {}, _tag {} {}
 
     Bytes(const Bytes& other) {
-        Bytes tmp = copy(other.data, other.len);
-        std::swap(tmp, *this);
+        this->_data = datadup(other._data, other._len);
+        this->_len  = other._len;
+        this->_tag  = Owned;
     }
 
     Bytes& operator=(const Bytes& other) {
-        Bytes tmp = other;
-        std::swap(tmp, *this);
+        Bytes tmp(other);
+        swap(*this, tmp);
         return *this;
     }
 
-    Bytes(Bytes&& other) noexcept: data(other.data), len(other.len), tag(other.tag) {
-        other.data = nullptr;
-        other.len  = 0;
+    friend void swap(Bytes& x, Bytes& y) noexcept {
+        using std::swap;
+        swap(x._tag, y._tag);
+        swap(x._len, y._len);
+        swap(x._data, y._data);
+    }
+
+    Bytes(Bytes&& other) noexcept: _data(other._data), _len(other._len), _tag(other._tag) {
+        other._data = nullptr;
+        other._len  = 0;
     }
 
     friend std::strong_ordering operator<=>(const Bytes& x, const Bytes& y) {
-        return std::lexicographical_compare_three_way(x.data, x.data + x.len, y.data, y.data + y.len);
+        return std::lexicographical_compare_three_way(x._data, x._data + x._len, y._data, y._data + y._len);
     }
 
     Bytes& operator=(Bytes&& other) noexcept {
         if (this != &other) {
             this->free();  // free current data
 
-            data = other.data;
-            len  = other.len;
-            tag  = other.tag;
+            _data = other._data;
+            _len  = other._len;
+            _tag  = other._tag;
 
             other.data = NULL;
             other.len  = 0;
@@ -102,20 +107,13 @@ struct Bytes {
     Bytes ref() { return Bytes {this->data, this->len, Borrowed}; }
 
     static Bytes alloc(size_t m_len) {
-        if (m_len == 0)
-            return empty();
-
-        return Bytes {new uint8_t[m_len], m_len, Owned};
+        auto ptr = new uint8_t[m_len];
+        return Bytes {ptr, m_len, Owned};
     }
 
     static Bytes empty() { return Bytes {(uint8_t*)nullptr, 0, Owned}; }
 
-    static Bytes copy(const uint8_t* m_data, size_t m_len) {
-        if (m_len == 0)
-            return empty();
-
-        return Bytes {datadup(m_data, m_len), m_len, Owned};
-    }
+    static Bytes copy(const uint8_t* m_data, size_t m_len) { return Bytes {datadup(m_data, m_len), m_len, Owned}; }
 
     static Bytes clone(const Bytes& bytes) {
         if (bytes.is_empty())
@@ -142,13 +140,9 @@ struct Bytes {
     //     return buffer;
     // }
 
-    // Do not remove this
-    std::pair<char*, size_t> release() {
-        std::pair<char*, size_t> res {(char*)data, len};
-        data = nullptr;
-        len  = 0;
-        return res;
-    }
+    size_t len() const { return _len; }
+    const uint8_t* data() const { return _data; }
+    uint8_t* data() { return _data; }
 
     friend class Buffer;
 };

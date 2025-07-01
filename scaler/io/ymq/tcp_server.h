@@ -13,11 +13,22 @@ class EventLoopThread;
 class EventManager;
 
 class TcpServer {
-    // eventLoop thread will call onRead that is associated w/ the eventManager
-    std::shared_ptr<EventLoopThread> _eventLoopThread;
-    std::unique_ptr<EventManager> _eventManager;  // will copy the `onRead()` to itself
-    int _serverFd;
+public:
+    using BindReturnCallback = Configuration::BindReturnCallback;
 
+    TcpServer(
+        std::shared_ptr<EventLoopThread> eventLoop,
+        std::string localIOSocketIdentity,
+        sockaddr addr,
+        BindReturnCallback onBindReturn);
+    TcpServer(const TcpServer&)            = delete;
+    TcpServer& operator=(const TcpServer&) = delete;
+    ~TcpServer();
+
+    void onCreated();
+    std::shared_ptr<EventLoopThread> _eventLoopThread;
+
+private:
     // Implementation defined method. accept(3) should happen here.
     // This function will call user defined onAcceptReturn()
     // It will handle error it can handle. If it is unreasonable to
@@ -27,22 +38,12 @@ class TcpServer {
     void onClose() {}
     void onError() {}
 
+    int createAndBindSocket();
+
+    BindReturnCallback _onBindReturn;
+    int _serverFd;
     sockaddr _addr;
     std::string _localIOSocketIdentity;
 
-public:
-    using BindReturnCallback = Configuration::BindReturnCallback;
-    BindReturnCallback _onBindReturn;
-
-    TcpServer(const TcpServer&)            = delete;
-    TcpServer& operator=(const TcpServer&) = delete;
-
-    TcpServer(
-        std::shared_ptr<EventLoopThread> eventLoop,
-        std::string localIOSocketIdentity,
-        sockaddr addr,
-        BindReturnCallback onBindReturn);
-
-    void onCreated();
-    ~TcpServer();
+    std::unique_ptr<EventManager> _eventManager;  // will copy the `onRead()` to itself
 };

@@ -3,10 +3,10 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <cassert>
 #include <functional>
 #include <queue>
+#include <ranges>
 
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/timestamp.h"
@@ -21,24 +21,21 @@ inline int createTimerfd() {
 
 // TODO: HANDLE ERRS
 class TimedQueue {
+public:
     using Callback   = Configuration::TimedQueueCallback;
     using Identifier = Configuration::ExecutionCancellationIdentifier;
+    using TimedFunc  = std::tuple<Timestamp, Callback, Identifier>;
 
-    using TimedFunc = std::tuple<Timestamp, Callback, Identifier>;
-    using cmp       = decltype([](const auto& x, const auto& y) { return std::get<0>(x) < std::get<0>(y); });
-
-    int timer_fd;
-    Identifier _currentId;
-    std::priority_queue<TimedFunc, std::vector<TimedFunc>, cmp> pq;
-    std::vector<Identifier> _cancelledFunctions;
-
-public:
-    TimedQueue(): timer_fd(createTimerfd()), _currentId {} { assert(timer_fd); }
+    TimedQueue(): _timerFd(createTimerfd()), _currentId {} { assert(_timerFd); }
+    ~TimedQueue() {
+        if (_timerFd > 0)
+            close(_timerFd);
+    }
 
     Identifier push(Timestamp timestamp, Callback cb) {
         auto ts = convertToItimerspec(timestamp);
         if (pq.empty() || timestamp < std::get<0>(pq.top())) {
-            int ret = timerfd_settime(timer_fd, 0, &ts, nullptr);
+            int ret = timerfd_settime(_timerFd, 0, &ts, nullptr);
             assert(ret == 0);
         }
         pq.push({timestamp, cb, _currentId});
@@ -47,14 +44,16 @@ public:
 
     void cancelExecution(Identifier id) { _cancelledFunctions.push_back(id); }
 
-    void onRead() {
+    std::vector<Callback> dequeue() {
         uint64_t numItems;
-        ssize_t n = read(timer_fd, &numItems, sizeof numItems);
+        ssize_t n = read(_timerFd, &numItems, sizeof numItems);
         if (n != sizeof numItems) {
             assert(false);
             // Handle read error or spurious wakeup
-            return;
+            return {};
         }
+
+        std::vector<Callback> callbacks;
 
         Timestamp now;
         while (pq.size()) {
@@ -65,7 +64,7 @@ public:
                 if (cancelled != _cancelledFunctions.end()) {
                     std::erase(_cancelledFunctions, id);
                 } else {
-                    cb();
+                    callbacks.push_back(std::move(cb));
                 }
             } else
                 break;
@@ -74,13 +73,21 @@ public:
         if (!pq.empty()) {
             auto nextTs = std::get<0>(pq.top());
             auto ts     = convertToItimerspec(nextTs);
-            int ret     = timerfd_settime(timer_fd, 0, &ts, nullptr);
+            int ret     = timerfd_settime(_timerFd, 0, &ts, nullptr);
             if (ret == -1) {
                 assert(false);
                 // handle error
             }
         }
+        return callbacks;
     }
 
-    int timingFd() const { return timer_fd; }
+    int timingFd() const { return _timerFd; }
+
+private:
+    int _timerFd;
+    Identifier _currentId;
+    constexpr static auto cmp = [](const auto& x, const auto& y) { return std::get<0>(x) < std::get<0>(y); };
+    std::priority_queue<TimedFunc, std::vector<TimedFunc>, decltype(cmp)> pq;
+    std::vector<Identifier> _cancelledFunctions;
 };

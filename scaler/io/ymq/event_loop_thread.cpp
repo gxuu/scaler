@@ -30,4 +30,7 @@ std::shared_ptr<IOSocket> EventLoopThread::createIOSocket(
 void EventLoopThread::removeIOSocket(IOSocket* target) {
     assert(_identityToIOSocket[target->identity()].use_count() == 1);
     _identityToIOSocket.erase(target->identity());
+    if (_identityToIOSocket.empty()) {
+        thread.request_stop();
+    }
 }

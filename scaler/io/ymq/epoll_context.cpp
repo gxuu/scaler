@@ -3,24 +3,9 @@
 #include <sys/epoll.h>
 
 #include <cerrno>
-#include <format>
 #include <functional>
 
-#include "scaler/io/ymq/common.h"
 #include "scaler/io/ymq/event_manager.h"
-
-// void EpollContext::registerEventManager(EventManager& em) {
-//     epoll_event ev {
-//         .events = EPOLLOUT | EPOLLIN | EPOLLET,  // Edge-triggered
-//         .data   = {.ptr = &em},
-//     };
-//
-//     epoll_fd.epoll_ctl(EPOLL_CTL_ADD, em._fd, &ev);
-// }
-//
-// void EpollContext::removeEventManager(EventManager& em) {
-//     epoll_fd.epoll_ctl(EPOLL_CTL_DEL, em._fd, nullptr);
-// }
 
 void EpollContext::execPendingFunctions() {
     while (_delayedFunctions.size()) {
@@ -31,18 +16,18 @@ void EpollContext::execPendingFunctions() {
 }
 
 void EpollContext::loop() {
-    std::array<epoll_event, 1024> events;
+    std::array<epoll_event, 1024> events {};
     int n = epoll_wait(_epfd, events.data(), 1024, -1);
 
     for (auto it = events.begin(); it != events.begin() + n; ++it) {
         epoll_event current_event = *it;
         auto* event               = (EventManager*)current_event.data.ptr;
         if (event == (void*)_isInterruptiveFd) {
-            std::function<void()> f;
-            _interruptiveFunctions.dequeue(f);
-            f();
+            auto vec = _interruptiveFunctions.dequeue();
+            std::ranges::for_each(vec, [](const auto& x) { x(); });
         } else if (event == (void*)_isTimingFd) {
-            _timingFunctions.onRead();
+            auto vec = _timingFunctions.dequeue();
+            std::ranges::for_each(vec, [](const auto& x) { x(); });
         } else {
             event->onEvents(current_event.events);
         }

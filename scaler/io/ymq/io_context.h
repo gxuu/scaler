@@ -13,11 +13,9 @@ class IOSocket;
 class EventLoopThread;
 
 class IOContext {
-    std::vector<std::shared_ptr<EventLoopThread>> _threads;
-
+public:
     using Identity = Configuration::IOSocketIdentity;
 
-public:
     IOContext(size_t threadCount = 1);
     IOContext(const IOContext&)            = delete;
     IOContext& operator=(const IOContext&) = delete;
@@ -26,10 +24,13 @@ public:
 
     // These methods need to be thread-safe.
     std::shared_ptr<IOSocket> createIOSocket(
-        Identity identity, IOSocketType socketType, std::function<void()> callback);
+        Identity identity, IOSocketType socketType, std::function<void()> onIOSocketCreated);
 
     // After user called this method, no other call on the passed in IOSocket should be made.
     void removeIOSocket(std::shared_ptr<IOSocket>& socket);
 
     size_t numThreads() const { return _threads.size(); }
+
+private:
+    std::vector<std::shared_ptr<EventLoopThread>> _threads;
 };

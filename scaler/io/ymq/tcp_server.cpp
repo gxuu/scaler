@@ -15,11 +15,11 @@
 #include "scaler/io/ymq/message_connection_tcp.h"
 #include "scaler/io/ymq/utils.h"
 
-static int create_and_bind_socket(const sockaddr& addr, Configuration::BindReturnCallback callback) {
+int TcpServer::createAndBindSocket() {
     int server_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (server_fd == -1) {
         perror("socket");
-        callback(errno);
+        _onBindReturn(errno);
         return -1;
     }
 
@@ -27,21 +27,21 @@ static int create_and_bind_socket(const sockaddr& addr, Configuration::BindRetur
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
         perror("setsockopt");
         close(server_fd);
-        callback(errno);
+        _onBindReturn(errno);
         return -1;
     }
 
-    if (bind(server_fd, &addr, sizeof(addr)) == -1) {
+    if (bind(server_fd, &_addr, sizeof(_addr)) == -1) {
         perror("bind");
         close(server_fd);
-        callback(errno);
+        _onBindReturn(errno);
         return -1;
     }
 
     if (listen(server_fd, SOMAXCONN) == -1) {
         perror("listen");
         close(server_fd);
-        callback(errno);
+        _onBindReturn(errno);
         return -1;
     }
 
@@ -66,7 +66,7 @@ TcpServer::TcpServer(
 }
 
 void TcpServer::onCreated() {
-    _serverFd = create_and_bind_socket(this->_addr, this->_onBindReturn);
+    _serverFd = createAndBindSocket();
     if (_serverFd == -1) {
         _serverFd = 0;
         return;

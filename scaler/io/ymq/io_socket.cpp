@@ -15,34 +15,61 @@
 #include "scaler/io/ymq/tcp_server.h"
 #include "scaler/io/ymq/utils.h"
 
-void IOSocket::removeConnectedTcpClient() {
-    if (this->_tcpClient && this->_tcpClient->_connected) {
-        this->_tcpClient.reset();
-    }
-}
-
 IOSocket::IOSocket(std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType)
     : _eventLoopThread(eventLoopThread)
     , _identity(std::move(identity))
     , _socketType(std::move(socketType))
-    , _pendingReadOperations(std::make_shared<std::queue<TcpReadOperation>>()) {}
+    , _pendingRecvMessages(std::make_shared<std::queue<RecvMessageCallback>>()) {}
 
-void IOSocket::connectTo(sockaddr addr, ConnectReturnCallback callback) {
-    _eventLoopThread->_eventLoop.executeNow([this, addr = std::move(addr), callback = std::move(callback)] {
+void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) {
+    _eventLoopThread->_eventLoop.executeNow([this, message = std::move(message), callback = std::move(onMessageSent)] {
+        MessageConnectionTCP* conn = nullptr;
+        const std::string address  = std::string((char*)message.address.data(), message.address.len());
+
+        if (this->_identityToConnection.contains(address)) {
+            conn = this->_identityToConnection[address].get();
+        } else {
+            const auto it =
+                std::ranges::find(_unestablishedConnection, address, &MessageConnectionTCP::_remoteIOSocketIdentity);
+            if (it != _unestablishedConnection.end()) {
+                conn = it->get();
+            } else {
+                onConnectionCreated(0, {}, {}, false, address);
+                conn = _unestablishedConnection.back().get();
+            }
+        }
+        conn->sendMessage(std::move(message), std::move(callback));
+    });
+}
+
+void IOSocket::recvMessage(RecvMessageCallback onRecvMessage) {
+    _eventLoopThread->_eventLoop.executeNow([this, callback = std::move(onRecvMessage)] {
+        this->_pendingRecvMessages->push(std::move(callback));
+        if (_pendingRecvMessages->size() == 1) {
+            for (const auto& [fd, conn]: _identityToConnection) {
+                if (conn->recvMessage())
+                    return;
+            }
+        }
+    });
+}
+
+void IOSocket::connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn) {
+    _eventLoopThread->_eventLoop.executeNow([this, addr = std::move(addr), callback = std::move(onConnectReturn)] {
         _tcpClient.emplace(_eventLoopThread, this->identity(), std::move(addr), std::move(callback));
         _tcpClient->onCreated();
     });
 }
 
-void IOSocket::connectTo(std::string networkAddress, ConnectReturnCallback callback) {
+void IOSocket::connectTo(std::string networkAddress, ConnectReturnCallback onConnectReturn) {
     auto res = stringToSockaddr(std::move(networkAddress));
     assert(res);
-    connectTo(std::move(res.value()), std::move(callback));
+    connectTo(std::move(res.value()), std::move(onConnectReturn));
 }
 
-void IOSocket::bindTo(std::string networkAddress, BindReturnCallback callback) {
+void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindReturn) {
     _eventLoopThread->_eventLoop.executeNow(
-        [this, networkAddress = std::move(networkAddress), callback = std::move(callback)] {
+        [this, networkAddress = std::move(networkAddress), callback = std::move(onBindReturn)] {
             if (_tcpServer) {
                 callback(-1);
                 return;
@@ -70,6 +97,16 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) {
     }
 }
 
+// FIXME: This algorithm runs in O(n) complexity. To reduce the complexity of this algorithm
+// to O(lg n), one has to restructure how connections are placed. We would have three lists:
+// - _unconnectedConnections that holds connections with identity but not fd
+// - _unestablishedConnections that holds connections with fd but not identity
+// - _connectingConnections that holds connections with fd and identity
+// And this three lists shall be lookedup in above order based on this rule:
+// - look up in _unestablishedConnections and move this connection to  _connectingConnections
+// - look up _unconnectedConnections to find if there's a connection with the same identity
+//   if so, merge it to this connection that currently resides in _connectingConnections
+// Similar thing for disconnection as well.
 void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) {
     const auto& s = conn->_remoteIOSocketIdentity;
     auto thisConn = std::find_if(_unestablishedConnection.begin(), _unestablishedConnection.end(), [&](const auto& x) {
@@ -85,51 +122,10 @@ void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) {
     if (c == _unestablishedConnection.end())
         return;
 
-    (_identityToConnection[*s])->_writeOperations       = std::move((*c)->_writeOperations);
-    (_identityToConnection[*s])->_pendingReadOperations = std::move((*c)->_pendingReadOperations);
-    (_identityToConnection[*s])->_receivedMessages      = std::move((*c)->_receivedMessages);
+    (_identityToConnection[*s])->_writeOperations             = std::move((*c)->_writeOperations);
+    (_identityToConnection[*s])->_pendingRecvMessageCallbacks = std::move((*c)->_pendingRecvMessageCallbacks);
+    (_identityToConnection[*s])->_receivedReadOperations      = std::move((*c)->_receivedReadOperations);
     _unestablishedConnection.erase(c);
-}
-
-void IOSocket::sendMessage(Message message, SendMessageCallback callback) {
-    auto [addressPtr, addressLen] = message.address.release();
-    auto [payloadPtr, payloadLen] = message.payload.release();
-    _eventLoopThread->_eventLoop.executeNow(
-        [this, addressPtr, addressLen, payloadPtr, payloadLen, callback = std::move(callback)] {
-            auto payload = std::make_shared<std::vector<char>>(8);
-            payload->insert(payload->end(), payloadPtr, payloadPtr + payloadLen);
-            *(uint64_t*)payload->data() = payloadLen;
-
-            MessageConnectionTCP* conn = nullptr;
-            std::string address        = std::string(addressPtr, addressLen);
-
-            if (this->_identityToConnection.contains(address)) {
-                conn = this->_identityToConnection[address].get();
-            } else {
-                auto it = std::ranges::find(
-                    _unestablishedConnection, address, &MessageConnectionTCP::_remoteIOSocketIdentity);
-                if (it != _unestablishedConnection.end()) {
-                    conn = it->get();
-                } else {
-                    onConnectionCreated(0, {}, {}, false, address);
-                    conn = _unestablishedConnection.back().get();
-                }
-            }
-            conn->sendMessage(std::move(payload), std::move(callback));
-        });
-}
-
-void IOSocket::recvMessage(RecvMessageCallback callback) {
-    _eventLoopThread->_eventLoop.executeNow([this, callback = std::move(callback)] {
-        TcpReadOperation readOp {std::make_shared<std::vector<char>>(), 0, std::move(callback)};
-        this->_pendingReadOperations->push(std::move(readOp));
-        if (_pendingReadOperations->size() == 1) {
-            for (const auto& [fd, conn]: _identityToConnection) {
-                if (conn->recvMessage())
-                    return;
-            }
-        }
-    });
 }
 
 void IOSocket::onConnectionCreated(
@@ -146,15 +142,22 @@ void IOSocket::onConnectionCreated(
             std::move(remoteAddr),
             this->identity(),
             responsibleForRetry,
-            _pendingReadOperations,
+            _pendingRecvMessages,
             std::move(remoteIOSocketIdentity)));
     _unestablishedConnection.back()->onCreated();
 }
 
+void IOSocket::removeConnectedTcpClient() {
+    if (this->_tcpClient && this->_tcpClient->_connected) {
+        this->_tcpClient.reset();
+    }
+}
+
 IOSocket::~IOSocket() {
-    while (_pendingReadOperations->size()) {
-        auto readOp = std::move(_pendingReadOperations->front());
-        _pendingReadOperations->pop();
-        readOp._callbackAfterCompleteRead({});
+    while (_pendingRecvMessages->size()) {
+        auto readOp = std::move(_pendingRecvMessages->front());
+        _pendingRecvMessages->pop();
+        // TODO: report what errorr?
+        readOp({});
     }
 }

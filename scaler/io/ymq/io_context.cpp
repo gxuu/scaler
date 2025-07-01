@@ -15,11 +15,11 @@ IOContext::IOContext(size_t threadCount): _threads(threadCount) {
 }
 
 std::shared_ptr<IOSocket> IOContext::createIOSocket(
-    Identity identity, IOSocketType socketType, std::function<void()> callback) {
+    Identity identity, IOSocketType socketType, std::function<void()> onIOSocketCreated) {
     static size_t threadsRoundRobin = 0;
     auto& thread                    = _threads[threadsRoundRobin];
     ++threadsRoundRobin %= _threads.size();
-    return thread->createIOSocket(std::move(identity), socketType, std::move(callback));
+    return thread->createIOSocket(std::move(identity), socketType, std::move(onIOSocketCreated));
 }
 
 void IOContext::removeIOSocket(std::shared_ptr<IOSocket>& socket) {

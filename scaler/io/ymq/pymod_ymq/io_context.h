@@ -10,6 +10,7 @@
 #include <memory>
 
 // First-party
+#include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/io_context.h"
 #include "scaler/io/ymq/pymod_ymq/io_socket.h"
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
@@ -66,6 +67,7 @@ static PyObject* PyIOContext_repr(PyIOContext* self) {
 // https://peps.python.org/pep-0590/
 static PyObject* PyIOContext_createIOSocket(
     PyIOContext* self, PyTypeObject* clazz, PyObject* const* args, Py_ssize_t nargs, PyObject* kwnames) {
+    using Identity = Configuration::IOSocketIdentity;
     if (nargs != 2) {
         PyErr_SetString(PyExc_TypeError, "createIOSocket() requires exactly two arguments: identity and socket_type");
         return nullptr;

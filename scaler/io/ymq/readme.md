@@ -41,31 +41,59 @@ Each person maintains a todo and done list.
  - test the user provided callback logic and think about sync issue
  - connect do not happen twice, monitor for read/write instead
  - remove the end of each loop hook, this is stupid
- -
+ - test the abnormal breakup (break up due to network issue instead of killing)
  - Per action cancellation
  - refactor: Ownership, Public/Private, destructor
+ - cleanup: Do not constraint thee size of identity (current maximum being 128-8 bytes)
+ - make IO with send/recv msg
+ - automatically destroy threads when no ioSocket is running on it
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
  -
  -
  - LEAVE A FEW BLANKS HERE TO AVOID CONFLICT
 
 ## TODO:
- - CRTP, and so on
- -
- - cleanup: Change InterruptiveConcurrentQueue behavior (use FileDescriptor class)
- - think about this function call onConnectionIdentityReceived etc. It's way too intrusive.
- - make IO with send/recv msg
- - test the abnormal breakup (break up due to network issue instead of killing)
- -
- -
  - cleanup: Error handling
- -
- - cleanup: Do not constraint thee size of identity (current maximum being 128-8 bytes)
  - cleanup: Do not use std::string as identity type
+ - update numbers -> constants
+ - cleanup: Change InterruptiveConcurrentQueue behavior (use FileDescriptor class)
+ - Use one consistent print logic
+ - allow user to change how many times they want to retry
+ - resolve github comment
+ - add proper logging message
+ - cleanup: make sure when eventloop is destructed all resources is freed
  -
- - Provide a vector-like data structure that can release memory to achieve zc
  -
  -
  -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ -
+ - allow staticlly linking the project
+ - Namespace support, and move third_party code to top directory.
+ - Optimize performance in `updateWriteOperations`
  - LEAVE A FEW BLANKS HERE TO AVOID CONFLICT
 
 

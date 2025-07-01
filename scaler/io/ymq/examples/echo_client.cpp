@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 
 #include "scaler/io/ymq/io_context.h"
 #include "scaler/io/ymq/io_socket.h"
@@ -18,7 +19,7 @@ int main() {
     auto createSocketPromise               = std::make_shared<std::promise<void>>();
     auto createSocketFuture                = createSocketPromise->get_future();
     std::shared_ptr<IOSocket> clientSocket = context.createIOSocket(
-        "ServerSocket", IOSocketType::Dealer, [createSocketPromise] { createSocketPromise->set_value(); });
+        "ClientSocket", IOSocketType::Dealer, [createSocketPromise] { createSocketPromise->set_value(); });
 
     createSocketFuture.wait();
     printf("Successfully created socket.\n");
@@ -45,9 +46,9 @@ int main() {
         Message message;
         std::string destAddress = "ServerSocket";
 
-        message.address = Bytes {const_cast<char*>(destAddress.c_str()), destAddress.size(), Ownership::Borrowed};
+        message.address = Bytes {const_cast<char*>(destAddress.c_str()), destAddress.size(), Ownership::Owned};
 
-        message.payload = Bytes {const_cast<char*>(line.c_str()), line.size(), Ownership::Borrowed};
+        message.payload = Bytes {const_cast<char*>(line.c_str()), line.size(), Ownership::Owned};
 
         auto send_promise = std::make_shared<std::promise<void>>();
         auto send_future  = send_promise->get_future();
@@ -63,11 +64,15 @@ int main() {
         clientSocket->recvMessage([recv_promise](Message msg) { recv_promise->set_value(std::move(msg)); });
 
         Message reply = recv_future.get();
-        std::string reply_str(reply.payload.data, reply.payload.data + reply.payload.len);
+        std::string reply_str(reply.payload.data(), reply.payload.data() + reply.payload.len());
         printf("Received echo: '%s'\n", reply_str.c_str());
     }
 
+    // TODO: remove IOSocket also needs a future
     context.removeIOSocket(clientSocket);
+
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(100ms);
 
     return 0;
 }
