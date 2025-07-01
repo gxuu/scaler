@@ -24,7 +24,7 @@ IOSocket::IOSocket(std::shared_ptr<EventLoopThread> eventLoopThread, Identity id
 void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) {
     _eventLoopThread->_eventLoop.executeNow([this, message = std::move(message), callback = std::move(onMessageSent)] {
         MessageConnectionTCP* conn = nullptr;
-        const std::string address  = std::string((char*)message.address.data(), message.address.len());
+        const std::string address  = std::string((char*)message.address.data, message.address.len);
 
         if (this->_identityToConnection.contains(address)) {
             conn = this->_identityToConnection[address].get();
