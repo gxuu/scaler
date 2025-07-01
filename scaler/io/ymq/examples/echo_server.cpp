@@ -46,7 +46,7 @@ int main() {
         printf(
             "Receiving message from '%s', message content is: '%s'\n",
             received_msg.address.as_string().c_str(),
-            std::string(received_msg.payload.data(), received_msg.payload.data() + received_msg.payload.len()).c_str());
+            std::string(received_msg.payload.data, received_msg.payload.data + received_msg.payload.len).c_str());
 
         auto send_promise = std::make_shared<std::promise<void>>();
         auto send_future  = send_promise->get_future();

@@ -21,7 +21,7 @@ bool MessageConnectionTCP::isCompleteMessage(const TcpReadOperation& x) {
     if (x._cursor < HEADER_SIZE) {
         return false;
     }
-    if (x._cursor == x._header + HEADER_SIZE && x._payload.data()) {
+    if (x._cursor == x._header + HEADER_SIZE && x._payload.data) {
         return true;
     }
     return false;
@@ -76,11 +76,11 @@ std::expected<void, int> MessageConnectionTCP::tryReadMessages() {
             readSize = HEADER_SIZE - message._cursor;
         } else if (message._cursor == HEADER_SIZE) {
             message._payload = Bytes::alloc(message._header);
-            readTo           = (char*)message._payload.data();
-            readSize         = message._payload.len();
+            readTo           = (char*)message._payload.data;
+            readSize         = message._payload.len;
         } else {
-            readTo   = (char*)message._payload.data() + (message._cursor - HEADER_SIZE);
-            readSize = message._payload.len() - (message._cursor - HEADER_SIZE);
+            readTo   = (char*)message._payload.data + (message._cursor - HEADER_SIZE);
+            readSize = message._payload.len - (message._cursor - HEADER_SIZE);
         }
 
         // We have received an empty message, which is allowed
@@ -137,7 +137,7 @@ void MessageConnectionTCP::onRead() {
     if (!_remoteIOSocketIdentity) {
         if (_receivedReadOperations.size() && isCompleteMessage(_receivedReadOperations.front())) {
             auto id = std::move(_receivedReadOperations.front());
-            _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
+            _remoteIOSocketIdentity.emplace((char*)id._payload.data, id._payload.len);
             _receivedReadOperations.pop();
             auto sock = this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
             sock->onConnectionIdentityReceived(this);
@@ -196,19 +196,19 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages() {
             if (_sendCursor < HEADER_SIZE) {
                 iovHeader.iov_base  = (char*)(&it->_header) + _sendCursor;
                 iovHeader.iov_len   = HEADER_SIZE - _sendCursor;
-                iovPayload.iov_base = (void*)(it->_payload.data());
-                iovPayload.iov_len  = it->_payload.len();
+                iovPayload.iov_base = (void*)(it->_payload.data);
+                iovPayload.iov_len  = it->_payload.len;
             } else {
                 iovHeader.iov_base  = nullptr;
                 iovHeader.iov_len   = 0;
-                iovPayload.iov_base = (char*)(it->_payload.data()) + (_sendCursor - HEADER_SIZE);
-                iovPayload.iov_len  = it->_payload.len() + (_sendCursor - HEADER_SIZE);
+                iovPayload.iov_base = (char*)(it->_payload.data) + (_sendCursor - HEADER_SIZE);
+                iovPayload.iov_len  = it->_payload.len + (_sendCursor - HEADER_SIZE);
             }
         } else {
             iovHeader.iov_base  = (void*)(&it->_header);
             iovHeader.iov_len   = HEADER_SIZE;
-            iovPayload.iov_base = (void*)(it->_payload.data());
-            iovPayload.iov_len  = it->_payload.len();
+            iovPayload.iov_base = (void*)(it->_payload.data);
+            iovPayload.iov_len  = it->_payload.len;
         }
 
         iovecs.push_back(iovHeader);
@@ -242,7 +242,7 @@ void MessageConnectionTCP::updateWriteOperations(size_t n) {
     _sendCursor += n;
     // Post condition of the loop: firstIncomplete contains the first write op we haven't complete.
     for (auto it = _writeOperations.begin(); it != _writeOperations.end(); ++it) {
-        size_t msgSize = it->_payload.len() + HEADER_SIZE;
+        size_t msgSize = it->_payload.len + HEADER_SIZE;
         if (_sendCursor < msgSize) {
             firstIncomplete = it;
             break;

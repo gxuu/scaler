@@ -29,12 +29,12 @@ public:
         SendMessageCallback _callbackAfterCompleteWrite;
 
         TcpWriteOperation(Message msg, SendMessageCallback callbackAfterCompleteWrite)
-            : _header(msg.payload.len())
+            : _header(msg.payload.len)
             , _payload(std::move(msg.payload))
             , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
 
         TcpWriteOperation(Bytes payload, SendMessageCallback callbackAfterCompleteWrite)
-            : _header(payload.len())
+            : _header(payload.len)
             , _payload(std::move(payload))
             , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
     };
