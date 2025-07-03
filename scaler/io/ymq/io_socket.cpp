@@ -45,8 +45,8 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) n
 }
 
 void IOSocket::recvMessage(RecvMessageCallback onRecvMessage) noexcept {
-    _eventLoopThread->_eventLoop.executeNow([this, callback = std::move(onRecvMessage)] {
-        this->_pendingRecvMessages->push(std::move(callback));
+    _eventLoopThread->_eventLoop.executeNow([this, callback = std::move(onRecvMessage)] mutable {
+        this->_pendingRecvMessages->emplace(std::move(callback));
         if (_pendingRecvMessages->size() == 1) {
             for (const auto& [fd, conn]: _identityToConnection) {
                 if (conn->recvMessage())
@@ -73,7 +73,7 @@ void IOSocket::connectTo(
 
 void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindReturn) noexcept {
     _eventLoopThread->_eventLoop.executeNow(
-        [this, networkAddress = std::move(networkAddress), callback = std::move(onBindReturn)] {
+        [this, networkAddress = std::move(networkAddress), callback = std::move(onBindReturn)] mutable {
             if (_tcpServer) {
                 callback(-1);
                 return;

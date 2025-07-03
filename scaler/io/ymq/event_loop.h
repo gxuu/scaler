@@ -12,15 +12,15 @@
 struct Timestamp;
 class EventManager;
 
-template <class T>
-concept EventLoopBackend = requires(T t, std::function<void()> f) {
-    { t.executeNow(f) } -> std::same_as<void>;
-    { t.executeLater(f) } -> std::same_as<void>;
-    { t.executeAt(Timestamp {}, f) } -> std::integral;
-    { t.cancelExecution(0) } -> std::same_as<void>;
+template <class Backend>
+concept EventLoopBackend = requires(Backend backend, Backend::Function f) {
+    { backend.executeNow(std::move(f)) } -> std::same_as<void>;
+    { backend.executeLater(std::move(f)) } -> std::same_as<void>;
+    { backend.executeAt(Timestamp {}, std::move(f)) } -> std::integral;
+    { backend.cancelExecution(0) } -> std::same_as<void>;
 
-    t.addFdToLoop(int {}, uint64_t {}, (EventManager*)nullptr);
-    { t.removeFdFromLoop(int {}) } -> std::same_as<void>;
+    backend.addFdToLoop(int {}, uint64_t {}, (EventManager*)nullptr);
+    { backend.removeFdFromLoop(int {}) } -> std::same_as<void>;
 };
 
 template <EventLoopBackend Backend = EpollContext>
@@ -28,8 +28,9 @@ class EventLoop {
     Backend backend;
 
 public:
-    using Function   = std::function<void()>;
-    using Identifier = Configuration::ExecutionCancellationIdentifier;
+    using Function   = Backend::Function;
+    using Identifier = Backend::Identifier;
+
     void loop() { backend.loop(); }
 
     void executeNow(Function func) { backend.executeNow(std::move(func)); }

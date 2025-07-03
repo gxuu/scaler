@@ -22,9 +22,11 @@ inline int createTimerfd() {
 // TODO: HANDLE ERRS
 class TimedQueue {
 public:
-    using Callback   = Configuration::TimedQueueCallback;
-    using Identifier = Configuration::ExecutionCancellationIdentifier;
-    using TimedFunc  = std::tuple<Timestamp, Callback, Identifier>;
+    using Callback            = Configuration::TimedQueueCallback;
+    using Identifier          = Configuration::ExecutionCancellationIdentifier;
+    using TimedFunc           = std::tuple<Timestamp, Callback, Identifier>;
+    constexpr static auto cmp = [](const auto& x, const auto& y) { return std::get<0>(x) < std::get<0>(y); };
+    using PriorityQueue       = std::priority_queue<TimedFunc, std::vector<TimedFunc>, decltype(cmp)>;
 
     TimedQueue(): _timerFd(createTimerfd()), _currentId {} { assert(_timerFd); }
     ~TimedQueue() {
@@ -38,7 +40,7 @@ public:
             int ret = timerfd_settime(_timerFd, 0, &ts, nullptr);
             assert(ret == 0);
         }
-        pq.push({timestamp, cb, _currentId});
+        pq.push({timestamp, std::move(cb), _currentId});
         return _currentId++;
     }
 
@@ -58,13 +60,13 @@ public:
         Timestamp now;
         while (pq.size()) {
             if (std::get<0>(pq.top()) < now) {
-                auto [ts, cb, id] = std::move(pq.top());
+                auto [ts, cb, id] = std::move(const_cast<PriorityQueue::reference>(pq.top()));
                 pq.pop();
                 auto cancelled = _cancelledFunctions.find(id);
                 if (cancelled != _cancelledFunctions.end()) {
                     _cancelledFunctions.erase(cancelled);
                 } else {
-                    callbacks.push_back(std::move(cb));
+                    callbacks.emplace_back(std::move(cb));
                 }
             } else
                 break;
@@ -87,7 +89,6 @@ public:
 private:
     int _timerFd;
     Identifier _currentId;
-    constexpr static auto cmp = [](const auto& x, const auto& y) { return std::get<0>(x) < std::get<0>(y); };
-    std::priority_queue<TimedFunc, std::vector<TimedFunc>, decltype(cmp)> pq;
+    PriorityQueue pq;
     std::set<Identifier> _cancelledFunctions;
 };

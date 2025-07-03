@@ -295,7 +295,7 @@ MessageConnectionTCP::~MessageConnectionTCP() noexcept {
         _connFd = 0;
     }
 
-    std::ranges::for_each(_writeOperations, [](const auto& x) { x._callbackAfterCompleteWrite(-1); });
+    std::ranges::for_each(_writeOperations, [](auto&& x) { x._callbackAfterCompleteWrite(-1); });
 
     // TODO: What to do with this?
     // std::queue<std::vector<char>> _receivedMessages;

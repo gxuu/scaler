@@ -21,7 +21,7 @@ class EventManager;
 // This way, the queues need not know about the event manager. We don't use callbacks.
 class EpollContext {
 public:
-    using Function             = std::function<void()>;
+    using Function             = Configuration::ExecutionFunction;
     using DelayedFunctionQueue = std::queue<Function>;
     using Identifier           = Configuration::ExecutionCancellationIdentifier;
 

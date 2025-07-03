@@ -9,7 +9,7 @@
 
 void EpollContext::execPendingFunctions() {
     while (_delayedFunctions.size()) {
-        auto top = _delayedFunctions.front();
+        auto top = std::move(_delayedFunctions.front());
         top();
         _delayedFunctions.pop();
     }
@@ -24,10 +24,10 @@ void EpollContext::loop() {
         auto* event               = (EventManager*)current_event.data.ptr;
         if (event == (void*)_isInterruptiveFd) {
             auto vec = _interruptiveFunctions.dequeue();
-            std::ranges::for_each(vec, [](const auto& x) { x(); });
+            std::ranges::for_each(vec, [](auto&& x) { x(); });
         } else if (event == (void*)_isTimingFd) {
             auto vec = _timingFunctions.dequeue();
-            std::ranges::for_each(vec, [](const auto& x) { x(); });
+            std::ranges::for_each(vec, [](auto& x) { x(); });
         } else {
             event->onEvents(current_event.events);
         }
