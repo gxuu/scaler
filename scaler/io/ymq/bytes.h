@@ -32,12 +32,12 @@ public:
 
     Bytes(): _data {}, _len {} {}
 
-    Bytes(const Bytes& other) {
+    Bytes(const Bytes& other) noexcept {
         this->_data = datadup(other._data, other._len);
         this->_len  = other._len;
     }
 
-    Bytes& operator=(const Bytes& other) {
+    Bytes& operator=(const Bytes& other) noexcept {
         Bytes tmp(other);
         swap(*this, tmp);
         return *this;
@@ -54,7 +54,7 @@ public:
         other._len  = 0;
     }
 
-    friend std::strong_ordering operator<=>(const Bytes& x, const Bytes& y) {
+    friend std::strong_ordering operator<=>(const Bytes& x, const Bytes& y) noexcept {
         return std::lexicographical_compare_three_way(x._data, x._data + x._len, y._data, y._data + y._len);
     }
 
@@ -73,9 +73,9 @@ public:
 
     ~Bytes() { this->free(); }
 
-    bool operator!() const { return is_empty(); }
+    [[nodiscard]] constexpr bool operator!() const noexcept { return is_empty(); }
 
-    bool is_empty() const { return !this->_data; }
+    [[nodiscard]] constexpr bool is_empty() const noexcept { return !this->_data; }
 
     // debugging utility
     std::string as_string() const {
@@ -85,22 +85,23 @@ public:
         return std::string((char*)_data, _len);
     }
 
-    static Bytes alloc(size_t m_len) {
-        auto ptr = new uint8_t[m_len];
+    [[nodiscard("Allocated Bytes is not used, likely causing memory leak")]]
+    static Bytes alloc(size_t m_len) noexcept {
+        auto ptr = new uint8_t[m_len];  // we just assume the allocation will succeed
         return Bytes {ptr, m_len};
     }
 
     // NOTE: Below two functions are not used by the core but appears
     // to be used by pymod YMQ. - gxu
-    static Bytes empty() { return Bytes {(uint8_t*)nullptr, 0}; }
-    static Bytes copy(const uint8_t* m_data, size_t m_len) {
+    [[nodiscard]] static Bytes empty() { return Bytes {(uint8_t*)nullptr, 0}; }
+    [[nodiscard]] static Bytes copy(const uint8_t* m_data, size_t m_len) {
         Bytes result;
         result._data = datadup(m_data, m_len);
         result._len  = m_len;
         return result;
     }
 
-    size_t len() const { return _len; }
-    const uint8_t* data() const { return _data; }
-    uint8_t* data() { return _data; }
+    [[nodiscard]] constexpr size_t len() const { return _len; }
+    [[nodiscard]] constexpr const uint8_t* data() const { return _data; }
+    [[nodiscard]] constexpr uint8_t* data() { return _data; }
 };

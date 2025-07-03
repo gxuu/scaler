@@ -43,8 +43,9 @@ inline void print_trace(void) {
     std::abort();
 }
 
-inline uint8_t* datadup(const uint8_t* data, size_t len) {
-    uint8_t* dup = new uint8_t[len];
+[[nodiscard("Memory is allocated but not bind, likely causing memory leak")]]
+constexpr inline uint8_t* datadup(const uint8_t* data, size_t len) noexcept {
+    uint8_t* dup = new uint8_t[len];  // we just assume allocation will succeed
     std::memcpy(dup, data, len);
     return dup;
 }

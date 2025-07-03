@@ -52,7 +52,7 @@ TcpServer::TcpServer(
     std::shared_ptr<EventLoopThread> eventLoopThread,
     std::string localIOSocketIdentity,
     sockaddr addr,
-    BindReturnCallback onBindReturn)
+    BindReturnCallback onBindReturn) noexcept
     : _eventLoopThread(eventLoopThread)
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
     , _eventManager(std::make_unique<EventManager>())
@@ -119,7 +119,7 @@ void TcpServer::onRead() {
     }
 }
 
-TcpServer::~TcpServer() {
+TcpServer::~TcpServer() noexcept {
     if (_serverFd != 0) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_serverFd);
         close(_serverFd);

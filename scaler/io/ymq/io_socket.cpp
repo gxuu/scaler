@@ -15,13 +15,14 @@
 #include "scaler/io/ymq/tcp_server.h"
 #include "scaler/io/ymq/utils.h"
 
-IOSocket::IOSocket(std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType)
+IOSocket::IOSocket(
+    std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType) noexcept
     : _eventLoopThread(eventLoopThread)
     , _identity(std::move(identity))
     , _socketType(std::move(socketType))
     , _pendingRecvMessages(std::make_shared<std::queue<RecvMessageCallback>>()) {}
 
-void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) {
+void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) noexcept {
     _eventLoopThread->_eventLoop.executeNow(
         [this, message = std::move(message), callback = std::move(onMessageSent)] mutable {
             MessageConnectionTCP* conn = nullptr;
@@ -43,7 +44,7 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) {
         });
 }
 
-void IOSocket::recvMessage(RecvMessageCallback onRecvMessage) {
+void IOSocket::recvMessage(RecvMessageCallback onRecvMessage) noexcept {
     _eventLoopThread->_eventLoop.executeNow([this, callback = std::move(onRecvMessage)] {
         this->_pendingRecvMessages->push(std::move(callback));
         if (_pendingRecvMessages->size() == 1) {
@@ -55,7 +56,7 @@ void IOSocket::recvMessage(RecvMessageCallback onRecvMessage) {
     });
 }
 
-void IOSocket::connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes) {
+void IOSocket::connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes) noexcept {
     _eventLoopThread->_eventLoop.executeNow(
         [this, addr = std::move(addr), callback = std::move(onConnectReturn), maxRetryTimes] mutable {
             _tcpClient.emplace(_eventLoopThread, this->identity(), std::move(addr), std::move(callback), maxRetryTimes);
@@ -63,13 +64,14 @@ void IOSocket::connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn, s
         });
 }
 
-void IOSocket::connectTo(std::string networkAddress, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes) {
+void IOSocket::connectTo(
+    std::string networkAddress, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes) noexcept {
     auto res = stringToSockaddr(std::move(networkAddress));
     assert(res);
     connectTo(std::move(res.value()), std::move(onConnectReturn), maxRetryTimes);
 }
 
-void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindReturn) {
+void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindReturn) noexcept {
     _eventLoopThread->_eventLoop.executeNow(
         [this, networkAddress = std::move(networkAddress), callback = std::move(onBindReturn)] {
             if (_tcpServer) {
@@ -84,7 +86,7 @@ void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindRetur
         });
 }
 
-void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) {
+void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept {
     if (!conn->_remoteIOSocketIdentity) {
         return;
     }
@@ -109,7 +111,7 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) {
 // - look up _unconnectedConnections to find if there's a connection with the same identity
 //   if so, merge it to this connection that currently resides in _connectingConnections
 // Similar thing for disconnection as well.
-void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) {
+void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept {
     const auto& s = conn->_remoteIOSocketIdentity;
     auto thisConn = std::find_if(_unestablishedConnection.begin(), _unestablishedConnection.end(), [&](const auto& x) {
         return x.get() == conn;
@@ -135,7 +137,7 @@ void IOSocket::onConnectionCreated(
     sockaddr localAddr,
     sockaddr remoteAddr,
     bool responsibleForRetry,
-    std::optional<std::string> remoteIOSocketIdentity) {
+    std::optional<std::string> remoteIOSocketIdentity) noexcept {
     _unestablishedConnection.push_back(
         std::make_unique<MessageConnectionTCP>(
             _eventLoopThread,
@@ -149,13 +151,13 @@ void IOSocket::onConnectionCreated(
     _unestablishedConnection.back()->onCreated();
 }
 
-void IOSocket::removeConnectedTcpClient() {
+void IOSocket::removeConnectedTcpClient() noexcept {
     if (this->_tcpClient && this->_tcpClient->_connected) {
         this->_tcpClient.reset();
     }
 }
 
-IOSocket::~IOSocket() {
+IOSocket::~IOSocket() noexcept {
     while (_pendingRecvMessages->size()) {
         auto readOp = std::move(_pendingRecvMessages->front());
         _pendingRecvMessages->pop();

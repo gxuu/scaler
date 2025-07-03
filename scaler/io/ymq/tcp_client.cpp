@@ -61,7 +61,7 @@ TcpClient::TcpClient(
     std::string localIOSocketIdentity,
     sockaddr remoteAddr,
     ConnectReturnCallback onConnectReturn,
-    size_t maxRetryTimes)
+    size_t maxRetryTimes) noexcept
     : _eventLoopThread(eventLoopThread)
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
     , _remoteAddr(std::move(remoteAddr))
@@ -122,7 +122,7 @@ void TcpClient::retry() {
     _retryIdentifier = _eventLoopThread->_eventLoop.executeAt(at, [this] { this->onCreated(); });
 }
 
-TcpClient::~TcpClient() {
+TcpClient::~TcpClient() noexcept {
     if (_connFd) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
         close(_connFd);

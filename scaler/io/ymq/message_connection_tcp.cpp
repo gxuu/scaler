@@ -17,7 +17,7 @@
 
 static constexpr const size_t HEADER_SIZE = sizeof(uint64_t);
 
-bool MessageConnectionTCP::isCompleteMessage(const TcpReadOperation& x) {
+constexpr bool MessageConnectionTCP::isCompleteMessage(const TcpReadOperation& x) {
     if (x._cursor < HEADER_SIZE) {
         return false;
     }
@@ -35,7 +35,7 @@ MessageConnectionTCP::MessageConnectionTCP(
     std::string localIOSocketIdentity,
     bool responsibleForRetry,
     std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks,
-    std::optional<std::string> remoteIOSocketIdentity)
+    std::optional<std::string> remoteIOSocketIdentity) noexcept
     : _eventLoopThread(eventLoopThread)
     , _eventManager(std::make_unique<EventManager>())
     , _connFd(std::move(connFd))
@@ -287,7 +287,7 @@ bool MessageConnectionTCP::recvMessage() {
     return true;
 }
 
-MessageConnectionTCP::~MessageConnectionTCP() {
+MessageConnectionTCP::~MessageConnectionTCP() noexcept {
     if (_connFd != 0) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
         shutdown(_connFd, SHUT_RDWR);

@@ -24,29 +24,31 @@ public:
     using RecvMessageCallback   = Configuration::RecvMessageCallback;
     using Identity              = Configuration::IOSocketIdentity;
 
-    IOSocket(std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType);
+    IOSocket(std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType) noexcept;
     IOSocket(const IOSocket&)            = delete;
     IOSocket& operator=(const IOSocket&) = delete;
     IOSocket(IOSocket&&)                 = delete;
     IOSocket& operator=(IOSocket&&)      = delete;
-    ~IOSocket();
+    ~IOSocket() noexcept;
 
     // NOTE: BELOW FIVE FUNCTIONS ARE USERSPACE API
-    void sendMessage(Message message, SendMessageCallback onMessageSent);
-    void recvMessage(RecvMessageCallback onRecvMessage);
+    void sendMessage(Message message, SendMessageCallback onMessageSent) noexcept;
+    void recvMessage(RecvMessageCallback onRecvMessage) noexcept;
 
-    void connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8);
-    void connectTo(std::string networkAddress, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8);
+    void connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
+    void connectTo(
+        std::string networkAddress, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
 
-    void bindTo(std::string networkAddress, BindReturnCallback onBindReturn);
+    void bindTo(std::string networkAddress, BindReturnCallback onBindReturn) noexcept;
 
-    Identity identity() const { return _identity; }
-    IOSocketType socketType() const { return _socketType; }
+    [[nodiscard]] constexpr Identity identity() const { return _identity; }
+
+    [[nodiscard]] constexpr IOSocketType socketType() const { return _socketType; }
 
     // From Connection Class only
-    void onConnectionDisconnected(MessageConnectionTCP* conn);
+    void onConnectionDisconnected(MessageConnectionTCP* conn) noexcept;
     // From Connection Class only
-    void onConnectionIdentityReceived(MessageConnectionTCP* conn);
+    void onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;
 
     // This function is called whenever a connecition is created (not established)
     void onConnectionCreated(
@@ -54,10 +56,10 @@ public:
         sockaddr localAddr,
         sockaddr remoteAddr,
         bool responsibleForRetry,
-        std::optional<std::string> remoteIOSocketIdentity = std::nullopt);
+        std::optional<std::string> remoteIOSocketIdentity = std::nullopt) noexcept;
 
     // From TcpClient class only
-    void removeConnectedTcpClient();
+    void removeConnectedTcpClient() noexcept;
 
     std::shared_ptr<EventLoopThread> _eventLoopThread;
 

@@ -28,12 +28,12 @@ public:
         Bytes _payload;
         SendMessageCallback _callbackAfterCompleteWrite;
 
-        TcpWriteOperation(Message msg, SendMessageCallback callbackAfterCompleteWrite)
+        TcpWriteOperation(Message msg, SendMessageCallback callbackAfterCompleteWrite) noexcept
             : _header(msg.payload.len())
             , _payload(std::move(msg.payload))
             , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
 
-        TcpWriteOperation(Bytes payload, SendMessageCallback callbackAfterCompleteWrite)
+        TcpWriteOperation(Bytes payload, SendMessageCallback callbackAfterCompleteWrite) noexcept
             : _header(payload.len())
             , _payload(std::move(payload))
             , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
@@ -47,8 +47,8 @@ public:
         std::string localIOSocketIdentity,
         bool responsibleForRetry,
         std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks,
-        std::optional<std::string> remoteIOSocketIdentity = std::nullopt);
-    ~MessageConnectionTCP();
+        std::optional<std::string> remoteIOSocketIdentity = std::nullopt) noexcept;
+    ~MessageConnectionTCP() noexcept;
 
     void onCreated();
 
@@ -86,6 +86,6 @@ private:
     std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks;
     std::queue<TcpReadOperation> _receivedReadOperations;
 
-    static bool isCompleteMessage(const TcpReadOperation& x);
-    friend void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn);
+    constexpr static bool isCompleteMessage(const TcpReadOperation& x);
+    friend void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;
 };

@@ -16,20 +16,21 @@ public:
     using Identity               = Configuration::IOSocketIdentity;
     using CreateIOSocketCallback = Configuration::CreateIOSocketCallback;
 
-    IOContext(size_t threadCount = 1);
+    IOContext(size_t threadCount = 1) noexcept;
     IOContext(const IOContext&)            = delete;
     IOContext& operator=(const IOContext&) = delete;
     IOContext(IOContext&&)                 = delete;
     IOContext& operator=(IOContext&&)      = delete;
 
     // These methods need to be thread-safe.
+    [[nodiscard("You need this handle to talk to remote end")]]
     std::shared_ptr<IOSocket> createIOSocket(
-        Identity identity, IOSocketType socketType, CreateIOSocketCallback onIOSocketCreated);
+        Identity identity, IOSocketType socketType, CreateIOSocketCallback onIOSocketCreated) & noexcept;
 
     // After user called this method, no other call on the passed in IOSocket should be made.
-    void removeIOSocket(std::shared_ptr<IOSocket>& socket);
+    void removeIOSocket(std::shared_ptr<IOSocket>& socket) noexcept;
 
-    size_t numThreads() const { return _threads.size(); }
+    constexpr size_t numThreads() const noexcept { return _threads.size(); }
 
 private:
     std::vector<std::shared_ptr<EventLoopThread>> _threads;
