@@ -37,6 +37,8 @@ target_sources(cc_ymq PRIVATE
   tcp_client.h
   tcp_client.cpp
 
+  tcp_operations.h
+
   timestamp.h
 
   timed_queue.h

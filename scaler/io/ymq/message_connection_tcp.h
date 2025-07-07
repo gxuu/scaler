@@ -8,6 +8,7 @@
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/message_connection.h"
+#include "scaler/io/ymq/tcp_operations.h"
 
 class EventLoopThread;
 class EventManager;
@@ -16,28 +17,6 @@ class MessageConnectionTCP: public MessageConnection {
 public:
     using SendMessageCallback = Configuration::SendMessageCallback;
     using RecvMessageCallback = Configuration::RecvMessageCallback;
-
-    struct TcpReadOperation {
-        size_t _cursor {};
-        uint64_t _header {};
-        Bytes _payload {};
-    };
-
-    struct TcpWriteOperation {
-        uint64_t _header;
-        Bytes _payload;
-        SendMessageCallback _callbackAfterCompleteWrite;
-
-        TcpWriteOperation(Message msg, SendMessageCallback callbackAfterCompleteWrite) noexcept
-            : _header(msg.payload.len())
-            , _payload(std::move(msg.payload))
-            , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
-
-        TcpWriteOperation(Bytes payload, SendMessageCallback callbackAfterCompleteWrite) noexcept
-            : _header(payload.len())
-            , _payload(std::move(payload))
-            , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
-    };
 
     MessageConnectionTCP(
         std::shared_ptr<EventLoopThread> eventLoopThread,

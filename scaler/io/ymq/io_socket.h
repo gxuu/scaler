@@ -15,6 +15,7 @@
 
 class EventLoopThread;
 class MessageConnectionTCP;
+class TcpWriteOperation;
 
 class IOSocket {
 public:
