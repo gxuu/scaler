@@ -75,6 +75,7 @@ private:
     // NOTE: Owning one TcpServer means the user cannot bindTo multiple addresses.
     std::optional<TcpServer> _tcpServer;
 
+    // Remote identity to connection map
     std::map<std::string, std::unique_ptr<MessageConnectionTCP>> _identityToConnection;
 
     // NOTE: An unestablished connection can be in the following states:

@@ -13,6 +13,7 @@
 #include "scaler/io/ymq/message_connection_tcp.h"
 #include "scaler/io/ymq/tcp_client.h"
 #include "scaler/io/ymq/tcp_server.h"
+#include "scaler/io/ymq/typedefs.h"
 #include "scaler/io/ymq/utils.h"
 
 IOSocket::IOSocket(
@@ -26,7 +27,18 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) n
     _eventLoopThread->_eventLoop.executeNow(
         [this, message = std::move(message), callback = std::move(onMessageSent)] mutable {
             MessageConnectionTCP* conn = nullptr;
-            const std::string address  = std::string((char*)message.address.data(), message.address.len());
+
+            std::string address = std::string((char*)message.address.data(), message.address.len());
+            if (this->socketType() == IOSocketType::Connector) {
+                address = "";
+            } else if (this->socketType() == IOSocketType::Multicast) {
+                callback(0);  // SUCCESS
+                for (const auto& [addr, conn]: _identityToConnection) {
+                    if (addr.starts_with(address))
+                        conn->sendMessage(message, [](int) {});
+                }
+                return;
+            }
 
             if (this->_identityToConnection.contains(address)) {
                 conn = this->_identityToConnection[address].get();
@@ -52,6 +64,11 @@ void IOSocket::recvMessage(RecvMessageCallback onRecvMessage) noexcept {
                 if (conn->recvMessage())
                     return;
             }
+        }
+
+        if (socketType() == IOSocketType::Unicast) {
+            _pendingRecvMessages->front()({});
+            _pendingRecvMessages->pop();
         }
     });
 }
@@ -92,6 +109,12 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept {
     }
 
     auto connIt = this->_identityToConnection.find(*conn->_remoteIOSocketIdentity);
+
+    if (socketType() == IOSocketType::Unicast || socketType() == IOSocketType::Multicast) {
+        this->_identityToConnection.erase(connIt);
+        return;
+    }
+
     _unestablishedConnection.push_back(std::move(connIt->second));
     this->_identityToConnection.erase(connIt);
 
@@ -112,7 +135,11 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept {
 //   if so, merge it to this connection that currently resides in _connectingConnections
 // Similar thing for disconnection as well.
 void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept {
-    const auto& s = conn->_remoteIOSocketIdentity;
+    auto& s = conn->_remoteIOSocketIdentity;
+    if (socketType() == IOSocketType::Connector) {
+        s = "";
+    }
+
     auto thisConn = std::find_if(_unestablishedConnection.begin(), _unestablishedConnection.end(), [&](const auto& x) {
         return x.get() == conn;
     });
