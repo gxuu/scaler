@@ -50,7 +50,8 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) n
                 if (it != _unestablishedConnection.end()) {
                     conn = it->get();
                 } else {
-                    onConnectionCreated(0, {}, {}, false, address);
+                    onConnectionCreated(address);
+                    // onConnectionCreated(0, {}, {}, false, address);
                     conn = _unestablishedConnection.back().get();
                 }
             }
@@ -67,11 +68,6 @@ void IOSocket::recvMessage(RecvMessageCallback onRecvMessage) noexcept {
                     return;
             }
         }
-
-        // if (socketType() == IOSocketType::Unicast) {
-        //     _pendingRecvMessages->front()({});
-        //     _pendingRecvMessages->pop();
-        // }
     });
 }
 
@@ -167,12 +163,14 @@ void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept
     _unestablishedConnection.erase(c);
 }
 
-void IOSocket::onConnectionCreated(
-    int fd,
-    sockaddr localAddr,
-    sockaddr remoteAddr,
-    bool responsibleForRetry,
-    std::optional<std::string> remoteIOSocketIdentity) noexcept {
+void IOSocket::onConnectionCreated(std::string remoteIOSocketIdentity) noexcept {
+    _unestablishedConnection.push_back(
+        std::make_unique<MessageConnectionTCP>(
+            _eventLoopThread, this->identity(), std::move(remoteIOSocketIdentity), _pendingRecvMessages));
+    _unestablishedConnection.back()->onCreated();
+}
+
+void IOSocket::onConnectionCreated(int fd, sockaddr localAddr, sockaddr remoteAddr, bool responsibleForRetry) noexcept {
     _unestablishedConnection.push_back(
         std::make_unique<MessageConnectionTCP>(
             _eventLoopThread,
@@ -181,8 +179,7 @@ void IOSocket::onConnectionCreated(
             std::move(remoteAddr),
             this->identity(),
             responsibleForRetry,
-            _pendingRecvMessages,
-            std::move(remoteIOSocketIdentity)));
+            _pendingRecvMessages));
     _unestablishedConnection.back()->onCreated();
 }
 

@@ -51,13 +51,12 @@ public:
     // From Connection Class only
     void onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;
 
-    // This function is called whenever a connecition is created (not established)
-    void onConnectionCreated(
-        int fd,
-        sockaddr localAddr,
-        sockaddr remoteAddr,
-        bool responsibleForRetry,
-        std::optional<std::string> remoteIOSocketIdentity = std::nullopt) noexcept;
+    // NOTE: These two functions are called respectively by sendMessage and server/client.
+    // Notice that in the each case only the needed information are passed in; so it's less
+    // likely the user passed in combinations that does not make sense. These two calls are
+    // mutual exclusive. Perhaps we need better name, but I failed to come up with one. - gxu
+    void onConnectionCreated(std::string remoteIOSocketIdentity) noexcept;
+    void onConnectionCreated(int fd, sockaddr localAddr, sockaddr remoteAddr, bool responsibleForRetry) noexcept;
 
     // From TcpClient class only
     void removeConnectedTcpClient() noexcept;

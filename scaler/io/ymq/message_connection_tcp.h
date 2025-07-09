@@ -25,8 +25,14 @@ public:
         sockaddr remoteAddr,
         std::string localIOSocketIdentity,
         bool responsibleForRetry,
-        std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks,
-        std::optional<std::string> remoteIOSocketIdentity = std::nullopt) noexcept;
+        std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks) noexcept;
+
+    MessageConnectionTCP(
+        std::shared_ptr<EventLoopThread> eventLoopThread,
+        std::string localIOSocketIdentity,
+        std::string remoteIOSocketIdentity,
+        std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks) noexcept;
+
     ~MessageConnectionTCP() noexcept;
 
     void onCreated();

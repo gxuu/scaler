@@ -34,16 +34,36 @@ MessageConnectionTCP::MessageConnectionTCP(
     sockaddr remoteAddr,
     std::string localIOSocketIdentity,
     bool responsibleForRetry,
-    std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks,
-    std::optional<std::string> remoteIOSocketIdentity) noexcept
+    std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks) noexcept
     : _eventLoopThread(eventLoopThread)
     , _eventManager(std::make_unique<EventManager>())
     , _connFd(std::move(connFd))
     , _localAddr(std::move(localAddr))
     , _remoteAddr(std::move(remoteAddr))
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
-    , _remoteIOSocketIdentity(std::move(remoteIOSocketIdentity))
+    , _remoteIOSocketIdentity(std::nullopt)
     , _responsibleForRetry(responsibleForRetry)
+    , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
+    , _sendCursor {} {
+    _eventManager->onRead  = [this] { this->onRead(); };
+    _eventManager->onWrite = [this] { this->onWrite(); };
+    _eventManager->onClose = [this] { this->onClose(); };
+    _eventManager->onError = [this] { this->onError(); };
+}
+
+MessageConnectionTCP::MessageConnectionTCP(
+    std::shared_ptr<EventLoopThread> eventLoopThread,
+    std::string localIOSocketIdentity,
+    std::string remoteIOSocketIdentity,
+    std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks) noexcept
+    : _eventLoopThread(eventLoopThread)
+    , _eventManager(std::make_unique<EventManager>())
+    , _connFd {}
+    , _localAddr {}
+    , _remoteAddr {}
+    , _localIOSocketIdentity(std::move(localIOSocketIdentity))
+    , _remoteIOSocketIdentity(std::move(remoteIOSocketIdentity))
+    , _responsibleForRetry(false)
     , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _sendCursor {} {
     _eventManager->onRead  = [this] { this->onRead(); };
