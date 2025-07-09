@@ -67,4 +67,5 @@ private:
 
     constexpr static bool isCompleteMessage(const TcpReadOperation& x);
     friend void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;
+    friend void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept;
 };

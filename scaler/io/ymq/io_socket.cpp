@@ -34,6 +34,8 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) n
             } else if (this->socketType() == IOSocketType::Multicast) {
                 callback(0);  // SUCCESS
                 for (const auto& [addr, conn]: _identityToConnection) {
+                    // TODO: Currently doing N copies of the messages. Find a place to
+                    // store this message and pass in reference.
                     if (addr.starts_with(address))
                         conn->sendMessage(message, [](int) {});
                 }
@@ -66,10 +68,10 @@ void IOSocket::recvMessage(RecvMessageCallback onRecvMessage) noexcept {
             }
         }
 
-        if (socketType() == IOSocketType::Unicast) {
-            _pendingRecvMessages->front()({});
-            _pendingRecvMessages->pop();
-        }
+        // if (socketType() == IOSocketType::Unicast) {
+        //     _pendingRecvMessages->front()({});
+        //     _pendingRecvMessages->pop();
+        // }
     });
 }
 
@@ -110,15 +112,21 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept {
 
     auto connIt = this->_identityToConnection.find(*conn->_remoteIOSocketIdentity);
 
-    if (socketType() == IOSocketType::Unicast || socketType() == IOSocketType::Multicast) {
-        this->_identityToConnection.erase(connIt);
-        return;
-    }
-
     _unestablishedConnection.push_back(std::move(connIt->second));
     this->_identityToConnection.erase(connIt);
-
     auto& connPtr = _unestablishedConnection.back();
+
+    if (socketType() == IOSocketType::Unicast || socketType() == IOSocketType::Multicast) {
+        auto destructWriteOp = std::move(connPtr->_writeOperations);
+        connPtr->_writeOperations.clear();
+        while (_pendingRecvMessages->size()) {
+            // TODO: Replace this with error didNotReceive or something like that
+            _pendingRecvMessages->front()({});
+            _pendingRecvMessages->pop();
+        }
+        auto destructReadOp = std::move(connPtr->_receivedReadOperations);
+    }
+
     if (connPtr->_responsibleForRetry) {
         connectTo(connPtr->_remoteAddr, [](int) {});  // as the user callback is one-shot
     }
