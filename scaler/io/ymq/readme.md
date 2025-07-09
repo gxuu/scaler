@@ -55,7 +55,7 @@ Each person maintains a todo and done list.
  - remove bytes ownership code 
  - add constexpr, noexcept, overloads, explicit to the code
  - make sure every call is moved instead of being copied
- -
+ - iosocket behaves differently when provided with different IOSocketType
  -
  -
  -
