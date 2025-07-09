@@ -19,7 +19,7 @@ int main() {
     auto createSocketPromise               = std::promise<void>();
     auto createSocketFuture                = createSocketPromise.get_future();
     std::shared_ptr<IOSocket> clientSocket = context.createIOSocket(
-        "ClientSocket", IOSocketType::Dealer, [&createSocketPromise] { createSocketPromise.set_value(); });
+        "ClientSocket", IOSocketType::Connector, [&createSocketPromise] { createSocketPromise.set_value(); });
 
     createSocketFuture.wait();
     printf("Successfully created socket.\n");
