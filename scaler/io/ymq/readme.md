@@ -56,7 +56,7 @@ Each person maintains a todo and done list.
  - add constexpr, noexcept, overloads, explicit to the code
  - make sure every call is moved instead of being copied
  - iosocket behaves differently when provided with different IOSocketType
- -
+ - Refactor: MessageConnectionTCP is easier to construct correctly
  -
  -
  -
