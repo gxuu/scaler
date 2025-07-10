@@ -9,19 +9,31 @@
 #include <expected>
 #include <iostream>
 
+#include "error.h"
+
 inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address) {
     // Check and strip the "tcp://" prefix
-    const std::string prefix = "tcp://";
+    static const constexpr std::string prefix = "tcp://";
     if (address.substr(0, prefix.size()) != prefix) {
-        exit(-1);
-        // unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
+        unrecoverableError({
+            Error::InvalidAddressFormat,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Your input is",
+            address,
+        });
     }
 
     std::string addr_part = address.substr(prefix.size());
     size_t colon_pos      = addr_part.find(':');
     if (colon_pos == std::string::npos) {
-        exit(-1);
-        // unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
+        unrecoverableError({
+            Error::InvalidAddressFormat,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Your input is",
+            address,
+        });
     }
 
     std::string ip       = addr_part.substr(0, colon_pos);
@@ -31,16 +43,42 @@ inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
     try {
         port = std::stoi(port_str);
     } catch (...) {
-        exit(-1);
-        // unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
+        unrecoverableError({
+            Error::InvalidAddressFormat,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Your input is",
+            address,
+        });
     }
 
     sockaddr_in out_addr {};
     out_addr.sin_family = AF_INET;
     out_addr.sin_port   = htons(port);
-    if (inet_pton(AF_INET, ip.c_str(), &out_addr.sin_addr) <= 0) {
-        exit(-1);
-        // unrecoverableError({Error::InvalidAddressFormat}, "Your input is:", address);
+
+    int res = inet_pton(AF_INET, ip.c_str(), &out_addr.sin_addr);
+    if (res == 0) {
+        unrecoverableError({
+            Error::InvalidAddressFormat,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Your input is",
+            address,
+        });
+    }
+
+    if (res == -1) {
+        unrecoverableError({
+            Error::ConfigurationError,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Errno is",
+            strerror(errno),
+            "out_addr.sin_family",
+            out_addr.sin_family,
+            "out_addr.sin_port",
+            out_addr.sin_port,
+        });
     }
 
     return *(sockaddr*)&out_addr;
@@ -49,8 +87,15 @@ inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
 inline int setNoDelay(int fd) {
     int optval = 1;
     if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval)) == -1) {
-        exit(-1);
-        // unrecoverableError({errno}, "From", "setsockopt", "TCP_NODELAY cannot be set.");
+        unrecoverableError({
+            Error::ConfigurationError,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Errno is",
+            strerror(errno),
+            "fd",
+            fd,
+        });
     }
 
     return fd;
@@ -60,8 +105,15 @@ inline sockaddr getLocalAddr(int fd) {
     sockaddr localAddr     = {};
     socklen_t localAddrLen = sizeof(localAddr);
     if (getsockname(fd, &localAddr, &localAddrLen) == -1) {
-        perror("getsockname");
-        fprintf(stderr, "Cannot get local address\n");
+        unrecoverableError({
+            Error::ConfigurationError,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Errno is",
+            strerror(errno),
+            "fd",
+            fd,
+        });
     }
     return localAddr;
 }
@@ -69,9 +121,18 @@ inline sockaddr getLocalAddr(int fd) {
 inline sockaddr getRemoteAddr(int fd) {
     sockaddr remoteAddr     = {};
     socklen_t remoteAddrLen = sizeof(remoteAddr);
+
     if (getpeername(fd, &remoteAddr, &remoteAddrLen) == -1) {
-        perror("getpeername");
-        fprintf(stderr, "Cannot get remote address\n");
+        unrecoverableError({
+            Error::ConfigurationError,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Errno is",
+            strerror(errno),
+            "fd",
+            fd,
+        });
     }
+
     return remoteAddr;
 }
