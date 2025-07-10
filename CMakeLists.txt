@@ -56,9 +56,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # needed for jthread in libc++
     add_compile_options(-fexperimental-library)
     add_link_options(-fexperimental-library)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    add_compile_options(-std=gnu++23)
-    add_link_options(-std=gnu++23)
 endif()
 
 find_package(CapnProto CONFIG REQUIRED)
