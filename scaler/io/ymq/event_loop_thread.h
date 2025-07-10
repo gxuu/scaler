@@ -15,7 +15,8 @@ class IOSocket;
 class EventLoopThread: public std::enable_shared_from_this<EventLoopThread> {
 public:
     std::map<std::string, std::shared_ptr<IOSocket>> _identityToIOSocket;
-    using PollingContext = Configuration::PollingContext;
+    using PollingContext         = Configuration::PollingContext;
+    using CreateIOSocketCallback = Configuration::CreateIOSocketCallback;
     EventLoop<PollingContext> _eventLoop;
     // Why not make the class a friend class of IOContext?
     // Because the removeIOSocket method is a bit trickier than addIOSocket,
@@ -23,7 +24,7 @@ public:
     // MessageConnectionTCP managed by it from the EventLoop, before it removes
     // it self from ioSockets. return eventLoop.executeNow(createIOSocket());
     std::shared_ptr<IOSocket> createIOSocket(
-        std::string identity, IOSocketType socketType, std::function<void()> callback);
+        std::string identity, IOSocketType socketType, CreateIOSocketCallback callback);
 
     void removeIOSocket(IOSocket* target);
     // EventLoop<PollingContext>& getEventLoop();

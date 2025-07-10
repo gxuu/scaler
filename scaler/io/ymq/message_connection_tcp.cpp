@@ -17,11 +17,11 @@
 
 static constexpr const size_t HEADER_SIZE = sizeof(uint64_t);
 
-bool MessageConnectionTCP::isCompleteMessage(const TcpReadOperation& x) {
+constexpr bool MessageConnectionTCP::isCompleteMessage(const TcpReadOperation& x) {
     if (x._cursor < HEADER_SIZE) {
         return false;
     }
-    if (x._cursor == x._header + HEADER_SIZE && x._payload.data) {
+    if (x._cursor == x._header + HEADER_SIZE && x._payload.data() != nullptr) {
         return true;
     }
     return false;
@@ -34,16 +34,36 @@ MessageConnectionTCP::MessageConnectionTCP(
     sockaddr remoteAddr,
     std::string localIOSocketIdentity,
     bool responsibleForRetry,
-    std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks,
-    std::optional<std::string> remoteIOSocketIdentity)
+    std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks) noexcept
     : _eventLoopThread(eventLoopThread)
     , _eventManager(std::make_unique<EventManager>())
     , _connFd(std::move(connFd))
     , _localAddr(std::move(localAddr))
     , _remoteAddr(std::move(remoteAddr))
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
-    , _remoteIOSocketIdentity(std::move(remoteIOSocketIdentity))
+    , _remoteIOSocketIdentity(std::nullopt)
     , _responsibleForRetry(responsibleForRetry)
+    , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
+    , _sendCursor {} {
+    _eventManager->onRead  = [this] { this->onRead(); };
+    _eventManager->onWrite = [this] { this->onWrite(); };
+    _eventManager->onClose = [this] { this->onClose(); };
+    _eventManager->onError = [this] { this->onError(); };
+}
+
+MessageConnectionTCP::MessageConnectionTCP(
+    std::shared_ptr<EventLoopThread> eventLoopThread,
+    std::string localIOSocketIdentity,
+    std::string remoteIOSocketIdentity,
+    std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks) noexcept
+    : _eventLoopThread(eventLoopThread)
+    , _eventManager(std::make_unique<EventManager>())
+    , _connFd {}
+    , _localAddr {}
+    , _remoteAddr {}
+    , _localIOSocketIdentity(std::move(localIOSocketIdentity))
+    , _remoteIOSocketIdentity(std::move(remoteIOSocketIdentity))
+    , _responsibleForRetry(false)
     , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _sendCursor {} {
     _eventManager->onRead  = [this] { this->onRead(); };
@@ -63,8 +83,8 @@ void MessageConnectionTCP::onCreated() {
 // on Return, unexpected value shall be interpreted as this - 0 = close, other -> errno
 std::expected<void, int> MessageConnectionTCP::tryReadMessages() {
     while (true) {
-        char* readTo    = nullptr;
-        size_t readSize = 0;
+        char* readTo         = nullptr;
+        size_t remainingSize = 0;
 
         if (_receivedReadOperations.empty() || isCompleteMessage(_receivedReadOperations.front())) {
             _receivedReadOperations.emplace();
@@ -72,23 +92,23 @@ std::expected<void, int> MessageConnectionTCP::tryReadMessages() {
 
         auto& message = _receivedReadOperations.back();
         if (message._cursor < HEADER_SIZE) {
-            readTo   = (char*)&message._header + message._cursor;
-            readSize = HEADER_SIZE - message._cursor;
+            readTo        = (char*)&message._header + message._cursor;
+            remainingSize = HEADER_SIZE - message._cursor;
         } else if (message._cursor == HEADER_SIZE) {
             message._payload = Bytes::alloc(message._header);
-            readTo           = (char*)message._payload.data;
-            readSize         = message._payload.len;
+            readTo           = (char*)message._payload.data();
+            remainingSize    = message._payload.len();
         } else {
-            readTo   = (char*)message._payload.data + (message._cursor - HEADER_SIZE);
-            readSize = message._payload.len - (message._cursor - HEADER_SIZE);
+            readTo        = (char*)message._payload.data() + (message._cursor - HEADER_SIZE);
+            remainingSize = message._payload.len() - (message._cursor - HEADER_SIZE);
         }
 
         // We have received an empty message, which is allowed
-        if (readSize == 0) {
+        if (remainingSize == 0) {
             return {};
         }
 
-        int n = read(_connFd, readTo, readSize);
+        int n = read(_connFd, readTo, remainingSize);
         if (n == 0) {
             return std::unexpected {0};
         } else if (n == -1) {
@@ -137,7 +157,7 @@ void MessageConnectionTCP::onRead() {
     if (!_remoteIOSocketIdentity) {
         if (_receivedReadOperations.size() && isCompleteMessage(_receivedReadOperations.front())) {
             auto id = std::move(_receivedReadOperations.front());
-            _remoteIOSocketIdentity.emplace((char*)id._payload.data, id._payload.len);
+            _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
             _receivedReadOperations.pop();
             auto sock = this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
             sock->onConnectionIdentityReceived(this);
@@ -196,19 +216,19 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages() {
             if (_sendCursor < HEADER_SIZE) {
                 iovHeader.iov_base  = (char*)(&it->_header) + _sendCursor;
                 iovHeader.iov_len   = HEADER_SIZE - _sendCursor;
-                iovPayload.iov_base = (void*)(it->_payload.data);
-                iovPayload.iov_len  = it->_payload.len;
+                iovPayload.iov_base = (void*)(it->_payload.data());
+                iovPayload.iov_len  = it->_payload.len();
             } else {
                 iovHeader.iov_base  = nullptr;
                 iovHeader.iov_len   = 0;
-                iovPayload.iov_base = (char*)(it->_payload.data) + (_sendCursor - HEADER_SIZE);
-                iovPayload.iov_len  = it->_payload.len + (_sendCursor - HEADER_SIZE);
+                iovPayload.iov_base = (char*)(it->_payload.data()) + (_sendCursor - HEADER_SIZE);
+                iovPayload.iov_len  = it->_payload.len() + (_sendCursor - HEADER_SIZE);
             }
         } else {
             iovHeader.iov_base  = (void*)(&it->_header);
             iovHeader.iov_len   = HEADER_SIZE;
-            iovPayload.iov_base = (void*)(it->_payload.data);
-            iovPayload.iov_len  = it->_payload.len;
+            iovPayload.iov_base = (void*)(it->_payload.data());
+            iovPayload.iov_len  = it->_payload.len();
         }
 
         iovecs.push_back(iovHeader);
@@ -242,7 +262,7 @@ void MessageConnectionTCP::updateWriteOperations(size_t n) {
     _sendCursor += n;
     // Post condition of the loop: firstIncomplete contains the first write op we haven't complete.
     for (auto it = _writeOperations.begin(); it != _writeOperations.end(); ++it) {
-        size_t msgSize = it->_payload.len + HEADER_SIZE;
+        size_t msgSize = it->_payload.len() + HEADER_SIZE;
         if (_sendCursor < msgSize) {
             firstIncomplete = it;
             break;
@@ -269,7 +289,7 @@ void MessageConnectionTCP::updateWriteOperations(size_t n) {
 
 void MessageConnectionTCP::sendMessage(Message msg, SendMessageCallback onMessageSent) {
     TcpWriteOperation writeOp(std::move(msg), std::move(onMessageSent));
-    _writeOperations.push_back(std::move(writeOp));
+    _writeOperations.emplace_back(std::move(writeOp));
 
     if (_connFd == 0) {
         return;
@@ -287,7 +307,7 @@ bool MessageConnectionTCP::recvMessage() {
     return true;
 }
 
-MessageConnectionTCP::~MessageConnectionTCP() {
+MessageConnectionTCP::~MessageConnectionTCP() noexcept {
     if (_connFd != 0) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
         shutdown(_connFd, SHUT_RDWR);
@@ -295,7 +315,7 @@ MessageConnectionTCP::~MessageConnectionTCP() {
         _connFd = 0;
     }
 
-    std::ranges::for_each(_writeOperations, [](const auto& x) { x._callbackAfterCompleteWrite(-1); });
+    std::ranges::for_each(_writeOperations, [](auto&& x) { x._callbackAfterCompleteWrite(-1); });
 
     // TODO: What to do with this?
     // std::queue<std::vector<char>> _receivedMessages;

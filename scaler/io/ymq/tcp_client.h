@@ -14,14 +14,15 @@ class TcpClient {
 public:
     using ConnectReturnCallback = Configuration::ConnectReturnCallback;
 
-    TcpClient(const TcpClient&)            = delete;
-    TcpClient& operator=(const TcpClient&) = delete;
     TcpClient(
         std::shared_ptr<EventLoopThread> eventLoopThread,
         std::string localIOSocketIdentity,
         sockaddr remoteAddr,
-        ConnectReturnCallback onConnectReturn);
-    ~TcpClient();
+        ConnectReturnCallback onConnectReturn,
+        size_t maxRetryTimes) noexcept;
+    TcpClient(const TcpClient&)            = delete;
+    TcpClient& operator=(const TcpClient&) = delete;
+    ~TcpClient() noexcept;
 
     void onCreated();
     void retry();
@@ -47,4 +48,6 @@ private:
 
     std::unique_ptr<EventManager> _eventManager;
     size_t _retryTimes;
+
+    const size_t _maxRetryTimes;
 };

@@ -13,3 +13,9 @@ target_link_libraries(timed_queue cc_ymq)
 
 add_executable(remove_iosocket remove_iosocket.cpp)
 target_link_libraries(remove_iosocket cc_ymq)
+
+add_executable(sub_client sub_client.cpp)
+target_link_libraries(sub_client cc_ymq)
+
+add_executable(pub_server pub_server.cpp)
+target_link_libraries(pub_server cc_ymq)

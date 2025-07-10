@@ -20,10 +20,10 @@ public:
         std::shared_ptr<EventLoopThread> eventLoop,
         std::string localIOSocketIdentity,
         sockaddr addr,
-        BindReturnCallback onBindReturn);
+        BindReturnCallback onBindReturn) noexcept;
     TcpServer(const TcpServer&)            = delete;
     TcpServer& operator=(const TcpServer&) = delete;
-    ~TcpServer();
+    ~TcpServer() noexcept;
 
     void onCreated();
     std::shared_ptr<EventLoopThread> _eventLoopThread;

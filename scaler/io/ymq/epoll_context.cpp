@@ -9,25 +9,25 @@
 
 void EpollContext::execPendingFunctions() {
     while (_delayedFunctions.size()) {
-        auto top = _delayedFunctions.front();
+        auto top = std::move(_delayedFunctions.front());
         top();
         _delayedFunctions.pop();
     }
 }
 
 void EpollContext::loop() {
-    std::array<epoll_event, 1024> events {};
-    int n = epoll_wait(_epfd, events.data(), 1024, -1);
+    std::array<epoll_event, _reventSize> events {};
+    int n = epoll_wait(_epfd, events.data(), _reventSize, -1);
 
     for (auto it = events.begin(); it != events.begin() + n; ++it) {
         epoll_event current_event = *it;
         auto* event               = (EventManager*)current_event.data.ptr;
         if (event == (void*)_isInterruptiveFd) {
             auto vec = _interruptiveFunctions.dequeue();
-            std::ranges::for_each(vec, [](const auto& x) { x(); });
+            std::ranges::for_each(vec, [](auto&& x) { x(); });
         } else if (event == (void*)_isTimingFd) {
             auto vec = _timingFunctions.dequeue();
-            std::ranges::for_each(vec, [](const auto& x) { x(); });
+            std::ranges::for_each(vec, [](auto& x) { x(); });
         } else {
             event->onEvents(current_event.events);
         }
@@ -56,5 +56,8 @@ int EpollContext::addFdToLoop(int fd, uint64_t events, EventManager* manager) {
 }
 
 void EpollContext::removeFdFromLoop(int fd) {
-    epoll_ctl(_epfd, EPOLL_CTL_DEL, fd, nullptr);
+    if (epoll_ctl(_epfd, EPOLL_CTL_DEL, fd, nullptr) == -1) {
+        // TODO: Update when error type is determined
+        panic("Failed to remove fd from epoll loop");
+    }
 }

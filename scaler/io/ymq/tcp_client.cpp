@@ -60,13 +60,15 @@ TcpClient::TcpClient(
     std::shared_ptr<EventLoopThread> eventLoopThread,
     std::string localIOSocketIdentity,
     sockaddr remoteAddr,
-    ConnectReturnCallback onConnectReturn)
+    ConnectReturnCallback onConnectReturn,
+    size_t maxRetryTimes) noexcept
     : _eventLoopThread(eventLoopThread)
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
     , _remoteAddr(std::move(remoteAddr))
     , _eventManager(std::make_unique<EventManager>())
     , _connected(false)
     , _onConnectReturn(std::move(onConnectReturn))
+    , _maxRetryTimes(maxRetryTimes)
     , _retryTimes {}
     , _retryIdentifier {} {
     _eventManager->onRead  = [this] { this->onRead(); };
@@ -105,7 +107,7 @@ void TcpClient::onWrite() {
 void TcpClient::onRead() {}
 
 void TcpClient::retry() {
-    if (_retryTimes > 5) {
+    if (_retryTimes > _maxRetryTimes) {
         printf("_retryTimes > %lu, has reached maximum, no more retry now\n", _retryTimes);
         exit(1);
         return;
@@ -120,7 +122,7 @@ void TcpClient::retry() {
     _retryIdentifier = _eventLoopThread->_eventLoop.executeAt(at, [this] { this->onCreated(); });
 }
 
-TcpClient::~TcpClient() {
+TcpClient::~TcpClient() noexcept {
     if (_connFd) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
         close(_connFd);

@@ -47,16 +47,16 @@ Each person maintains a todo and done list.
  - cleanup: Do not constraint thee size of identity (current maximum being 128-8 bytes)
  - make IO with send/recv msg
  - automatically destroy threads when no ioSocket is running on it
- -
- -
- -
- -
- -
- -
- -
- -
- -
- -
+ - update numbers -> constants
+ - cleanup: Change InterruptiveConcurrentQueue behavior
+ - Fix issue lambda captures being copied instead of move
+ - allow user to change how many times they want to retry
+ - cleanup: make sure when eventloop is destructed all resources is freed
+ - remove bytes ownership code 
+ - add constexpr, noexcept, overloads, explicit to the code
+ - make sure every call is moved instead of being copied
+ - iosocket behaves differently when provided with different IOSocketType
+ - Refactor: MessageConnectionTCP is easier to construct correctly
  -
  -
  -
@@ -67,19 +67,17 @@ Each person maintains a todo and done list.
  - LEAVE A FEW BLANKS HERE TO AVOID CONFLICT
 
 ## TODO:
- - cleanup: Error handling
+ - resolve github comment (there are still some)
  - cleanup: Do not use std::string as identity type
- - update numbers -> constants
- - cleanup: Change InterruptiveConcurrentQueue behavior (use FileDescriptor class)
+ - cleanup: Error handling
  - Use one consistent print logic
- - allow user to change how many times they want to retry
- - resolve github comment
  - add proper logging message
- - cleanup: make sure when eventloop is destructed all resources is freed
- -
- -
- -
- -
+ - configuration won't work because we are compiliing it on github box, figure out a new way
+ - write tests
+ - examples
+ - performance measurement
+ - Determine what happens when user close socket but there are pending send/recv
+ - multiple connectTo issue consecutively support
  -
  -
  -

@@ -22,7 +22,7 @@ class EventManager;
 // This way, the queues need not know about the event manager. We don't use callbacks.
 class EpollContext {
 public:
-    using Function             = std::function<void()>;
+    using Function             = Configuration::ExecutionFunction;
     using DelayedFunctionQueue = std::queue<Function>;
     using Identifier           = Configuration::ExecutionCancellationIdentifier;
 
@@ -67,4 +67,5 @@ private:
     InterruptiveConcurrentQueue<Function> _interruptiveFunctions;
     static const size_t _isInterruptiveFd = 0;
     static const size_t _isTimingFd       = 1;
+    static const size_t _reventSize       = 1024;
 };

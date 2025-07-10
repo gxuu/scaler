@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sys/eventfd.h>
+#include <unistd.h>
 
 // C++
 #include <cstdlib>
@@ -8,14 +9,12 @@
 
 #include "third_party/concurrentqueue.h"
 
-using moodycamel::ConcurrentQueue;
-
 class EventManager;
 
 template <typename T>
 class InterruptiveConcurrentQueue {
     int _eventFd;
-    ConcurrentQueue<T> _queue;
+    moodycamel::ConcurrentQueue<T> _queue;
 
 public:
     InterruptiveConcurrentQueue(): _queue() {
@@ -28,8 +27,8 @@ public:
 
     int eventFd() const { return _eventFd; }
 
-    void enqueue(const T& item) {
-        _queue.enqueue(item);
+    void enqueue(T item) {
+        _queue.enqueue(std::move(item));
 
         uint64_t u = 1;
         if (::eventfd_write(_eventFd, u) < 0) {
@@ -38,12 +37,11 @@ public:
         }
     }
 
-    // TODO: Change the behavior according to the original version
-    // note: this method will block until an item is available
+    // NOTE: this method will block until an item is available
     std::vector<T> dequeue() {
         uint64_t u {};
         if (::eventfd_read(_eventFd, &u) < 0) {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            if (errno != EAGAIN) {
                 printf("eventfd_read goes wrong\n");
                 exit(1);
             } else {
@@ -53,11 +51,8 @@ public:
 
         std::vector<T> vecT(u);
         for (auto i = 0uz; i < u; ++i) {
-            // We have only single consumer, so this guarantees success or something BAD
-            if (!_queue.try_dequeue(vecT[i])) {
-                printf("Try dequeu goes wrong\n");
-                exit(1);
-            }
+            while (!_queue.try_dequeue(vecT[i]))
+                ;
         }
         return vecT;
     }

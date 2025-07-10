@@ -8,6 +8,7 @@
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/message_connection.h"
+#include "scaler/io/ymq/tcp_operations.h"
 
 class EventLoopThread;
 class EventManager;
@@ -17,28 +18,6 @@ public:
     using SendMessageCallback = Configuration::SendMessageCallback;
     using RecvMessageCallback = Configuration::RecvMessageCallback;
 
-    struct TcpReadOperation {
-        size_t _cursor {};
-        uint64_t _header {};
-        Bytes _payload {};
-    };
-
-    struct TcpWriteOperation {
-        uint64_t _header;
-        Bytes _payload;
-        SendMessageCallback _callbackAfterCompleteWrite;
-
-        TcpWriteOperation(Message msg, SendMessageCallback callbackAfterCompleteWrite)
-            : _header(msg.payload.len)
-            , _payload(std::move(msg.payload))
-            , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
-
-        TcpWriteOperation(Bytes payload, SendMessageCallback callbackAfterCompleteWrite)
-            : _header(payload.len)
-            , _payload(std::move(payload))
-            , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
-    };
-
     MessageConnectionTCP(
         std::shared_ptr<EventLoopThread> eventLoopThread,
         int connFd,
@@ -46,9 +25,15 @@ public:
         sockaddr remoteAddr,
         std::string localIOSocketIdentity,
         bool responsibleForRetry,
-        std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks,
-        std::optional<std::string> remoteIOSocketIdentity = std::nullopt);
-    ~MessageConnectionTCP();
+        std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks) noexcept;
+
+    MessageConnectionTCP(
+        std::shared_ptr<EventLoopThread> eventLoopThread,
+        std::string localIOSocketIdentity,
+        std::string remoteIOSocketIdentity,
+        std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks) noexcept;
+
+    ~MessageConnectionTCP() noexcept;
 
     void onCreated();
 
@@ -86,6 +71,7 @@ private:
     std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessageCallbacks;
     std::queue<TcpReadOperation> _receivedReadOperations;
 
-    static bool isCompleteMessage(const TcpReadOperation& x);
-    friend void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn);
+    constexpr static bool isCompleteMessage(const TcpReadOperation& x);
+    friend void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;
+    friend void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept;
 };
