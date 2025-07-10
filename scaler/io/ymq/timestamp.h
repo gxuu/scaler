@@ -46,3 +46,20 @@ inline itimerspec convertToItimerspec(Timestamp ts) {
 
     return timerspec;
 }
+
+template <>
+struct std::formatter<Timestamp, char> {
+    template <class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template <class FmtContext>
+    constexpr FmtContext::iterator format(Timestamp e, FmtContext& ctx) const {
+        std::ostringstream out;
+        const auto ts {std::chrono::floor<std::chrono::seconds>(e.timestamp)};
+        const std::chrono::zoned_time z {std::chrono::current_zone(), ts};
+        out << std::format("{0:%F %T%z}", z);
+        return std::ranges::copy(std::move(out).str(), ctx.out()).out;
+    }
+};
