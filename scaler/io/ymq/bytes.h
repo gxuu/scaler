@@ -84,7 +84,7 @@ public:
         return std::string((char*)_data, _len);
     }
 
-    [[nodiscard("Allocated Bytes is not used, likely causing memory leak")]]
+    [[nodiscard("Allocated Bytes is not used, likely causing a memory leak")]]
     static Bytes alloc(size_t m_len) noexcept {
         auto ptr = new uint8_t[m_len];  // we just assume the allocation will succeed
         return Bytes {ptr, m_len};
