@@ -57,8 +57,8 @@ Each person maintains a todo and done list.
  - make sure every call is moved instead of being copied
  - iosocket behaves differently when provided with different IOSocketType
  - Refactor: MessageConnectionTCP is easier to construct correctly
- -
- -
+ - provide reference implementation of the error type (Error)
+ - reference usage of the error type
  -
  -
  -
