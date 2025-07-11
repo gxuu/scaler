@@ -31,8 +31,8 @@ int main() {
         std::string payload("Hello from the publisher\n");
 
         Message publishContent;
-        publishContent.address = Bytes(address.data(), address.size());
-        publishContent.payload = Bytes(payload.data(), payload.size());
+        publishContent.address = Bytes::copy((uint8_t*)address.data(), address.size());
+        publishContent.payload = Bytes::copy((uint8_t*)payload.data(), payload.size());
 
         auto send_promise = std::promise<void>();
         auto send_future  = send_promise.get_future();
