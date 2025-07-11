@@ -41,11 +41,12 @@ struct Error: std::exception {
     };
 
     // NOTE:
-    // Format: timestamp: error explanation : other
-    // For user calls errors,
-    // other := ["Originated from", Function Name, items...]
-    // For system calls errors,
-    // other := "Originated from", Function Name, "Errno is", strerror(errno), items...]
+    // Format:
+    //    [Timestamp, “: ", Error Explanation, ": ", Other]
+    // For user calls errors:
+    //     Other := ["Originated from", Function Name, items...]
+    // For system calls errors:
+    //     Other := ["Originated from", Function Name, "Errno is", strerror(errno), items...]
     template <typename... Args>
     Error(ErrorCode e, Args&&... args) noexcept: _errorCode(e) {
         Timestamp z;
