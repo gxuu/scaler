@@ -52,7 +52,7 @@ struct Error: std::exception {
         : _errorCode(e)
         , _logMsg(argsToString(Timestamp {}, convertErrorToExplanation(e), std::forward<Args>(args)...)) {}
 
-    static const char* convertErrorToExplanation(ErrorCode e) {
+    static constexpr std::string_view convertErrorToExplanation(ErrorCode e) noexcept {
         switch (e) {
             case ErrorCode::Uninit: return "";
             case ErrorCode::InvalidPortFormat: return "Invalid port format, example input \"tcp://127.0.0.1:2345\"";
