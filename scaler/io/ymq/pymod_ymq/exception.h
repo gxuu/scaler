@@ -17,7 +17,8 @@ extern "C" {
 
 static int YMQException_init(YMQException* self, PyObject* args, PyObject* kwds) {
     // check the args
-    PyObject *code = nullptr, *message = nullptr;
+    PyObject* code              = nullptr;
+    PyObject* message           = nullptr;
     static const char* kwlist[] = {"code", "message", nullptr};
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", (char**)kwlist, &code, &message))
         return -1;
