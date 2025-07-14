@@ -11,10 +11,10 @@
 #include "scaler/io/ymq/event_loop_thread.h"
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/message_connection_tcp.h"
+#include "scaler/io/ymq/network_utils.h"
 #include "scaler/io/ymq/tcp_client.h"
 #include "scaler/io/ymq/tcp_server.h"
 #include "scaler/io/ymq/typedefs.h"
-#include "scaler/io/ymq/utils.h"
 
 IOSocket::IOSocket(
     std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType) noexcept

@@ -43,9 +43,11 @@ target_sources(cc_ymq PRIVATE
 
   timed_queue.h
 
-  utils.h
+  network_utils.h
 
   error.h
+
+  logging.h
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/scaler/io/ymq)
