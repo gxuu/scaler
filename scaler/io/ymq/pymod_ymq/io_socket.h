@@ -224,29 +224,21 @@ static PyObject* PyIOSocket_bind_sync(PyIOSocket* self, PyObject* args, PyObject
     if (!address)
         Py_RETURN_NONE;
 
-    printf("Binding to address: %s\n", address);
-
     int error;
     std::binary_semaphore sem(0);
 
     self->socket->bindTo(std::string(address, addressLen), [&](int _error) {
-        printf("Bind callback called with error code: %d\n", _error);
         error = _error;
         sem.release();
     });
-
-    printf("Waiting for bind to complete...\n");
 
     // block the thread until the callback is called
     try {
         sem.acquire();
     } catch (const std::exception& e) {
-        printf("Exception while waiting for bind: %s\n", e.what());
         PyErr_SetString(PyExc_RuntimeError, "Failed to bind to address synchronously");
         return nullptr;
     }
-
-    printf("Bind completed with error code: %d\n", error);
 
     if (error) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to bind to address synchronously");
