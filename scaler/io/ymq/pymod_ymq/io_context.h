@@ -133,15 +133,13 @@ static PyObject* PyIOContext_createIOSocket(
         return nullptr;
     }
 
-    auto createSocketPromise = std::make_shared<std::promise<void>>();
-    auto createSocketFuture  = createSocketPromise->get_future();
-    ioSocket->socket         = self->ioContext->createIOSocket(
-        identity, socketType, [createSocketPromise] { createSocketPromise->set_value(); });
-    createSocketFuture.wait();
-    return (PyObject*)ioSocket;
+    return async_wrapper((PyObject*)self, [=](YMQState* state, PyObject* future) {
+        ioSocket->socket = self->ioContext->createIOSocket(
+            identity, socketType, [=] { future_set_result(future, [] { Py_RETURN_NONE; }); });
+    });
 }
 
-static PyObject* PyIOContext_numThreads_getter(PyIOContext* self, void* /*closure*/) {
+static PyObject* PyIOContext_numThreads_getter(PyIOContext* self, void* Py_UNUSED(closure)) {
     return PyLong_FromSize_t(self->ioContext->numThreads());
 }
 }
