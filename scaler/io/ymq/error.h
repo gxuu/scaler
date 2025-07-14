@@ -1,12 +1,10 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
 #include <cstring>
 #include <exception>  // std::terminate
 #include <format>
 #include <functional>
-#include <map>
 #include <print>
 #include <string>
 
@@ -42,7 +40,7 @@ struct Error: std::exception {
 
     // NOTE:
     // Format:
-    //    [Timestamp, “: ", Error Explanation, ": ", Other]
+    //    [Timestamp, ": ", Error Explanation, ": ", Other]
     // For user calls errors:
     //     Other := ["Originated from", Function Name, items...]
     // For system calls errors:
@@ -64,7 +62,7 @@ struct Error: std::exception {
         std::abort();
     }
 
-    const char* what() const noexcept override { return _logMsg.c_str(); }
+    constexpr const char* what() const noexcept override { return _logMsg.c_str(); }
 
     const ErrorCode _errorCode;
     const std::string _logMsg;
@@ -73,19 +71,19 @@ struct Error: std::exception {
 template <>
 struct std::formatter<Error, char> {
     template <class ParseContext>
-    constexpr ParseContext::iterator parse(ParseContext& ctx) {
+    constexpr ParseContext::iterator parse(ParseContext& ctx) noexcept {
         return ctx.begin();
     }
 
     template <class FmtContext>
-    constexpr FmtContext::iterator format(Error e, FmtContext& ctx) const {
+    constexpr FmtContext::iterator format(Error e, FmtContext& ctx) const noexcept {
         return std::ranges::copy(e._logMsg, ctx.out()).out;
     }
 };
 
 using UnrecoverableErrorFunctionHookPtr = std::function<void(Error)>;
 
-constexpr inline void defaultUnrecoverableError(const Error e) {
+constexpr inline void defaultUnrecoverableError(Error e) noexcept {
     std::print(stderr, "{}\n", e);
     std::terminate();
 }
