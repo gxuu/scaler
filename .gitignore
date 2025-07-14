@@ -27,4 +27,4 @@ dask-worker-space/*
 .clangd
 .python-version
 
-build_linux_x86_64/
+build*/
