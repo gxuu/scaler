@@ -59,7 +59,7 @@ static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwa
 }
 
 static PyObject* PyIOSocket_send_sync(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
-    PyMessage* message;
+    PyMessage* message = nullptr;
     const char* kwlist[] = {"message", nullptr};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)kwlist, &message)) {
         Py_RETURN_NONE;
@@ -133,7 +133,7 @@ static PyObject* PyIOSocket_recv_sync(PyIOSocket* self, PyObject* args) {
         return nullptr;
     }
 
-    Message message;
+    Message message = nullptr;
     std::binary_semaphore sem(0);
 
     self->socket->recvMessage([&](auto _message) {
