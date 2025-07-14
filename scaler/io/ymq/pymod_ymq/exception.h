@@ -9,9 +9,9 @@
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
 #include "ymq.h"
 
-typedef struct {
+struct YMQException {
     PyException_HEAD;
-} YMQException;
+};
 
 extern "C" {
 
