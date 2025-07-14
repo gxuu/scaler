@@ -37,7 +37,7 @@ static void PyIOSocket_dealloc(PyIOSocket* self) {
 }
 
 static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
-    PyMessage* message;
+    PyMessage* message = nullptr;
     const char* kwlist[] = {"message", nullptr};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)kwlist, &message)) {
         Py_RETURN_NONE;
