@@ -81,14 +81,14 @@ static PyObject* PyIOContext_createIOSocket(
     }
 
     // get the module state from the class
-    YmqState* state = (YmqState*)PyType_GetModuleState(clazz);
+    YMQState* state = (YMQState*)PyType_GetModuleState(clazz);
 
     if (!state) {
         // PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
         return nullptr;
     }
 
-    if (!PyObject_IsInstance(pySocketType, state->ioSocketTypeEnum)) {
+    if (!PyObject_IsInstance(pySocketType, state->PyIOSocketEnumType)) {
         PyErr_SetString(PyExc_TypeError, "Expected socket_type to be an instance of IOSocketType");
         return nullptr;
     }

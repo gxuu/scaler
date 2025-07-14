@@ -1,6 +1,7 @@
 #pragma once
 
 // Python
+#include "scaler/io/ymq/pymod_ymq/exception.h"
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
@@ -33,35 +34,6 @@ static void PyIOSocket_dealloc(PyIOSocket* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);  // Free the PyObject
 }
 
-static PyObject* PyIOSocket_method_example(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
-    return async_wrapper((PyObject*)self, [](YmqState* state, PyObject* future) {
-        // we absolutely cannot allow c++ exceptions to cross the ffi boundary
-        try {
-            using namespace std::chrono_literals;
-
-            printf("spawning thread\n");
-
-            // simulate an async call to the core for demonstration purposes
-            std::thread thread([future]() {
-                printf("thread waiting\n");
-
-                // do some "work"
-                std::this_thread::sleep_for(std::chrono::duration(3000ms));
-
-                printf("thread done waiting\n");
-
-                // notify python of completion
-                future_set_result(future, []() {
-                    // this is where we would return the result of the compution if we had any
-                    Py_RETURN_NONE;
-                });
-            });
-
-            thread.detach();
-        } catch (...) { printf("EXCEPTION!\n"); }
-    });
-}
-
 static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
     PyMessage* message;
     const char* kwlist[] = {"message", nullptr};
@@ -69,23 +41,31 @@ static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwa
         Py_RETURN_NONE;
     }
 
-    return async_wrapper((PyObject*)self, [&](YmqState* state, PyObject* future) {
+    return async_wrapper((PyObject*)self, [&](YMQState* state, PyObject* future) {
         self->socket->sendMessage(
             {.address = std::move(message->address->bytes), .payload = std::move(message->payload->bytes)},
-            [&](auto error) { future_set_result(future, []() { Py_RETURN_NONE; }); });
+            [&](auto error) {
+                // todo: after the core is updated
+                // if (error) {
+                //     future_raise_exception(
+                //         future, [state, error]() { return YMQException_fromCoreException(state, &*error); });
+                // } else {
+                    future_set_result(future, []() { Py_RETURN_NONE; });
+                // }
+            });
     });
 }
 
 static PyObject* PyIOSocket_recv(PyIOSocket* self, PyObject* args) {
-    return async_wrapper((PyObject*)self, [&](YmqState* state, PyObject* future) {
+    return async_wrapper((PyObject*)self, [&](YMQState* state, PyObject* future) {
         self->socket->recvMessage([&](auto message) {
             future_set_result(future, [&]() {
-                PyBytesYmq* address = (PyBytesYmq*)PyObject_CallNoArgs(state->PyBytesYmqType);
+                PyBytesYMQ* address = (PyBytesYMQ*)PyObject_CallNoArgs(state->PyBytesYMQType);
                 if (!address) {
                     Py_RETURN_NONE;
                 }
 
-                PyBytesYmq* payload = (PyBytesYmq*)PyObject_CallNoArgs(state->PyBytesYmqType);
+                PyBytesYMQ* payload = (PyBytesYMQ*)PyObject_CallNoArgs(state->PyBytesYMQType);
                 if (!payload) {
                     Py_DECREF(address);
                     Py_RETURN_NONE;
@@ -128,7 +108,7 @@ static PyObject* PyIOSocket_bind(PyIOSocket* self, PyObject* args, PyObject* kwa
     if (!address)
         Py_RETURN_NONE;
 
-    return async_wrapper((PyObject*)self, [](YmqState* state, PyObject* future) {
+    return async_wrapper((PyObject*)self, [](YMQState* state, PyObject* future) {
         future_set_result(future, []() { Py_RETURN_NONE; });
     });
 }
@@ -154,7 +134,7 @@ static PyObject* PyIOSocket_connect(PyIOSocket* self, PyObject* args, PyObject* 
     if (!address)
         Py_RETURN_NONE;
 
-    return async_wrapper((PyObject*)self, [](YmqState* state, PyObject* future) {
+    return async_wrapper((PyObject*)self, [](YMQState* state, PyObject* future) {
         future_set_result(future, []() { Py_RETURN_NONE; });
     });
 }
@@ -176,13 +156,13 @@ static PyObject* PyIOSocket_socket_type_getter(PyIOSocket* self, void* closure) 
         return nullptr;
     }
 
-    auto state = (YmqState*)PyModule_GetState(module);
+    auto state = (YMQState*)PyModule_GetState(module);
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
         return nullptr;
     }
 
-    IOSocketType socketType = self->socket->socketType();
+    IOSocketType socketType    = self->socket->socketType();
     PyObject* socketTypeIntObj = PyLong_FromLong((long)socketType);
 
     if (!socketTypeIntObj) {
@@ -190,7 +170,7 @@ static PyObject* PyIOSocket_socket_type_getter(PyIOSocket* self, void* closure) 
         return nullptr;
     }
 
-    PyObject* socketTypeObj = PyObject_CallOneArg(state->ioSocketTypeEnum, socketTypeIntObj);
+    PyObject* socketTypeObj = PyObject_CallOneArg(state->PyIOSocketEnumType, socketTypeIntObj);
     Py_DECREF(socketTypeIntObj);
 
     if (!socketTypeObj) {

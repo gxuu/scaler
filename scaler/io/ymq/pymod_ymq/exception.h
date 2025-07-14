@@ -3,22 +3,26 @@
 #include <Python.h>
 #include <structmember.h>
 
+#include "abstract.h"
 #include "descrobject.h"
+#include "object.h"
 #include "pyerrors.h"
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
 #include "tupleobject.h"
 
 typedef struct {
     PyException_HEAD;
-} YmqException;
+    PyObject* code;
+    PyObject* message;
+} YMQException;
 
 extern "C" {
 
-static int YmqException_init(YmqException* self, PyObject* args, PyObject* kwds) {
+static int YMQException_init(YMQException* self, PyObject* args, PyObject* kwds) {
     // check the args
-    PyObject* error             = nullptr;
-    static const char* kwlist[] = {"error", nullptr};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O", (char**)kwlist, &error))
+    PyObject *code = nullptr, *message = nullptr;
+    static const char* kwlist[] = {"code", "message", nullptr};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", (char**)kwlist, &code, &message))
         return -1;
 
     // replace with PyType_GetModuleByDef(Py_TYPE(self), &ymq_module) in a newer Python version
@@ -29,41 +33,80 @@ static int YmqException_init(YmqException* self, PyObject* args, PyObject* kwds)
         return -1;
     }
 
-    auto state = (YmqState*)PyModule_GetState(module);
+    auto state = (YMQState*)PyModule_GetState(module);
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
         return -1;
     }
 
-    if (!PyObject_IsInstance(error, state->errorEnum)) {
-        PyErr_SetString(PyExc_TypeError, "expected a value of type Error");
+    if (!PyObject_IsInstance(code, state->PyErrorCodeType)) {
+        PyErr_SetString(PyExc_TypeError, "expected code to be of type ErrorCode");
         return -1;
     }
 
-    Py_XINCREF(error);
+    if (!PyUnicode_Check(message)) {
+        PyErr_SetString(PyExc_TypeError, "expected message to be a string");
+        return -1;
+    }
 
     // delegate to the base class init
     return self->ob_base.ob_type->tp_base->tp_init((PyObject*)self, args, kwds);
 }
 
-static void YmqException_dealloc(YmqException* self) {
+static void YMQException_dealloc(YMQException* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static PyObject* YmqException_error_getter(YmqException* self, void* /*closure*/) {
-    return PyTuple_GetItem(self->args, 0);  // error is the first item in args
+static PyObject* YMQException_code_getter(YMQException* self, void* Py_UNUSED(closure)) {
+    return PyTuple_GetItem(self->args, 0);  // code is the first item in args
+}
+
+static PyObject* YMQException_message_getter(YMQException* self, void* Py_UNUSED(closure)) {
+    return PyTuple_GetItem(self->args, 1);  // message is the second item in args
 }
 }
 
-static PyGetSetDef YmqException_getset[] = {
-    {"error", (getter)YmqException_error_getter, nullptr, PyDoc_STR("error code"), nullptr}, {nullptr}  // Sentinel
+static PyGetSetDef YMQException_getset[] = {
+    {"code", (getter)YMQException_code_getter, nullptr, PyDoc_STR("error code"), nullptr},
+    {"message", (getter)YMQException_message_getter, nullptr, PyDoc_STR("error message"), nullptr},
+    {nullptr}  // Sentinel
 };
 
-static PyType_Slot YmqException_slots[] = {
-    {Py_tp_init, (void*)YmqException_init},
-    {Py_tp_dealloc, (void*)YmqException_dealloc},
-    {Py_tp_getset, (void*)YmqException_getset},
+static PyType_Slot YMQException_slots[] = {
+    {Py_tp_init, (void*)YMQException_init},
+    {Py_tp_dealloc, (void*)YMQException_dealloc},
+    {Py_tp_getset, (void*)YMQException_getset},
     {0, 0}};
 
-static PyType_Spec YmqException_spec = {
-    "ymq.YmqException", sizeof(YmqException), 0, Py_TPFLAGS_DEFAULT, YmqException_slots};
+static PyType_Spec YMQException_spec = {
+    "ymq.YMQException", sizeof(YMQException), 0, Py_TPFLAGS_DEFAULT, YMQException_slots};
+
+YMQException* YMQException_fromCoreException(YMQState* state, Error* error) {
+    PyObject* code = PyLong_FromLong(error->_errorCode);
+
+    if (!code)
+        return nullptr;
+
+    PyObject* message = PyUnicode_FromString(error->what());
+
+    if (!message) {
+        Py_DECREF(code);
+        return nullptr;
+    }
+
+    PyObject* tuple = PyTuple_Pack(2, code, message);
+
+    if (!tuple) {
+        Py_DECREF(code);
+        Py_DECREF(message);
+        return nullptr;
+    }
+
+    auto exc = (YMQException*)PyObject_CallObject(state->PyExceptionType, tuple);
+
+    Py_DECREF(code);
+    Py_DECREF(message);
+    Py_DECREF(tuple);
+
+    return exc;
+}

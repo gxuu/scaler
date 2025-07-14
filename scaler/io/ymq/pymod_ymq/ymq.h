@@ -1,22 +1,24 @@
 #pragma once
 
 // Python
+#include <format>
+
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
 
-struct YmqState {
+struct YMQState {
     PyObject* enumModule;     // Reference to the enum module
     PyObject* asyncioModule;  // Reference to the asyncio module
 
-    PyObject* ioSocketTypeEnum;  // Reference to the IOSocketType enum
-    PyObject* errorEnum;         // Reference to the Error enum
-    PyObject* PyBytesYmqType;    // Reference to the BytesYmq type
-    PyObject* PyMessageType;     // Reference to the Message type
-    PyObject* PyIOSocketType;    // Reference to the IOSocket type
-    PyObject* PyIOContextType;   // Reference to the IOContext type
-    PyObject* ExceptionType;     // Reference to the Exception type
-    PyObject* AwaitableType;     // Reference to the Awaitable type
+    PyObject* PyIOSocketEnumType;  // Reference to the IOSocketType enum
+    PyObject* PyErrorCodeType;     // Reference to the Error enum
+    PyObject* PyBytesYMQType;      // Reference to the PyBytesYMQ type
+    PyObject* PyMessageType;       // Reference to the Message type
+    PyObject* PyIOSocketType;      // Reference to the IOSocket type
+    PyObject* PyIOContextType;     // Reference to the IOContext type
+    PyObject* PyExceptionType;     // Reference to the Exception type
+    PyObject* PyAwaitableType;     // Reference to the Awaitable type
 };
 
 // C++
@@ -24,9 +26,11 @@ struct YmqState {
 #include <string>
 #include <utility>
 
+#include "scaler/io/ymq/error.h"
+
 // this function must be called from a C++ thread
 // it locks the GIL and completes a future
-static void future_set_result(PyObject* future, std::function<PyObject*()> fn) {
+static void future_do(PyObject* future, std::function<PyObject*()> fn, const char* future_method) {
     PyGILState_STATE gstate = PyGILState_Ensure();
     // begin python critical section
 
@@ -42,7 +46,7 @@ static void future_set_result(PyObject* future, std::function<PyObject*()> fn) {
             return;
         }
 
-        PyObject* set_result = PyObject_GetAttrString(future, "set_result");
+        PyObject* set_result = PyObject_GetAttrString(future, future_method);
 
         if (!set_result) {
             PyErr_SetString(PyExc_RuntimeError, "Failed to get future's set_result() method");
@@ -63,6 +67,14 @@ static void future_set_result(PyObject* future, std::function<PyObject*()> fn) {
     PyGILState_Release(gstate);
 }
 
+static void future_set_result(PyObject* future, std::function<PyObject*()> fn) {
+    return future_do(future, fn, "set_result");
+}
+
+static void future_raise_exception(PyObject* future, std::function<PyObject*()> fn) {
+    return future_do(future, fn, "set_exception");
+}
+
 // First-Party
 #include "scaler/io/ymq/pymod_ymq/async.h"
 #include "scaler/io/ymq/pymod_ymq/bytes.h"
@@ -73,26 +85,26 @@ static void future_set_result(PyObject* future, std::function<PyObject*()> fn) {
 
 extern "C" {
 
-static void ymq_free(YmqState* state) {
+static void ymq_free(YMQState* state) {
     Py_XDECREF(state->enumModule);
     Py_XDECREF(state->asyncioModule);
-    Py_XDECREF(state->ioSocketTypeEnum);
-    Py_XDECREF(state->PyBytesYmqType);
+    Py_XDECREF(state->PyIOSocketEnumType);
+    Py_XDECREF(state->PyBytesYMQType);
     Py_XDECREF(state->PyMessageType);
     Py_XDECREF(state->PyIOSocketType);
     Py_XDECREF(state->PyIOContextType);
-    Py_XDECREF(state->ExceptionType);
-    Py_XDECREF(state->AwaitableType);
+    Py_XDECREF(state->PyExceptionType);
+    Py_XDECREF(state->PyAwaitableType);
 
-    state->asyncioModule    = nullptr;
-    state->enumModule       = nullptr;
-    state->ioSocketTypeEnum = nullptr;
-    state->PyBytesYmqType   = nullptr;
-    state->PyMessageType    = nullptr;
-    state->PyIOSocketType   = nullptr;
-    state->PyIOContextType  = nullptr;
-    state->ExceptionType    = nullptr;
-    state->AwaitableType    = nullptr;
+    state->asyncioModule      = nullptr;
+    state->enumModule         = nullptr;
+    state->PyIOSocketEnumType = nullptr;
+    state->PyBytesYMQType     = nullptr;
+    state->PyMessageType      = nullptr;
+    state->PyIOSocketType     = nullptr;
+    state->PyIOContextType    = nullptr;
+    state->PyExceptionType    = nullptr;
+    state->PyAwaitableType    = nullptr;
 }
 
 static int ymq_createIntEnum(
@@ -122,7 +134,7 @@ static int ymq_createIntEnum(
         Py_DECREF(value);
     }
 
-    auto state = (YmqState*)PyModule_GetState(module);
+    auto state = (YMQState*)PyModule_GetState(module);
 
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
@@ -152,7 +164,7 @@ static int ymq_createIntEnum(
     return 0;
 }
 
-static int ymq_createIOSocketTypeEnum(PyObject* module, YmqState* state) {
+static int ymq_createIOSocketTypeEnum(PyObject* module, YMQState* state) {
     std::vector<std::pair<std::string, int>> ioSocketTypes = {
         {"Binder", (int)IOSocketType::Binder},
         {"Sub", (int)IOSocketType::Sub},
@@ -161,7 +173,7 @@ static int ymq_createIOSocketTypeEnum(PyObject* module, YmqState* state) {
         {"Router", (int)IOSocketType::Router},
         {"Pair", (int)IOSocketType::Pair}};
 
-    if (ymq_createIntEnum(module, &state->ioSocketTypeEnum, "IOSocketType", ioSocketTypes) < 0) {
+    if (ymq_createIntEnum(module, &state->PyIOSocketEnumType, "IOSocketType", ioSocketTypes) < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create IOSocketType enum");
         return -1;
     }
@@ -169,15 +181,89 @@ static int ymq_createIOSocketTypeEnum(PyObject* module, YmqState* state) {
     return 0;
 }
 
-static int ymq_createErrorEnum(PyObject* module, YmqState* state) {
-    std::vector<std::pair<std::string, int>> errorValues = {{"TODO", 0}};
+static PyObject* YMQErrorCode_explanation(PyObject* self, PyObject* Py_UNUSED(args)) {
+    auto pyValue = PyObject_GetAttrString(self, "value");
+    if (!pyValue) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get value attribute");
+        return nullptr;
+    }
 
-    if (ymq_createIntEnum(module, &state->errorEnum, "Error", errorValues) < 0) {
+    if (!PyLong_Check(pyValue)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an integer value");
+        Py_DECREF(pyValue);
+        return nullptr;
+    }
+
+    long value = PyLong_AsLong(pyValue);
+    Py_DECREF(pyValue);
+
+    if (value == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to convert value to long");
+        return nullptr;
+    }
+
+    const char* explanation = Error::convertErrorToExplanation(static_cast<Error::ErrorCode>(value));
+    if (explanation) {
+        return PyUnicode_FromString(explanation);
+    } else {
+        Py_RETURN_NONE;
+    }
+}
+
+// IDEA: CREATE AN INT ENUM AND ATTACH METHOD AFTERWARDS
+// OR: CREATE A NON-INT ENUM AND USE A TUPLE FOR THE VALUES
+static int ymq_createErrorCodeEnum(PyObject* module, YMQState* state) {
+    std::vector<std::pair<std::string, int>> errorCodeValues = {
+        {"Uninit", (int)Error::Uninit},
+        {"InvalidPortFormat", (int)Error::InvalidPortFormat},
+        {"InvalidAddressFormat", (int)Error::InvalidAddressFormat},
+        {"ConfigurationError", (int)Error::ConfigurationError},
+        {"End", (int)Error::End}};
+
+    if (ymq_createIntEnum(module, &state->PyErrorCodeType, "ErrorCode", errorCodeValues) < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create Error enum");
         return -1;
     }
 
+    static PyMethodDef YMQErrorCode_explanation_def = {
+        "explanation",
+        (PyCFunction)YMQErrorCode_explanation,
+        METH_NOARGS,
+        PyDoc_STR("Returns an explanation of a YMQ error code")};
+
+    auto iter = PyObject_GetIter(state->PyErrorCodeType);
+    if (!iter) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get iterator for Error enum");
+        return -1;
+    }
+
+    // is this the best way to add a method to each enum item?
+    // in python you can just write: MyEnum.new_method = ...
+    // for some reason this does not seem to work with the c api
+    // docs and examples are unfortunately scarce for this
+    // for now this will work just fine
+    PyObject* item;
+    while ((item = PyIter_Next(iter)) != nullptr) {
+        auto fn = PyCMethod_New(&YMQErrorCode_explanation_def, item, module, nullptr);
+        if (!fn) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to create description method");
+            return -1;
+        }
+
+        if (PyObject_SetAttrString(item, "explanation", fn) < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to set explanation method on Error enum item");
+            Py_DECREF(item);
+            Py_DECREF(fn);
+            Py_DECREF(iter);
+            return -1;
+        }
+        Py_DECREF(item);
+        Py_DECREF(fn);
+    }
+
+    Py_DECREF(iter);
     return 0;
+}
 }
 
 static int ymq_createType(
@@ -205,7 +291,7 @@ static int ymq_createType(
 }
 
 static int ymq_exec(PyObject* module) {
-    auto state = (YmqState*)PyModule_GetState(module);
+    auto state = (YMQState*)PyModule_GetState(module);
 
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
@@ -229,10 +315,10 @@ static int ymq_exec(PyObject* module) {
     if (ymq_createIOSocketTypeEnum(module, state) < 0)
         return -1;
 
-    if (ymq_createErrorEnum(module, state) < 0)
+    if (ymq_createErrorCodeEnum(module, state) < 0)
         return -1;
 
-    if (ymq_createType(module, &state->PyBytesYmqType, &PyBytesYmq_spec, "Bytes") < 0)
+    if (ymq_createType(module, &state->PyBytesYMQType, &PyBytesYMQ_spec, "Bytes") < 0)
         return -1;
 
     if (ymq_createType(module, &state->PyMessageType, &PyMessage_spec, "Message") < 0)
@@ -244,14 +330,13 @@ static int ymq_exec(PyObject* module) {
     if (ymq_createType(module, &state->PyIOContextType, &PyIOContext_spec, "IOContext") < 0)
         return -1;
 
-    if (ymq_createType(module, &state->ExceptionType, &YmqException_spec, "YmqException", true, PyExc_Exception) < 0)
+    if (ymq_createType(module, &state->PyExceptionType, &YMQException_spec, "Exception", true, PyExc_Exception) < 0)
         return -1;
 
-    if (ymq_createType(module, &state->AwaitableType, &Awaitable_spec, "Awaitable", false) < 0)
+    if (ymq_createType(module, &state->PyAwaitableType, &Awaitable_spec, "Awaitable", false) < 0)
         return -1;
 
     return 0;
-}
 }
 
 static PyModuleDef_Slot ymq_slots[] = {{Py_mod_exec, (void*)ymq_exec}, {0, NULL}};
@@ -260,7 +345,7 @@ static PyModuleDef ymq_module = {
     .m_base  = PyModuleDef_HEAD_INIT,
     .m_name  = "ymq",
     .m_doc   = PyDoc_STR("YMQ Python bindings"),
-    .m_size  = sizeof(YmqState),
+    .m_size  = sizeof(YMQState),
     .m_slots = ymq_slots,
     .m_free  = (freefunc)ymq_free,
 };
