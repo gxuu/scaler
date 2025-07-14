@@ -11,9 +11,10 @@
 #include "scaler/io/ymq/event_loop_thread.h"
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/io_socket.h"
+#include "scaler/io/ymq/logging.h"
 #include "scaler/io/ymq/message_connection_tcp.h"
+#include "scaler/io/ymq/network_utils.h"
 #include "scaler/io/ymq/timestamp.h"
-#include "scaler/io/ymq/utils.h"
 
 void TcpClient::onCreated() {
     int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -113,6 +114,7 @@ void TcpClient::retry() {
         return;
     }
 
+    log(LoggingLevel::debug, "Client retrying times", _retryTimes);
     close(_connFd);
     _connFd = 0;
 

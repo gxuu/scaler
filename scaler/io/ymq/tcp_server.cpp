@@ -13,7 +13,7 @@
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/message_connection_tcp.h"
-#include "scaler/io/ymq/utils.h"
+#include "scaler/io/ymq/network_utils.h"
 
 int TcpServer::createAndBindSocket() {
     int server_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
