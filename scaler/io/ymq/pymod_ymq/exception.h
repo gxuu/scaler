@@ -74,7 +74,8 @@ static PyType_Slot YMQException_slots[] = {
     {Py_tp_init, (void*)YMQException_init},
     {Py_tp_dealloc, (void*)YMQException_dealloc},
     {Py_tp_getset, (void*)YMQException_getset},
-    {0, 0}};
+    {0, 0},
+};
 
 static PyType_Spec YMQException_spec = {
     "ymq.YMQException", sizeof(YMQException), 0, Py_TPFLAGS_DEFAULT, YMQException_slots};
