@@ -2,6 +2,7 @@
 
 // Python
 #include <format>
+#include <string_view>
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
@@ -202,23 +203,19 @@ static PyObject* YMQErrorCode_explanation(PyObject* self, PyObject* Py_UNUSED(ar
         return nullptr;
     }
 
-    const char* explanation = Error::convertErrorToExplanation(static_cast<Error::ErrorCode>(value));
-    if (explanation) {
-        return PyUnicode_FromString(explanation);
-    } else {
-        Py_RETURN_NONE;
-    }
+    std::string_view explanation = Error::convertErrorToExplanation(static_cast<Error::ErrorCode>(value));
+    return PyUnicode_FromString(std::string(explanation).c_str());
 }
 
 // IDEA: CREATE AN INT ENUM AND ATTACH METHOD AFTERWARDS
 // OR: CREATE A NON-INT ENUM AND USE A TUPLE FOR THE VALUES
 static int ymq_createErrorCodeEnum(PyObject* module, YMQState* state) {
     std::vector<std::pair<std::string, int>> errorCodeValues = {
-        {"Uninit", (int)Error::Uninit},
-        {"InvalidPortFormat", (int)Error::InvalidPortFormat},
-        {"InvalidAddressFormat", (int)Error::InvalidAddressFormat},
-        {"ConfigurationError", (int)Error::ConfigurationError},
-        {"End", (int)Error::End}};
+        {"Uninit", (int)Error::ErrorCode::Uninit},
+        {"InvalidPortFormat", (int)Error::ErrorCode::InvalidPortFormat},
+        {"InvalidAddressFormat", (int)Error::ErrorCode::InvalidAddressFormat},
+        {"ConfigurationError", (int)Error::ErrorCode::ConfigurationError},
+    };
 
     if (ymq_createIntEnum(module, &state->PyErrorCodeType, "ErrorCode", errorCodeValues) < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create Error enum");

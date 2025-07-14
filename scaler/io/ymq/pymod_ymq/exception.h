@@ -82,7 +82,7 @@ static PyType_Spec YMQException_spec = {
     "ymq.YMQException", sizeof(YMQException), 0, Py_TPFLAGS_DEFAULT, YMQException_slots};
 
 YMQException* YMQException_fromCoreException(YMQState* state, Error* error) {
-    PyObject* code = PyLong_FromLong(error->_errorCode);
+    PyObject* code = PyLong_FromLong((long)error->_errorCode);
 
     if (!code)
         return nullptr;
