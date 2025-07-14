@@ -18,7 +18,7 @@ consteval auto getFormatString() {
     std::string str = "{}";
     for (size_t i = 1; i < N; ++i)
         str += ": {}";
-    std::array<char, (N - 1) * 4 + 3> arr;
+    std::array<char, (N - 1) * 4 + 2> arr;
     std::ranges::copy(str, arr.begin());
     return arr;
 }
