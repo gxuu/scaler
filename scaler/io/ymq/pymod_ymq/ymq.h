@@ -1,12 +1,19 @@
 #pragma once
 
 // Python
-#include <format>
-#include <string_view>
-
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
+
+// C++
+#include <format>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <utility>
+
+// First-party
+#include "scaler/io/ymq/error.h"
 
 struct YMQState {
     PyObject* enumModule;     // Reference to the enum module
@@ -21,13 +28,6 @@ struct YMQState {
     PyObject* PyExceptionType;     // Reference to the Exception type
     PyObject* PyAwaitableType;     // Reference to the Awaitable type
 };
-
-// C++
-#include <functional>
-#include <string>
-#include <utility>
-
-#include "scaler/io/ymq/error.h"
 
 // this function must be called from a C++ thread
 // it locks the GIL and completes a future

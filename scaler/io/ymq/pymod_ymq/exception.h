@@ -1,19 +1,16 @@
 #pragma once
 
+// Python
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
 
-#include "abstract.h"
-#include "descrobject.h"
-#include "object.h"
-#include "pyerrors.h"
+// First-party
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
-#include "tupleobject.h"
+#include "ymq.h"
 
 typedef struct {
     PyException_HEAD;
-    PyObject* code;
-    PyObject* message;
 } YMQException;
 
 extern "C" {
@@ -58,11 +55,11 @@ static void YMQException_dealloc(YMQException* self) {
 }
 
 static PyObject* YMQException_code_getter(YMQException* self, void* Py_UNUSED(closure)) {
-    return PyTuple_GetItem(self->args, 0);  // code is the first item in args
+    return PySequence_GetItem(self->args, 0);  // code is the first item in args
 }
 
 static PyObject* YMQException_message_getter(YMQException* self, void* Py_UNUSED(closure)) {
-    return PyTuple_GetItem(self->args, 1);  // message is the second item in args
+    return PySequence_GetItem(self->args, 1);  // message is the second item in args
 }
 }
 

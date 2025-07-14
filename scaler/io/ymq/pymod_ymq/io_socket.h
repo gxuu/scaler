@@ -1,7 +1,6 @@
 #pragma once
 
 // Python
-#include "scaler/io/ymq/bytes.h"
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
@@ -13,6 +12,7 @@
 #include <thread>
 
 // First-party
+#include "scaler/io/ymq/bytes.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/message.h"
 #include "scaler/io/ymq/pymod_ymq/async.h"
@@ -52,7 +52,7 @@ static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwa
                 //     future_raise_exception(
                 //         future, [state, error]() { return YMQException_fromCoreException(state, &*error); });
                 // } else {
-                    future_set_result(future, []() { Py_RETURN_NONE; });
+                future_set_result(future, []() { Py_RETURN_NONE; });
                 // }
             });
     });
