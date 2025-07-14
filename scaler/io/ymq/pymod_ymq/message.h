@@ -20,13 +20,13 @@ extern "C" {
 static int PyMessage_init(PyMessage* self, PyObject* args, PyObject* kwds) {
     // replace with PyType_GetModuleByDef(Py_TYPE(self), &ymq_module) in a newer Python version
     // https://docs.python.org/3/c-api/type.html#c.PyType_GetModuleByDef
-    PyObject* module = PyType_GetModule(Py_TYPE(self));
-    if (!module) {
+    PyObject* pyModule = PyType_GetModule(Py_TYPE(self));
+    if (!pyModule) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module for Message type");
         return -1;
     }
 
-    auto state = (YMQState*)PyModule_GetState(module);
+    auto state = (YMQState*)PyModule_GetState(pyModule);
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
         return -1;

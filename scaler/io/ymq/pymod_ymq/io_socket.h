@@ -121,13 +121,13 @@ static PyObject* PyIOSocket_recv(PyIOSocket* self, PyObject* args) {
 static PyObject* PyIOSocket_recv_sync(PyIOSocket* self, PyObject* args) {
     // replace with PyType_GetModuleByDef(Py_TYPE(self), &ymq_module) in a newer Python version
     // https://docs.python.org/3/c-api/type.html#c.PyType_GetModuleByDef
-    PyObject* module = PyType_GetModule(Py_TYPE(self));
-    if (!module) {
+    PyObject* pyModule = PyType_GetModule(Py_TYPE(self));
+    if (!pyModule) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module for Message type");
         return nullptr;
     }
 
-    auto state = (YMQState*)PyModule_GetState(module);
+    auto state = (YMQState*)PyModule_GetState(pyModule);
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
         return nullptr;
@@ -342,13 +342,13 @@ static PyObject* PyIOSocket_identity_getter(PyIOSocket* self, void* closure) {
 static PyObject* PyIOSocket_socket_type_getter(PyIOSocket* self, void* closure) {
     // replace with PyType_GetModuleByDef(Py_TYPE(self), &ymq_module) in a newer Python version
     // https://docs.python.org/3/c-api/type.html#c.PyType_GetModuleByDef
-    PyObject* module = PyType_GetModule(Py_TYPE(self));
-    if (!module) {
+    PyObject* pyModule = PyType_GetModule(Py_TYPE(self));
+    if (!pyModule) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module for Message type");
         return nullptr;
     }
 
-    auto state = (YMQState*)PyModule_GetState(module);
+    auto state = (YMQState*)PyModule_GetState(pyModule);
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
         return nullptr;

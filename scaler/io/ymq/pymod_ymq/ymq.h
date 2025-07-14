@@ -109,7 +109,7 @@ static void ymq_free(YMQState* state) {
 }
 
 static int ymq_createIntEnum(
-    PyObject* module, PyObject** storage, std::string enumName, std::vector<std::pair<std::string, int>> entries) {
+    PyObject* pyModule, PyObject** storage, std::string enumName, std::vector<std::pair<std::string, int>> entries) {
     // create a python dictionary to hold the entries
     auto enumDict = PyDict_New();
     if (!enumDict) {
@@ -135,7 +135,7 @@ static int ymq_createIntEnum(
         Py_DECREF(value);
     }
 
-    auto state = (YMQState*)PyModule_GetState(module);
+    auto state = (YMQState*)PyModule_GetState(pyModule);
 
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
@@ -156,7 +156,7 @@ static int ymq_createIntEnum(
 
     // add the class to the module
     // this increments the reference count of enumClass
-    if (PyModule_AddObjectRef(module, enumName.c_str(), enumClass) < 0) {
+    if (PyModule_AddObjectRef(pyModule, enumName.c_str(), enumClass) < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to add IntEnum class to module");
         Py_DECREF(enumClass);
         return -1;
@@ -165,7 +165,7 @@ static int ymq_createIntEnum(
     return 0;
 }
 
-static int ymq_createIOSocketTypeEnum(PyObject* module, YMQState* state) {
+static int ymq_createIOSocketTypeEnum(PyObject* pyModule, YMQState* state) {
     std::vector<std::pair<std::string, int>> ioSocketTypes = {
         {"Binder", (int)IOSocketType::Binder},
         {"Sub", (int)IOSocketType::Sub},
@@ -174,7 +174,7 @@ static int ymq_createIOSocketTypeEnum(PyObject* module, YMQState* state) {
         {"Router", (int)IOSocketType::Router},
         {"Pair", (int)IOSocketType::Pair}};
 
-    if (ymq_createIntEnum(module, &state->PyIOSocketEnumType, "IOSocketType", ioSocketTypes) < 0) {
+    if (ymq_createIntEnum(pyModule, &state->PyIOSocketEnumType, "IOSocketType", ioSocketTypes) < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create IOSocketType enum");
         return -1;
     }
@@ -209,7 +209,7 @@ static PyObject* YMQErrorCode_explanation(PyObject* self, PyObject* Py_UNUSED(ar
 
 // IDEA: CREATE AN INT ENUM AND ATTACH METHOD AFTERWARDS
 // OR: CREATE A NON-INT ENUM AND USE A TUPLE FOR THE VALUES
-static int ymq_createErrorCodeEnum(PyObject* module, YMQState* state) {
+static int ymq_createErrorCodeEnum(PyObject* pyModule, YMQState* state) {
     std::vector<std::pair<std::string, int>> errorCodeValues = {
         {"Uninit", (int)Error::ErrorCode::Uninit},
         {"InvalidPortFormat", (int)Error::ErrorCode::InvalidPortFormat},
@@ -217,7 +217,7 @@ static int ymq_createErrorCodeEnum(PyObject* module, YMQState* state) {
         {"ConfigurationError", (int)Error::ErrorCode::ConfigurationError},
     };
 
-    if (ymq_createIntEnum(module, &state->PyErrorCodeType, "ErrorCode", errorCodeValues) < 0) {
+    if (ymq_createIntEnum(pyModule, &state->PyErrorCodeType, "ErrorCode", errorCodeValues) < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create Error enum");
         return -1;
     }
@@ -241,7 +241,7 @@ static int ymq_createErrorCodeEnum(PyObject* module, YMQState* state) {
     // for now this will work just fine
     PyObject* item;
     while ((item = PyIter_Next(iter)) != nullptr) {
-        auto fn = PyCMethod_New(&YMQErrorCode_explanation_def, item, module, nullptr);
+        auto fn = PyCMethod_New(&YMQErrorCode_explanation_def, item, pyModule, nullptr);
         if (!fn) {
             PyErr_SetString(PyExc_RuntimeError, "Failed to create description method");
             return -1;
@@ -264,13 +264,13 @@ static int ymq_createErrorCodeEnum(PyObject* module, YMQState* state) {
 }
 
 static int ymq_createType(
-    PyObject* module,
+    PyObject* pyModule,
     PyObject** storage,
     PyType_Spec* spec,
     const char* name,
     bool add        = true,
     PyObject* bases = nullptr) {
-    *storage = PyType_FromModuleAndSpec(module, spec, bases);
+    *storage = PyType_FromModuleAndSpec(pyModule, spec, bases);
 
     if (!*storage) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create type from spec");
@@ -278,7 +278,7 @@ static int ymq_createType(
     }
 
     if (add)
-        if (PyModule_AddObjectRef(module, name, *storage) < 0) {
+        if (PyModule_AddObjectRef(pyModule, name, *storage) < 0) {
             PyErr_SetString(PyExc_RuntimeError, "Failed to add type to module");
             Py_DECREF(*storage);
             return -1;
@@ -287,8 +287,8 @@ static int ymq_createType(
     return 0;
 }
 
-static int ymq_exec(PyObject* module) {
-    auto state = (YMQState*)PyModule_GetState(module);
+static int ymq_exec(PyObject* pyModule) {
+    auto state = (YMQState*)PyModule_GetState(pyModule);
 
     if (!state) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
@@ -309,28 +309,29 @@ static int ymq_exec(PyObject* module) {
         return -1;
     }
 
-    if (ymq_createIOSocketTypeEnum(module, state) < 0)
+    if (ymq_createIOSocketTypeEnum(pyModule, state) < 0)
         return -1;
 
-    if (ymq_createErrorCodeEnum(module, state) < 0)
+    if (ymq_createErrorCodeEnum(pyModule, state) < 0)
         return -1;
 
-    if (ymq_createType(module, &state->PyBytesYMQType, &PyBytesYMQ_spec, "Bytes") < 0)
+    if (ymq_createType(pyModule, &state->PyBytesYMQType, &PyBytesYMQ_spec, "Bytes") < 0)
         return -1;
 
-    if (ymq_createType(module, &state->PyMessageType, &PyMessage_spec, "Message") < 0)
+    if (ymq_createType(pyModule, &state->PyMessageType, &PyMessage_spec, "Message") < 0)
         return -1;
 
-    if (ymq_createType(module, &state->PyIOSocketType, &PyIOSocket_spec, "IOSocket") < 0)
+    if (ymq_createType(pyModule, &state->PyIOSocketType, &PyIOSocket_spec, "IOSocket") < 0)
         return -1;
 
-    if (ymq_createType(module, &state->PyIOContextType, &PyIOContext_spec, "IOContext") < 0)
+    if (ymq_createType(pyModule, &state->PyIOContextType, &PyIOContext_spec, "IOContext") < 0)
         return -1;
 
-    if (ymq_createType(module, &state->PyExceptionType, &YMQException_spec, "YMQException", true, PyExc_Exception) < 0)
+    if (ymq_createType(pyModule, &state->PyExceptionType, &YMQException_spec, "YMQException", true, PyExc_Exception) <
+        0)
         return -1;
 
-    if (ymq_createType(module, &state->PyAwaitableType, &Awaitable_spec, "Awaitable", false) < 0)
+    if (ymq_createType(pyModule, &state->PyAwaitableType, &Awaitable_spec, "Awaitable", false) < 0)
         return -1;
 
     return 0;
