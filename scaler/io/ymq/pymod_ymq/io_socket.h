@@ -1,7 +1,7 @@
 #pragma once
 
 // Python
-#include "scaler/io/ymq/pymod_ymq/exception.h"
+#include "scaler/io/ymq/bytes.h"
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
@@ -9,10 +9,12 @@
 // C++
 #include <chrono>
 #include <memory>
+#include <semaphore>
 #include <thread>
 
 // First-party
 #include "scaler/io/ymq/io_socket.h"
+#include "scaler/io/ymq/message.h"
 #include "scaler/io/ymq/pymod_ymq/async.h"
 #include "scaler/io/ymq/pymod_ymq/bytes.h"
 #include "scaler/io/ymq/pymod_ymq/message.h"
@@ -56,6 +58,35 @@ static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwa
     });
 }
 
+static PyObject* PyIOSocket_send_sync(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
+    PyMessage* message;
+    const char* kwlist[] = {"message", nullptr};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)kwlist, &message)) {
+        Py_RETURN_NONE;
+    }
+
+    std::binary_semaphore sem(0);
+    int error = 0;
+
+    self->socket->sendMessage(
+        {.address = message->address ? std::move(message->address->bytes) : Bytes::empty(),
+         .payload = std::move(message->payload->bytes)},
+        [&](int _error) {
+            error = _error;
+            sem.release();
+        });
+
+    // block the thread until the callback is called
+    sem.acquire();
+
+    if (error) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to send message synchronously");
+        return nullptr;
+    }
+
+    Py_RETURN_NONE;
+}
+
 static PyObject* PyIOSocket_recv(PyIOSocket* self, PyObject* args) {
     return async_wrapper((PyObject*)self, [&](YMQState* state, PyObject* future) {
         self->socket->recvMessage([&](auto message) {
@@ -87,6 +118,56 @@ static PyObject* PyIOSocket_recv(PyIOSocket* self, PyObject* args) {
     });
 }
 
+static PyObject* PyIOSocket_recv_sync(PyIOSocket* self, PyObject* args) {
+    // replace with PyType_GetModuleByDef(Py_TYPE(self), &ymq_module) in a newer Python version
+    // https://docs.python.org/3/c-api/type.html#c.PyType_GetModuleByDef
+    PyObject* module = PyType_GetModule(Py_TYPE(self));
+    if (!module) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get module for Message type");
+        return nullptr;
+    }
+
+    auto state = (YMQState*)PyModule_GetState(module);
+    if (!state) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get module state");
+        return nullptr;
+    }
+
+    Message message;
+    std::binary_semaphore sem(0);
+
+    self->socket->recvMessage([&](auto _message) {
+        message = std::move(_message);
+        sem.release();
+    });
+
+    // block the thread until the callback is called
+    sem.acquire();
+
+    PyBytesYMQ* address = (PyBytesYMQ*)PyObject_CallNoArgs(state->PyBytesYMQType);
+    if (!address) {
+        Py_RETURN_NONE;
+    }
+
+    PyBytesYMQ* payload = (PyBytesYMQ*)PyObject_CallNoArgs(state->PyBytesYMQType);
+    if (!payload) {
+        Py_DECREF(address);
+        Py_RETURN_NONE;
+    }
+
+    address->bytes = std::move(message.address);
+    payload->bytes = std::move(message.payload);
+
+    PyMessage* pyMessage = (PyMessage*)PyObject_CallFunction(state->PyMessageType, "OO", address, payload);
+    if (!pyMessage) {
+        Py_DECREF(address);
+        Py_DECREF(payload);
+        Py_RETURN_NONE;
+    }
+
+    return (PyObject*)pyMessage;
+}
+
 static PyObject* PyIOSocket_bind(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
     PyObject* addressObj;
     const char* kwlist[] = {"address", nullptr};
@@ -108,9 +189,71 @@ static PyObject* PyIOSocket_bind(PyIOSocket* self, PyObject* args, PyObject* kwa
     if (!address)
         Py_RETURN_NONE;
 
-    return async_wrapper((PyObject*)self, [](YMQState* state, PyObject* future) {
-        future_set_result(future, []() { Py_RETURN_NONE; });
+    return async_wrapper((PyObject*)self, [=](YMQState* state, PyObject* future) {
+        self->socket->bindTo(std::string(address, addressLen), [=](auto error) {
+            future_set_result(future, [=]() {
+                if (error) {
+                    PyErr_SetString(PyExc_RuntimeError, "Failed to bind to address");
+                    return (PyObject*)nullptr;
+                }
+
+                Py_RETURN_NONE;
+            });
+        });
     });
+}
+
+static PyObject* PyIOSocket_bind_sync(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
+    PyObject* addressObj;
+    const char* kwlist[] = {"address", nullptr};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)kwlist, &addressObj)) {
+        PyErr_SetString(PyExc_TypeError, "expected one argument: address");
+        Py_RETURN_NONE;
+    }
+
+    if (!PyUnicode_Check(addressObj)) {
+        Py_DECREF(addressObj);
+
+        PyErr_SetString(PyExc_TypeError, "argument must be a str");
+        Py_RETURN_NONE;
+    }
+
+    Py_ssize_t addressLen;
+    const char* address = PyUnicode_AsUTF8AndSize(addressObj, &addressLen);
+
+    if (!address)
+        Py_RETURN_NONE;
+
+    printf("Binding to address: %s\n", address);
+
+    int error;
+    std::binary_semaphore sem(0);
+
+    self->socket->bindTo(std::string(address, addressLen), [&](int _error) {
+        printf("Bind callback called with error code: %d\n", _error);
+        error = _error;
+        sem.release();
+    });
+
+    printf("Waiting for bind to complete...\n");
+
+    // block the thread until the callback is called
+    try {
+        sem.acquire();
+    } catch (const std::exception& e) {
+        printf("Exception while waiting for bind: %s\n", e.what());
+        PyErr_SetString(PyExc_RuntimeError, "Failed to bind to address synchronously");
+        return nullptr;
+    }
+
+    printf("Bind completed with error code: %d\n", error);
+
+    if (error) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to bind to address synchronously");
+        return nullptr;
+    }
+
+    Py_RETURN_NONE;
 }
 
 static PyObject* PyIOSocket_connect(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
@@ -134,9 +277,58 @@ static PyObject* PyIOSocket_connect(PyIOSocket* self, PyObject* args, PyObject* 
     if (!address)
         Py_RETURN_NONE;
 
-    return async_wrapper((PyObject*)self, [](YMQState* state, PyObject* future) {
-        future_set_result(future, []() { Py_RETURN_NONE; });
+    return async_wrapper((PyObject*)self, [=](YMQState* state, PyObject* future) {
+        self->socket->connectTo(std::string(address, addressLen), [=](auto error) {
+            future_set_result(future, [=]() {
+                if (error) {
+                    PyErr_SetString(PyExc_RuntimeError, "Failed to connect to address");
+                    return (PyObject*)nullptr;
+                }
+
+                Py_RETURN_NONE;
+            });
+        });
     });
+}
+
+static PyObject* PyIOSocket_connect_sync(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
+    PyObject* addressObj;
+    const char* kwlist[] = {"address", nullptr};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)kwlist, &addressObj)) {
+        PyErr_SetString(PyExc_TypeError, "expected one argument: address");
+        Py_RETURN_NONE;
+    }
+
+    if (!PyUnicode_Check(addressObj)) {
+        Py_DECREF(addressObj);
+
+        PyErr_SetString(PyExc_TypeError, "argument must be a str");
+        Py_RETURN_NONE;
+    }
+
+    Py_ssize_t addressLen;
+    const char* address = PyUnicode_AsUTF8AndSize(addressObj, &addressLen);
+
+    if (!address)
+        Py_RETURN_NONE;
+
+    int error;
+    std::binary_semaphore sem(0);
+
+    self->socket->connectTo(std::string(address, addressLen), [&](int _error) {
+        error = _error;
+        sem.release();
+    });
+
+    // block the thread until the callback is called
+    sem.acquire();
+
+    if (error) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to connect to address synchronously");
+        return nullptr;
+    }
+
+    Py_RETURN_NONE;
 }
 
 static PyObject* PyIOSocket_repr(PyIOSocket* self) {
@@ -196,6 +388,19 @@ static PyMethodDef PyIOSocket_methods[] = {
      PyDoc_STR("Bind to an address and listen for incoming connections")},
     {"connect",
      (PyCFunction)PyIOSocket_connect,
+     METH_VARARGS | METH_KEYWORDS,
+     PyDoc_STR("Connect to a remote IOSocket")},
+    {"send_sync",
+     (PyCFunction)PyIOSocket_send_sync,
+     METH_VARARGS | METH_KEYWORDS,
+     PyDoc_STR("Send data through the IOSocket synchronously")},
+    {"recv_sync", (PyCFunction)PyIOSocket_recv_sync, METH_NOARGS, PyDoc_STR("Receive data from the IOSocket")},
+    {"bind_sync",
+     (PyCFunction)PyIOSocket_bind_sync,
+     METH_VARARGS | METH_KEYWORDS,
+     PyDoc_STR("Bind to an address and listen for incoming connections")},
+    {"connect_sync",
+     (PyCFunction)PyIOSocket_connect_sync,
      METH_VARARGS | METH_KEYWORDS,
      PyDoc_STR("Connect to a remote IOSocket")},
     {nullptr, nullptr, 0, nullptr}};

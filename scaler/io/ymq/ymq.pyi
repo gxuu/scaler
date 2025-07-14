@@ -21,7 +21,7 @@ class Message:
     address: Bytes
     payload: Bytes
 
-    def __init__(self, address: Bytes | SupportsBytes, payload: Bytes | SupportsBytes) -> None: ...
+    def __init__(self, address: Bytes | bytes | SupportsBytes | None, payload: Bytes | bytes | SupportsBytes) -> None: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
 
@@ -59,12 +59,27 @@ class IOSocket:
     async def connect(self, address: str) -> None:
         """Connect to a remote socket"""
 
-class Error(IntEnum):
-    TODO = 0
+    def send_sync(self, message: Message) -> None:
+        """Send a message to one of the socket's peers synchronously"""
+    def recv_sync(self) -> Message:
+        """Receive a message from one of the socket's peers synchronously"""
+    def bind_sync(self, address: str) -> None:
+        """Bind the socket to an address and listen for incoming connections synchronously"""
+    def connect_sync(self, address: str) -> None:
+        """Connect to a remote socket synchronously"""
 
-class YmqException(Exception):
-    error: Error
+class ErrorCode(IntEnum):
+    Uninit = 0
+    InvalidPortFormat = 1
+    InvalidAddressFormat = 2
+    ConfigurationError = 3
 
-    def __init__(self, error: Error) -> None: ...
+    def explanation(self) -> str: ...
+
+class YMQException(Exception):
+    code: ErrorCode
+    message: str
+
+    def __init__(self, code: ErrorCode, message: str) -> None: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
