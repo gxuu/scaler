@@ -71,8 +71,8 @@ static PyObject* PyIOSocket_send_sync(PyIOSocket* self, PyObject* args, PyObject
     self->socket->sendMessage(
         {.address = message->address ? std::move(message->address->bytes) : Bytes::empty(),
          .payload = std::move(message->payload->bytes)},
-        [&](int _error) {
-            error = _error;
+        [&](int e) {
+            error = e;
             sem.release();
         });
 
