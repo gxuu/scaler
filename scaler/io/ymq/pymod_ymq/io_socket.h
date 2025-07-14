@@ -7,8 +7,8 @@
 
 // C++
 #include <chrono>
+#include <latch>
 #include <memory>
-#include <semaphore>
 #include <thread>
 
 // First-party
@@ -37,7 +37,7 @@ static void PyIOSocket_dealloc(PyIOSocket* self) {
 }
 
 static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
-    PyMessage* message = nullptr;
+    PyMessage* message   = nullptr;
     const char* kwlist[] = {"message", nullptr};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)kwlist, &message)) {
         Py_RETURN_NONE;
@@ -59,13 +59,13 @@ static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwa
 }
 
 static PyObject* PyIOSocket_send_sync(PyIOSocket* self, PyObject* args, PyObject* kwargs) {
-    PyMessage* message = nullptr;
+    PyMessage* message   = nullptr;
     const char* kwlist[] = {"message", nullptr};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)kwlist, &message)) {
         Py_RETURN_NONE;
     }
 
-    std::binary_semaphore sem(0);
+    std::latch waiter(1);
     int error = 0;
 
     self->socket->sendMessage(
@@ -73,11 +73,16 @@ static PyObject* PyIOSocket_send_sync(PyIOSocket* self, PyObject* args, PyObject
          .payload = std::move(message->payload->bytes)},
         [&](int e) {
             error = e;
-            sem.release();
+            waiter.count_down();
         });
 
     // block the thread until the callback is called
-    sem.acquire();
+    try {
+        waiter.wait();
+    } catch (const std::exception& e) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to bind to send synchronously");
+        return nullptr;
+    }
 
     if (error) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to send message synchronously");
@@ -133,16 +138,22 @@ static PyObject* PyIOSocket_recv_sync(PyIOSocket* self, PyObject* args) {
         return nullptr;
     }
 
-    Message message = nullptr;
-    std::binary_semaphore sem(0);
+    Message message;
+    std::latch waiter(1);
 
     self->socket->recvMessage([&](auto _message) {
         message = std::move(_message);
-        sem.release();
+        waiter.count_down();
     });
 
     // block the thread until the callback is called
-    sem.acquire();
+    // block the thread until the callback is called
+    try {
+        waiter.wait();
+    } catch (const std::exception& e) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to bind to recv synchronously");
+        return nullptr;
+    }
 
     PyBytesYMQ* address = (PyBytesYMQ*)PyObject_CallNoArgs(state->PyBytesYMQType);
     if (!address) {
@@ -225,16 +236,16 @@ static PyObject* PyIOSocket_bind_sync(PyIOSocket* self, PyObject* args, PyObject
         Py_RETURN_NONE;
 
     int error;
-    std::binary_semaphore sem(0);
+    std::latch waiter(1);
 
     self->socket->bindTo(std::string(address, addressLen), [&](int _error) {
         error = _error;
-        sem.release();
+        waiter.count_down();
     });
 
     // block the thread until the callback is called
     try {
-        sem.acquire();
+        waiter.wait();
     } catch (const std::exception& e) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to bind to address synchronously");
         return nullptr;
@@ -305,15 +316,20 @@ static PyObject* PyIOSocket_connect_sync(PyIOSocket* self, PyObject* args, PyObj
         Py_RETURN_NONE;
 
     int error;
-    std::binary_semaphore sem(0);
+    std::latch waiter(1);
 
     self->socket->connectTo(std::string(address, addressLen), [&](int _error) {
         error = _error;
-        sem.release();
+        waiter.count_down();
     });
 
     // block the thread until the callback is called
-    sem.acquire();
+    try {
+        waiter.wait();
+    } catch (const std::exception& e) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to bind to connect synchronously");
+        return nullptr;
+    }
 
     if (error) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to connect to address synchronously");
