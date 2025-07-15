@@ -151,23 +151,15 @@ void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept
     _identityToConnection[*s] = std::move(*thisConn);
     _unestablishedConnection.erase(thisConn);
 
-    auto rge = _unestablishedConnection |
-               std::views::filter([](const auto& x) { return x->_remoteIOSocketIdentity != std::nullopt; }) |
-               std::views::filter([&s](const auto& x) { return *x->_remoteIOSocketIdentity == *s; }) |
-               std::views::take(1);
+    auto rge = _unestablishedConnection                                                                        //
+               | std::views::filter([](const auto& x) { return x->_remoteIOSocketIdentity != std::nullopt; })  //
+               | std::views::filter([&s](const auto& x) { return *x->_remoteIOSocketIdentity == *s; })         //
+               | std::views::take(1);
     if (rge.empty())
         return;
     auto& targetConn = _identityToConnection[*s];
-    auto c           = _unestablishedConnection.begin() + (_unestablishedConnection.size() - rge.begin().count());
 
-    // auto c = std::find_if(_unestablishedConnection.begin(), _unestablishedConnection.end(), [&](const auto& x) {
-    //     if (!x->_remoteIOSocketIdentity)
-    //         return false;
-    //     return *s == *x->_remoteIOSocketIdentity;
-    // });
-
-    // if (c == _unestablishedConnection.end())
-    //     return;
+    auto c = _unestablishedConnection.begin() + (_unestablishedConnection.size() - rge.begin().count());
 
     targetConn->_writeOperations             = std::move((*c)->_writeOperations);
     targetConn->_pendingRecvMessageCallbacks = std::move((*c)->_pendingRecvMessageCallbacks);
