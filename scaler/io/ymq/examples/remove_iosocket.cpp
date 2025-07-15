@@ -14,6 +14,8 @@
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/typedefs.h"
 
+using namespace scaler::ymq;
+
 int main() {
     IOContext context;
 

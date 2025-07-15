@@ -6,6 +6,9 @@
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/message.h"
 
+namespace scaler {
+namespace ymq {
+
 struct TcpReadOperation {
     size_t _cursor {};
     uint64_t _header {};
@@ -29,3 +32,6 @@ struct TcpWriteOperation {
         , _payload(std::move(payload))
         , _callbackAfterCompleteWrite(std::move(callbackAfterCompleteWrite)) {}
 };
+
+}  // namespace ymq
+}  // namespace scaler

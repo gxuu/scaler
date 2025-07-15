@@ -11,6 +11,8 @@
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/typedefs.h"
 
+using namespace scaler::ymq;
+
 std::shared_ptr<IOSocket> syncCreateSocket(IOContext& context, std::string name) {
     auto createSocketPromise = std::promise<std::shared_ptr<IOSocket>>();
     auto createSocketFuture  = createSocketPromise.get_future();

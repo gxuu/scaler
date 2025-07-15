@@ -5,6 +5,9 @@
 #include <memory>
 #include <string>
 
+namespace scaler {
+namespace ymq {
+
 class EpollContext;
 class Message;
 class IOSocket;
@@ -21,3 +24,6 @@ struct Configuration {
     using ExecutionFunction               = std::move_only_function<void()>;
     using ExecutionCancellationIdentifier = size_t;
 };
+
+}  // namespace ymq
+}  // namespace scaler

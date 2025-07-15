@@ -7,6 +7,9 @@
 
 #include "scaler/io/ymq/event_manager.h"
 
+namespace scaler {
+namespace ymq {
+
 void EpollContext::execPendingFunctions() {
     while (_delayedFunctions.size()) {
         auto top = std::move(_delayedFunctions.front());
@@ -61,3 +64,6 @@ void EpollContext::removeFdFromLoop(int fd) {
         exit(1);
     }
 }
+
+}  // namespace ymq
+}  // namespace scaler

@@ -12,6 +12,9 @@
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/file_descriptor.h"
 
+namespace scaler {
+namespace ymq {
+
 class EventLoopThread;
 
 // TODO: Add the _fd back
@@ -47,3 +50,6 @@ public:
     // EventManager(): _fd {} {}
     EventManager() {};
 };
+
+}  // namespace ymq
+}  // namespace scaler

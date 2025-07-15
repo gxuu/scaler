@@ -17,6 +17,9 @@
 #include "scaler/io/ymq/tcp_server.h"
 #include "scaler/io/ymq/typedefs.h"
 
+namespace scaler {
+namespace ymq {
+
 IOSocket::IOSocket(
     std::shared_ptr<EventLoopThread> eventLoopThread, Identity identity, IOSocketType socketType) noexcept
     : _eventLoopThread(eventLoopThread)
@@ -201,3 +204,6 @@ IOSocket::~IOSocket() noexcept {
         readOp({});
     }
 }
+
+}  // namespace ymq
+}  // namespace scaler

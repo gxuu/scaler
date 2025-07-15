@@ -15,6 +15,9 @@
 #include "scaler/io/ymq/message_connection_tcp.h"
 #include "scaler/io/ymq/network_utils.h"
 
+namespace scaler {
+namespace ymq {
+
 int TcpServer::createAndBindSocket() {
     int server_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (server_fd == -1) {
@@ -125,3 +128,6 @@ TcpServer::~TcpServer() noexcept {
         close(_serverFd);
     }
 }
+
+}  // namespace ymq
+}  // namespace scaler

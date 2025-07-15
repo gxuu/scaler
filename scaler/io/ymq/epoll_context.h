@@ -15,6 +15,9 @@
 #include "scaler/io/ymq/interruptive_concurrent_queue.h"
 #include "scaler/io/ymq/timestamp.h"
 
+namespace scaler {
+namespace ymq {
+
 class EventManager;
 
 // In the constructor, the epoll context should register eventfd/timerfd from
@@ -68,3 +71,6 @@ private:
     static const size_t _isTimingFd       = 1;
     static const size_t _reventSize       = 1024;
 };
+
+}  // namespace ymq
+}  // namespace scaler

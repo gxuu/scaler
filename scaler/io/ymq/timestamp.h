@@ -5,6 +5,9 @@
 #include <chrono>
 #include <sstream>  // stringify
 
+namespace scaler {
+namespace ymq {
+
 // Simple timestamp utility
 struct Timestamp {
     std::chrono::time_point<std::chrono::system_clock> timestamp;
@@ -47,15 +50,18 @@ inline itimerspec convertToItimerspec(Timestamp ts) {
     return timerspec;
 }
 
+}  // namespace ymq
+}  // namespace scaler
+
 template <>
-struct std::formatter<Timestamp, char> {
+struct std::formatter<scaler::ymq::Timestamp, char> {
     template <class ParseContext>
     constexpr ParseContext::iterator parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template <class FmtContext>
-    constexpr FmtContext::iterator format(Timestamp e, FmtContext& ctx) const {
+    constexpr FmtContext::iterator format(scaler::ymq::Timestamp e, FmtContext& ctx) const {
         std::ostringstream out;
         const auto ts {std::chrono::floor<std::chrono::seconds>(e.timestamp)};
         const std::chrono::zoned_time z {std::chrono::current_zone(), ts};

@@ -9,6 +9,8 @@
 #include "scaler/io/ymq/io_context.h"
 #include "scaler/io/ymq/io_socket.h"
 
+using namespace scaler::ymq;
+
 int main() {
     IOContext context;
 

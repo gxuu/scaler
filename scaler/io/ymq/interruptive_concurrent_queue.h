@@ -9,6 +9,9 @@
 
 #include "third_party/concurrentqueue.h"
 
+namespace scaler {
+namespace ymq {
+
 class EventManager;
 
 template <typename T>
@@ -65,3 +68,6 @@ public:
 
     ~InterruptiveConcurrentQueue() { close(_eventFd); }
 };
+
+}  // namespace ymq
+}  // namespace scaler

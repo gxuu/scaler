@@ -11,6 +11,9 @@
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/timestamp.h"
 
+namespace scaler {
+namespace ymq {
+
 inline int createTimerfd() {
     int timerfd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (timerfd < 0) {
@@ -92,3 +95,6 @@ private:
     PriorityQueue pq;
     std::set<Identifier> _cancelledFunctions;
 };
+
+}  // namespace ymq
+}  // namespace scaler

@@ -7,6 +7,9 @@
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/io_socket.h"
 
+namespace scaler {
+namespace ymq {
+
 void EventLoopThread::createIOSocket(std::string identity, IOSocketType socketType, CreateIOSocketCallback callback) {
     if (thread.get_id() == std::thread::id()) {
         thread = std::jthread([this](std::stop_token token) {
@@ -33,3 +36,6 @@ void EventLoopThread::removeIOSocket(IOSocket* target) {
         thread.request_stop();
     }
 }
+
+}  // namespace ymq
+}  // namespace scaler

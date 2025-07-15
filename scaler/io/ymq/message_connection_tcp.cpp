@@ -15,6 +15,9 @@
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/io_socket.h"
 
+namespace scaler {
+namespace ymq {
+
 static constexpr const size_t HEADER_SIZE = sizeof(uint64_t);
 
 constexpr bool MessageConnectionTCP::isCompleteMessage(const TcpReadOperation& x) {
@@ -320,3 +323,6 @@ MessageConnectionTCP::~MessageConnectionTCP() noexcept {
     // TODO: What to do with this?
     // std::queue<std::vector<char>> _receivedMessages;
 }
+
+}  // namespace ymq
+}  // namespace scaler
