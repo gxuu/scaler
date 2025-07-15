@@ -16,13 +16,9 @@
 #include "scaler/io/ymq/pymod_ymq/io_socket.h"
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
 
-struct PyIOContextInner {
-    std::shared_ptr<IOContext> ioContext;
-};
-
 struct PyIOContext {
     PyObject_HEAD;
-    PyIOContextInner* inner;
+    std::shared_ptr<IOContext> ioContext;
 };
 
 extern "C" {
@@ -52,18 +48,19 @@ static int PyIOContext_init(PyIOContext* self, PyObject* args, PyObject* kwds) {
         }
     }
 
-    self->inner = new PyIOContextInner {.ioContext = std::make_shared<IOContext>(numThreads)};
+    new (&self->ioContext) std::shared_ptr<IOContext>();
+    self->ioContext = std::make_shared<IOContext>(numThreads);
 
     return 0;
 }
 
 static void PyIOContext_dealloc(PyIOContext* self) {
-    delete self->inner;
+    self->ioContext.~shared_ptr();
     Py_TYPE(self)->tp_free((PyObject*)self);  // Free the PyObject
 }
 
 static PyObject* PyIOContext_repr(PyIOContext* self) {
-    return PyUnicode_FromFormat("<IOContext at %p>", (void*)self->inner->ioContext.get());
+    return PyUnicode_FromFormat("<IOContext at %p>", (void*)self->ioContext.get());
 }
 
 // todo: how to parse keyword arguments?
@@ -138,12 +135,14 @@ static PyObject* PyIOContext_createIOSocket(
         return nullptr;
     }
 
-    ioSocket->inner = new PyIOSocketInner {.socket = nullptr, .ioContext = self->inner->ioContext};
+    // ensure the fields are init
+    new (&ioSocket->socket) std::shared_ptr<IOSocket>();
+    new (&ioSocket->ioContext) std::shared_ptr<IOContext>();
 
     return async_wrapper((PyObject*)self, [=](YMQState* state, PyObject* future) {
-        self->inner->ioContext->createIOSocket(identity, socketType, [=](auto socket) {
+        self->ioContext->createIOSocket(identity, socketType, [=](auto socket) {
             future_set_result(future, [=] {
-                ioSocket->inner->socket = socket;
+                ioSocket->socket = socket;
                 return (PyObject*)ioSocket;
             });
         });
@@ -151,7 +150,7 @@ static PyObject* PyIOContext_createIOSocket(
 }
 
 static PyObject* PyIOContext_numThreads_getter(PyIOContext* self, void* Py_UNUSED(closure)) {
-    return PyLong_FromSize_t(self->inner->ioContext->numThreads());
+    return PyLong_FromSize_t(self->ioContext->numThreads());
 }
 }
 
