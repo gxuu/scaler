@@ -71,10 +71,15 @@ static PyObject* Awaitable_await(Awaitable* self) {
     // so we can just return the future's iterator!
     return PyObject_GetIter(self->future);
 }
+
+static void Awaitable_dealloc(Awaitable*self) {
+    Py_DECREF(self->future);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
 }
 
 static PyType_Slot Awaitable_slots[] = {
-    {Py_tp_init, (void*)Awaitable_init}, {Py_am_await, (void*)Awaitable_await}, {0, nullptr}};
+    {Py_tp_init, (void*)Awaitable_init}, {Py_tp_dealloc, (void*)Awaitable_dealloc}, {Py_am_await, (void*)Awaitable_await}, {0, nullptr}};
 
 static PyType_Spec Awaitable_spec {
     .name      = "ymq.Awaitable",

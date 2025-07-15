@@ -1,6 +1,7 @@
 #pragma once
 
 // Python
+#include "io_socket.h"
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
@@ -15,9 +16,13 @@
 #include "scaler/io/ymq/pymod_ymq/io_socket.h"
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
 
+struct PyIOContextInner {
+    std::shared_ptr<IOContext> ioContext;
+};
+
 struct PyIOContext {
     PyObject_HEAD;
-    std::shared_ptr<IOContext> ioContext;
+    PyIOContextInner* inner;
 };
 
 extern "C" {
@@ -47,18 +52,18 @@ static int PyIOContext_init(PyIOContext* self, PyObject* args, PyObject* kwds) {
         }
     }
 
-    self->ioContext = std::make_shared<IOContext>(numThreads);
+    self->inner = new PyIOContextInner {.ioContext = std::make_shared<IOContext>(numThreads)};
+
     return 0;
 }
 
 static void PyIOContext_dealloc(PyIOContext* self) {
-    // Python knows nothing about C++, so we need to manually call destructors
-    self->ioContext.~shared_ptr();            // Call the destructor of shared_ptr
+    delete self->inner;
     Py_TYPE(self)->tp_free((PyObject*)self);  // Free the PyObject
 }
 
 static PyObject* PyIOContext_repr(PyIOContext* self) {
-    return PyUnicode_FromFormat("<IOContext at %p>", (void*)self->ioContext.get());
+    return PyUnicode_FromFormat("<IOContext at %p>", (void*)self->inner->ioContext.get());
 }
 
 // todo: how to parse keyword arguments?
@@ -127,20 +132,26 @@ static PyObject* PyIOContext_createIOSocket(
     Identity identity(identityCStr, identitySize);
     IOSocketType socketType = static_cast<IOSocketType>(socketTypeValue);
 
-    PyIOSocket* ioSocket = (PyIOSocket*)PyObject_CallObject((PyObject*)state->PyIOSocketType, nullptr);
+    PyIOSocket* ioSocket = PyObject_New(PyIOSocket, (PyTypeObject*)state->PyIOSocketType);
     if (!ioSocket) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create IOSocket instance");
         return nullptr;
     }
 
+    ioSocket->inner = new PyIOSocketInner {.socket = nullptr, .ioContext = self->inner->ioContext};
+
     return async_wrapper((PyObject*)self, [=](YMQState* state, PyObject* future) {
-        ioSocket->socket = self->ioContext->createIOSocket(
-            identity, socketType, [=] { future_set_result(future, [] { Py_RETURN_NONE; }); });
+        self->inner->ioContext->createIOSocket(identity, socketType, [=](auto socket) {
+            future_set_result(future, [=] {
+                ioSocket->inner->socket = socket;
+                return (PyObject*)ioSocket;
+            });
+        });
     });
 }
 
 static PyObject* PyIOContext_numThreads_getter(PyIOContext* self, void* Py_UNUSED(closure)) {
-    return PyLong_FromSize_t(self->ioContext->numThreads());
+    return PyLong_FromSize_t(self->inner->ioContext->numThreads());
 }
 }
 

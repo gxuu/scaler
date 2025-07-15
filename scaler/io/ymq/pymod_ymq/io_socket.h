@@ -13,6 +13,7 @@
 
 // First-party
 #include "scaler/io/ymq/bytes.h"
+#include "scaler/io/ymq/io_context.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/message.h"
 #include "scaler/io/ymq/pymod_ymq/async.h"
@@ -20,19 +21,21 @@
 #include "scaler/io/ymq/pymod_ymq/message.h"
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
 
+struct PyIOSocketInner {
+    std::shared_ptr<IOSocket> socket;
+    std::shared_ptr<IOContext> ioContext;
+};
+
 struct PyIOSocket {
     PyObject_HEAD;
-    std::shared_ptr<IOSocket> socket;
+    PyIOSocketInner* inner;
 };
 
 extern "C" {
 
-static int PyIOSocket_init(PyIOSocket* self, PyObject* args, PyObject* kwds) {
-    return 0;
-}
-
 static void PyIOSocket_dealloc(PyIOSocket* self) {
-    self->socket.~shared_ptr();               // Call the destructor of shared_ptr
+    self->inner->ioContext->removeIOSocket(self->inner->socket);
+    delete self->inner;
     Py_TYPE(self)->tp_free((PyObject*)self);  // Free the PyObject
 }
 
@@ -44,7 +47,7 @@ static PyObject* PyIOSocket_send(PyIOSocket* self, PyObject* args, PyObject* kwa
     }
 
     return async_wrapper((PyObject*)self, [&](YMQState* state, PyObject* future) {
-        self->socket->sendMessage(
+        self->inner->socket->sendMessage(
             {.address = std::move(message->address->bytes), .payload = std::move(message->payload->bytes)},
             [&](auto error) {
                 // todo: after the core is updated
@@ -68,7 +71,7 @@ static PyObject* PyIOSocket_send_sync(PyIOSocket* self, PyObject* args, PyObject
     std::latch waiter(1);
     int error = 0;
 
-    self->socket->sendMessage(
+    self->inner->socket->sendMessage(
         {.address = message->address ? std::move(message->address->bytes) : Bytes::empty(),
          .payload = std::move(message->payload->bytes)},
         [&](int e) {
@@ -94,7 +97,7 @@ static PyObject* PyIOSocket_send_sync(PyIOSocket* self, PyObject* args, PyObject
 
 static PyObject* PyIOSocket_recv(PyIOSocket* self, PyObject* args) {
     return async_wrapper((PyObject*)self, [&](YMQState* state, PyObject* future) {
-        self->socket->recvMessage([&](auto message) {
+        self->inner->socket->recvMessage([&](auto message) {
             future_set_result(future, [&]() {
                 PyBytesYMQ* address = (PyBytesYMQ*)PyObject_CallNoArgs(state->PyBytesYMQType);
                 if (!address) {
@@ -141,7 +144,7 @@ static PyObject* PyIOSocket_recv_sync(PyIOSocket* self, PyObject* args) {
     Message message;
     std::latch waiter(1);
 
-    self->socket->recvMessage([&](auto _message) {
+    self->inner->socket->recvMessage([&](auto _message) {
         message = std::move(_message);
         waiter.count_down();
     });
@@ -201,7 +204,7 @@ static PyObject* PyIOSocket_bind(PyIOSocket* self, PyObject* args, PyObject* kwa
         Py_RETURN_NONE;
 
     return async_wrapper((PyObject*)self, [=](YMQState* state, PyObject* future) {
-        self->socket->bindTo(std::string(address, addressLen), [=](auto error) {
+        self->inner->socket->bindTo(std::string(address, addressLen), [=](auto error) {
             future_set_result(future, [=]() {
                 if (error) {
                     PyErr_SetString(PyExc_RuntimeError, "Failed to bind to address");
@@ -238,7 +241,7 @@ static PyObject* PyIOSocket_bind_sync(PyIOSocket* self, PyObject* args, PyObject
     int error;
     std::latch waiter(1);
 
-    self->socket->bindTo(std::string(address, addressLen), [&](int _error) {
+    self->inner->socket->bindTo(std::string(address, addressLen), [&](int _error) {
         error = _error;
         waiter.count_down();
     });
@@ -281,7 +284,7 @@ static PyObject* PyIOSocket_connect(PyIOSocket* self, PyObject* args, PyObject* 
         Py_RETURN_NONE;
 
     return async_wrapper((PyObject*)self, [=](YMQState* state, PyObject* future) {
-        self->socket->connectTo(std::string(address, addressLen), [=](auto error) {
+        self->inner->socket->connectTo(std::string(address, addressLen), [=](auto error) {
             future_set_result(future, [=]() {
                 if (error) {
                     PyErr_SetString(PyExc_RuntimeError, "Failed to connect to address");
@@ -318,7 +321,7 @@ static PyObject* PyIOSocket_connect_sync(PyIOSocket* self, PyObject* args, PyObj
     int error;
     std::latch waiter(1);
 
-    self->socket->connectTo(std::string(address, addressLen), [&](int _error) {
+    self->inner->socket->connectTo(std::string(address, addressLen), [&](int _error) {
         error = _error;
         waiter.count_down();
     });
@@ -340,11 +343,11 @@ static PyObject* PyIOSocket_connect_sync(PyIOSocket* self, PyObject* args, PyObj
 }
 
 static PyObject* PyIOSocket_repr(PyIOSocket* self) {
-    return PyUnicode_FromFormat("<IOSocket at %p>", (void*)self->socket.get());
+    return PyUnicode_FromFormat("<IOSocket at %p>", (void*)self->inner->socket.get());
 }
 
 static PyObject* PyIOSocket_identity_getter(PyIOSocket* self, void* closure) {
-    return PyUnicode_FromStringAndSize(self->socket->identity().data(), self->socket->identity().size());
+    return PyUnicode_FromStringAndSize(self->inner->socket->identity().data(), self->inner->socket->identity().size());
 }
 
 static PyObject* PyIOSocket_socket_type_getter(PyIOSocket* self, void* closure) {
@@ -362,7 +365,7 @@ static PyObject* PyIOSocket_socket_type_getter(PyIOSocket* self, void* closure) 
         return nullptr;
     }
 
-    IOSocketType socketType    = self->socket->socketType();
+    IOSocketType socketType    = self->inner->socket->socketType();
     PyObject* socketTypeIntObj = PyLong_FromLong((long)socketType);
 
     if (!socketTypeIntObj) {
@@ -414,7 +417,6 @@ static PyMethodDef PyIOSocket_methods[] = {
     {nullptr, nullptr, 0, nullptr}};
 
 static PyType_Slot PyIOSocket_slots[] = {
-    {Py_tp_init, (void*)PyIOSocket_init},
     {Py_tp_dealloc, (void*)PyIOSocket_dealloc},
     {Py_tp_repr, (void*)PyIOSocket_repr},
     {Py_tp_getset, (void*)PyIOSocket_properties},
@@ -426,6 +428,6 @@ static PyType_Spec PyIOSocket_spec = {
     .name      = "ymq.IOSocket",
     .basicsize = sizeof(PyIOSocket),
     .itemsize  = 0,
-    .flags     = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE,
+    .flags     = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE | Py_TPFLAGS_DISALLOW_INSTANTIATION,
     .slots     = PyIOSocket_slots,
 };

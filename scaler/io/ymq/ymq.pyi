@@ -4,6 +4,7 @@
 import sys
 from enum import IntEnum
 from typing import SupportsBytes
+from collections.abc import Awaitable
 
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
@@ -40,7 +41,7 @@ class IOContext:
     def __init__(self, num_threads: int = 1) -> None: ...
     def __repr__(self) -> str: ...
 
-    def createIOSocket(self, /, identity: str, socket_type: IOSocketType) -> IOSocket:
+    def createIOSocket(self, /, identity: str, socket_type: IOSocketType) -> Awaitable[IOSocket]:
         """Create an io socket with an identity and socket type"""
 
 
