@@ -11,7 +11,7 @@
 // First-party
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
 
-// Wraps an async callback that accepts a Python asyncio future
+// wraps an async callback that accepts a Python asyncio future
 static PyObject* async_wrapper(PyObject* self, std::function<void(YMQState* state, PyObject* future)> callback) {
     // replace with PyType_GetModuleByDef(Py_TYPE(self), &ymq_module) in a newer Python version
     // https://docs.python.org/3/c-api/type.html#c.PyType_GetModuleByDef
