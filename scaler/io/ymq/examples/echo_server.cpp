@@ -12,11 +12,12 @@
 int main() {
     IOContext context;
 
-    auto createSocketPromise         = std::promise<void>();
-    auto createSocketFuture          = createSocketPromise.get_future();
-    std::shared_ptr<IOSocket> socket = context.createIOSocket(
-        "ServerSocket", IOSocketType::Binder, [&createSocketPromise] { createSocketPromise.set_value(); });
-    createSocketFuture.wait();
+    auto createSocketPromise = std::promise<std::shared_ptr<IOSocket>>();
+    auto createSocketFuture  = createSocketPromise.get_future();
+    context.createIOSocket("ServerSocket", IOSocketType::Binder, [&createSocketPromise](auto sock) {
+        createSocketPromise.set_value(sock);
+    });
+    auto socket = createSocketFuture.get();
     printf("Successfully created socket.\n");
 
     auto bind_promise = std::promise<void>();

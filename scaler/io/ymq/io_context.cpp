@@ -14,12 +14,13 @@ IOContext::IOContext(size_t threadCount) noexcept: _threads(threadCount) {
     std::ranges::generate(_threads, std::make_shared<EventLoopThread>);
 }
 
-std::shared_ptr<IOSocket> IOContext::createIOSocket(
+void IOContext::createIOSocket(
     Identity identity, IOSocketType socketType, CreateIOSocketCallback onIOSocketCreated) & noexcept {
-    static size_t threadsRoundRobin = 0;
-    auto& thread                    = _threads[threadsRoundRobin];
-    ++threadsRoundRobin %= _threads.size();
-    return thread->createIOSocket(std::move(identity), socketType, std::move(onIOSocketCreated));
+    static std::atomic<size_t> threadsRoundRobin = 0;
+    auto& thread                                 = _threads[threadsRoundRobin];
+    ++threadsRoundRobin;
+    threadsRoundRobin = threadsRoundRobin % _threads.size();
+    thread->createIOSocket(std::move(identity), socketType, std::move(onIOSocketCreated));
 }
 
 void IOContext::removeIOSocket(std::shared_ptr<IOSocket>& socket) noexcept {

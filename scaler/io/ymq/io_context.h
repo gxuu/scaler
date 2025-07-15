@@ -22,9 +22,7 @@ public:
     IOContext(IOContext&&)                 = delete;
     IOContext& operator=(IOContext&&)      = delete;
 
-    // These methods need to be thread-safe.
-    [[nodiscard("You need this handle to talk to remote end")]]
-    std::shared_ptr<IOSocket> createIOSocket(
+    void createIOSocket(
         Identity identity, IOSocketType socketType, CreateIOSocketCallback onIOSocketCreated) & noexcept;
 
     // After user called this method, no other call on the passed in IOSocket should be made.

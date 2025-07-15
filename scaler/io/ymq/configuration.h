@@ -2,10 +2,12 @@
 
 // C++
 #include <functional>
+#include <memory>
 #include <string>
 
 class EpollContext;
 class Message;
+class IOSocket;
 
 struct Configuration {
     using PollingContext                  = EpollContext;
@@ -14,7 +16,7 @@ struct Configuration {
     using RecvMessageCallback             = std::move_only_function<void(Message)>;
     using ConnectReturnCallback           = std::move_only_function<void(int)>;
     using BindReturnCallback              = std::move_only_function<void(int)>;
-    using CreateIOSocketCallback          = std::move_only_function<void()>;
+    using CreateIOSocketCallback          = std::move_only_function<void(std::shared_ptr<IOSocket>)>;
     using TimedQueueCallback              = std::move_only_function<void()>;
     using ExecutionFunction               = std::move_only_function<void()>;
     using ExecutionCancellationIdentifier = size_t;

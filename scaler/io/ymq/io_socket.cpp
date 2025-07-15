@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <expected>
 #include <memory>
+#include <optional>
 #include <ranges>
 #include <utility>
 #include <vector>
@@ -150,16 +151,27 @@ void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept
     _identityToConnection[*s] = std::move(*thisConn);
     _unestablishedConnection.erase(thisConn);
 
-    auto c = std::find_if(_unestablishedConnection.begin(), _unestablishedConnection.end(), [&](const auto& x) {
-        return *s == *x->_remoteIOSocketIdentity;
-    });
-
-    if (c == _unestablishedConnection.end())
+    auto rge = _unestablishedConnection |
+               std::views::filter([](const auto& x) { return x->_remoteIOSocketIdentity != std::nullopt; }) |
+               std::views::filter([&s](const auto& x) { return *x->_remoteIOSocketIdentity == *s; }) |
+               std::views::take(1);
+    if (rge.empty())
         return;
+    auto& targetConn = _identityToConnection[*s];
+    auto c           = _unestablishedConnection.begin() + (_unestablishedConnection.size() - rge.begin().count());
 
-    (_identityToConnection[*s])->_writeOperations             = std::move((*c)->_writeOperations);
-    (_identityToConnection[*s])->_pendingRecvMessageCallbacks = std::move((*c)->_pendingRecvMessageCallbacks);
-    (_identityToConnection[*s])->_receivedReadOperations      = std::move((*c)->_receivedReadOperations);
+    // auto c = std::find_if(_unestablishedConnection.begin(), _unestablishedConnection.end(), [&](const auto& x) {
+    //     if (!x->_remoteIOSocketIdentity)
+    //         return false;
+    //     return *s == *x->_remoteIOSocketIdentity;
+    // });
+
+    // if (c == _unestablishedConnection.end())
+    //     return;
+
+    targetConn->_writeOperations             = std::move((*c)->_writeOperations);
+    targetConn->_pendingRecvMessageCallbacks = std::move((*c)->_pendingRecvMessageCallbacks);
+    targetConn->_receivedReadOperations      = std::move((*c)->_receivedReadOperations);
     _unestablishedConnection.erase(c);
 }
 

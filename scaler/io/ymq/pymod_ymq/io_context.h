@@ -133,11 +133,13 @@ static PyObject* PyIOContext_createIOSocket(
         return nullptr;
     }
 
-    auto createSocketPromise = std::make_shared<std::promise<void>>();
-    auto createSocketFuture  = createSocketPromise->get_future();
-    ioSocket->socket         = self->ioContext->createIOSocket(
-        identity, socketType, [createSocketPromise] { createSocketPromise->set_value(); });
-    createSocketFuture.wait();
+    auto createSocketPromise = std::promise<std::shared_ptr<IOSocket>>();
+    auto createSocketFuture  = createSocketPromise.get_future();
+    self->ioContext->createIOSocket(
+        identity, socketType, [&createSocketPromise](auto sock) { createSocketPromise.set_value(sock); });
+
+    ioSocket->socket = createSocketFuture.get();
+
     return (PyObject*)ioSocket;
 }
 
