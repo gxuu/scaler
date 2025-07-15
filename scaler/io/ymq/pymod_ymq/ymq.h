@@ -47,10 +47,10 @@ static void future_do(PyObject* future, std::function<PyObject*()> fn, const cha
             return;
         }
 
-        PyObject* set_result = PyObject_GetAttrString(future, future_method);
+        PyObject* method = PyObject_GetAttrString(future, future_method);
 
-        if (!set_result) {
-            PyErr_SetString(PyExc_RuntimeError, "Failed to get future's set_result() method");
+        if (!method) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to get future's method");
             Py_DECREF(future);
 
             // end python critical section
@@ -58,8 +58,7 @@ static void future_do(PyObject* future, std::function<PyObject*()> fn, const cha
             return;
         }
 
-        Py_INCREF(Py_None);
-        PyObject_CallMethod(loop, "call_soon_threadsafe", "OO", set_result, fn());
+        PyObject_CallMethod(loop, "call_soon_threadsafe", "OO", method, fn());
     }
 
     Py_DECREF(future);
