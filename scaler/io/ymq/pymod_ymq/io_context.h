@@ -75,7 +75,8 @@ static PyObject* PyIOContext_createIOSocket(
         return nullptr;
     }
 
-    PyObject *pyIdentity = args[0], *pySocketType = args[1];
+    PyObject* pyIdentity   = args[0];
+    PyObject* pySocketType = args[1];
 
     if (!PyUnicode_Check(pyIdentity)) {
         PyErr_SetString(PyExc_TypeError, "Expected identity to be a string");
