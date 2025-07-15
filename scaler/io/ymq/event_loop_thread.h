@@ -23,8 +23,7 @@ public:
     // the IOSocket that is being removed will first remove every
     // MessageConnectionTCP managed by it from the EventLoop, before it removes
     // it self from ioSockets. return eventLoop.executeNow(createIOSocket());
-    std::shared_ptr<IOSocket> createIOSocket(
-        std::string identity, IOSocketType socketType, CreateIOSocketCallback callback);
+    void createIOSocket(std::string identity, IOSocketType socketType, CreateIOSocketCallback callback);
 
     void removeIOSocket(IOSocket* target);
     // EventLoop<PollingContext>& getEventLoop();

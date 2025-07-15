@@ -12,11 +12,13 @@
 #include "scaler/io/ymq/typedefs.h"
 
 std::shared_ptr<IOSocket> syncCreateSocket(IOContext& context, std::string name) {
-    auto createSocketPromise = std::promise<void>();
+    auto createSocketPromise = std::promise<std::shared_ptr<IOSocket>>();
     auto createSocketFuture  = createSocketPromise.get_future();
-    auto clientSocket        = context.createIOSocket(
-        name, IOSocketType::Unicast, [&createSocketPromise] { createSocketPromise.set_value(); });
-    createSocketFuture.wait();
+    context.createIOSocket(std::move(name), IOSocketType::Unicast, [&createSocketPromise](auto sock) {
+        createSocketPromise.set_value(sock);
+    });
+
+    auto clientSocket = createSocketFuture.get();
     return clientSocket;
 }
 
