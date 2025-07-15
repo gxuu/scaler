@@ -7,6 +7,9 @@
 // First-party
 #include "scaler/io/ymq/configuration.h"
 
+namespace scaler {
+namespace ymq {
+
 class EventLoopThread;
 class EventManager;
 
@@ -51,3 +54,6 @@ private:
 
     const size_t _maxRetryTimes;
 };
+
+}  // namespace ymq
+}  // namespace scaler

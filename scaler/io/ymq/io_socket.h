@@ -13,6 +13,9 @@
 #include "scaler/io/ymq/tcp_server.h"
 #include "scaler/io/ymq/typedefs.h"
 
+namespace scaler {
+namespace ymq {
+
 class EventLoopThread;
 class MessageConnectionTCP;
 class TcpWriteOperation;
@@ -93,3 +96,6 @@ private:
     // does not care which connection a message is coming from.
     std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessages;
 };
+
+}  // namespace ymq
+}  // namespace scaler

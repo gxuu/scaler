@@ -8,6 +8,9 @@
 #include "scaler/io/ymq/timestamp.h"
 #include "scaler/io/ymq/utils.h"
 
+namespace scaler {
+namespace ymq {
+
 enum LoggingLevel {
     debug,
     info,
@@ -37,3 +40,6 @@ constexpr void log(LoggingLevel level, Args&&... args) {
     auto str = argsToString(convertLevelToString(level), Timestamp {}, std::forward<Args>(args)...);
     std::print("{}\n", str);
 }
+
+}  // namespace ymq
+}  // namespace scaler

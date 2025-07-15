@@ -16,6 +16,9 @@
 #include "scaler/io/ymq/network_utils.h"
 #include "scaler/io/ymq/timestamp.h"
 
+namespace scaler {
+namespace ymq {
+
 void TcpClient::onCreated() {
     int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sockfd == -1) {
@@ -132,3 +135,6 @@ TcpClient::~TcpClient() noexcept {
     if (_retryTimes > 0)
         _eventLoopThread->_eventLoop.cancelExecution(_retryIdentifier);
 }
+
+}  // namespace ymq
+}  // namespace scaler

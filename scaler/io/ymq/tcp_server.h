@@ -9,6 +9,9 @@
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/file_descriptor.h"
 
+namespace scaler {
+namespace ymq {
+
 class EventLoopThread;
 class EventManager;
 
@@ -47,3 +50,6 @@ private:
 
     std::unique_ptr<EventManager> _eventManager;  // will copy the `onRead()` to itself
 };
+
+}  // namespace ymq
+}  // namespace scaler

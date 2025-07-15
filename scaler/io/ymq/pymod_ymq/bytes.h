@@ -8,6 +8,8 @@
 // First-party
 #include "scaler/io/ymq/bytes.h"
 
+using namespace scaler::ymq;
+
 struct PyBytesYMQ {
     PyObject_HEAD;
     Bytes bytes;

@@ -10,6 +10,9 @@
 #include "scaler/io/ymq/message_connection.h"
 #include "scaler/io/ymq/tcp_operations.h"
 
+namespace scaler {
+namespace ymq {
+
 class EventLoopThread;
 class EventManager;
 
@@ -75,3 +78,6 @@ private:
     friend void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;
     friend void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept;
 };
+
+}  // namespace ymq
+}  // namespace scaler

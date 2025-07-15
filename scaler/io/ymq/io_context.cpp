@@ -9,6 +9,9 @@
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/typedefs.h"
 
+namespace scaler {
+namespace ymq {
+
 IOContext::IOContext(size_t threadCount) noexcept: _threads(threadCount) {
     assert(threadCount > 0);
     std::ranges::generate(_threads, std::make_shared<EventLoopThread>);
@@ -32,3 +35,6 @@ void IOContext::removeIOSocket(std::shared_ptr<IOSocket>& socket) noexcept {
             [rawSocket] { rawSocket->_eventLoopThread->removeIOSocket(rawSocket); });
     });
 }
+
+}  // namespace ymq
+}  // namespace scaler

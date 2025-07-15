@@ -10,6 +10,9 @@
 #include "scaler/io/ymq/event_loop.h"
 #include "scaler/io/ymq/typedefs.h"
 
+namespace scaler {
+namespace ymq {
+
 class IOSocket;
 
 class EventLoopThread: public std::enable_shared_from_this<EventLoopThread> {
@@ -36,3 +39,6 @@ public:
 private:
     std::jthread thread;
 };
+
+}  // namespace ymq
+}  // namespace scaler

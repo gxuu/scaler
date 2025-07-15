@@ -10,6 +10,9 @@
 
 #include "scaler/io/ymq/error.h"
 
+namespace scaler {
+namespace ymq {
+
 inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address) {
     // Check and strip the "tcp://" prefix
     static const constexpr std::string prefix = "tcp://";
@@ -135,3 +138,6 @@ inline sockaddr getRemoteAddr(int fd) {
 
     return remoteAddr;
 }
+
+}  // namespace ymq
+}  // namespace scaler

@@ -5,6 +5,9 @@
 #include <format>
 #include <string>
 
+namespace scaler {
+namespace ymq {
+
 template <std::size_t N>
     requires(N > 0)
 consteval auto getFormatString() {
@@ -24,3 +27,6 @@ constexpr std::string argsToString(Args&&... args) {
     std::string res = std::format(std::string_view {str}, std::forward<Args>(args)...);
     return res;
 }
+
+}  // namespace ymq
+}  // namespace scaler

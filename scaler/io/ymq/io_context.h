@@ -9,6 +9,9 @@
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/typedefs.h"
 
+namespace scaler {
+namespace ymq {
+
 class IOSocket;
 class EventLoopThread;
 
@@ -34,3 +37,6 @@ public:
 private:
     std::vector<std::shared_ptr<EventLoopThread>> _threads;
 };
+
+}  // namespace ymq
+}  // namespace scaler

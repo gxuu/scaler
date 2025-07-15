@@ -10,6 +10,9 @@
 #include "scaler/io/ymq/timestamp.h"
 #include "scaler/io/ymq/utils.h"
 
+namespace scaler {
+namespace ymq {
+
 struct Error: std::exception {
     enum struct ErrorCode {
         Uninit,
@@ -48,28 +51,31 @@ struct Error: std::exception {
     const std::string _logMsg;
 };
 
+}  // namespace ymq
+}  // namespace scaler
+
 template <>
-struct std::formatter<Error, char> {
+struct std::formatter<scaler::ymq::Error, char> {
     template <class ParseContext>
     constexpr ParseContext::iterator parse(ParseContext& ctx) noexcept {
         return ctx.begin();
     }
 
     template <class FmtContext>
-    constexpr FmtContext::iterator format(Error e, FmtContext& ctx) const noexcept {
+    constexpr FmtContext::iterator format(scaler::ymq::Error e, FmtContext& ctx) const noexcept {
         return std::ranges::copy(e._logMsg, ctx.out()).out;
     }
 };
 
-using UnrecoverableErrorFunctionHookPtr = std::function<void(Error)>;
+using UnrecoverableErrorFunctionHookPtr = std::function<void(scaler::ymq::Error)>;
 
-constexpr inline void defaultUnrecoverableError(Error e) noexcept {
+constexpr inline void defaultUnrecoverableError(scaler::ymq::Error e) noexcept {
     std::print(stderr, "{}\n", e);
     std::terminate();
 }
 
 inline UnrecoverableErrorFunctionHookPtr unrecoverableErrorFunctionHookPtr = defaultUnrecoverableError;
 
-constexpr inline void unrecoverableError(Error e) {
+constexpr inline void unrecoverableError(scaler::ymq::Error e) {
     unrecoverableErrorFunctionHookPtr(std::move(e));
 }
