@@ -7,42 +7,21 @@
 #include <string>
 #include <thread>
 
+#include "./common.h"
 #include "scaler/io/ymq/io_context.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/typedefs.h"
 
 using namespace scaler::ymq;
 
-std::shared_ptr<IOSocket> syncCreateSocket(IOContext& context, std::string name) {
-    auto createSocketPromise = std::promise<std::shared_ptr<IOSocket>>();
-    auto createSocketFuture  = createSocketPromise.get_future();
-    context.createIOSocket(std::move(name), IOSocketType::Unicast, [&createSocketPromise](auto sock) {
-        createSocketPromise.set_value(sock);
-    });
-
-    auto clientSocket = createSocketFuture.get();
-    return clientSocket;
-}
-
-void syncConnectToRemote(std::shared_ptr<IOSocket> socket) {
-    auto connect_promise = std::promise<void>();
-    auto connect_future  = connect_promise.get_future();
-
-    socket->connectTo("tcp://127.0.0.1:8080", [&connect_promise](int result) { connect_promise.set_value(); });
-
-    printf("Waiting for connection...\n");
-    connect_future.wait();
-    printf("Connected to server.\n");
-}
-
 int main() {
     IOContext context;
-    auto clientSocket1 = syncCreateSocket(context, "ClientSocket1");
-    auto clientSocket2 = syncCreateSocket(context, "ClientSocket2");
+    auto clientSocket1 = syncCreateSocket(context, IOSocketType::Unicast, "ClientSocket1");
+    auto clientSocket2 = syncCreateSocket(context, IOSocketType::Unicast, "ClientSocket2");
     printf("Successfully created sockets.\n");
 
-    syncConnectToRemote(clientSocket1);
-    syncConnectToRemote(clientSocket2);
+    syncConnectSocket(clientSocket1, "tcp://127.0.0.1:8080");
+    syncConnectSocket(clientSocket2, "tcp://127.0.0.1:8080");
 
     for (int cnt = 0; cnt < 10; ++cnt) {
         auto recv_promise = std::promise<Message>();

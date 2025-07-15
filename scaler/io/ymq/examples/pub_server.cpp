@@ -6,6 +6,7 @@
 #include <future>
 #include <memory>
 
+#include "./common.h"
 #include "scaler/io/ymq/io_context.h"
 #include "scaler/io/ymq/io_socket.h"
 
@@ -14,20 +15,10 @@ using namespace scaler::ymq;
 int main() {
     IOContext context;
 
-    auto createSocketPromise = std::promise<std::shared_ptr<IOSocket>>();
-    auto createSocketFuture  = createSocketPromise.get_future();
-    context.createIOSocket("ServerSocket", IOSocketType::Multicast, [&createSocketPromise](auto sock) {
-        createSocketPromise.set_value(sock);
-    });
-    auto socket = createSocketFuture.get();
-
+    auto socket = syncCreateSocket(context, IOSocketType::Multicast, "ServerSocket");
     printf("Successfully created socket.\n");
 
-    auto bind_promise = std::promise<void>();
-    auto bind_future  = bind_promise.get_future();
-    // Optionally handle bind result
-    socket->bindTo("tcp://127.0.0.1:8080", [&bind_promise](int result) { bind_promise.set_value(); });
-    bind_future.wait();
+    syncBindSocket(socket, "tcp://127.0.0.1:8080");
     printf("Successfully bound socket\n");
 
     while (true) {
