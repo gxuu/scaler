@@ -19,7 +19,7 @@ enum LoggingLevel {
 
 // Sound default logging level based on build type.
 #ifdef NDEBUG  // Release build
-inline LoggingLevels LOGGING_LEVEL = LoggingLevels::info;
+inline LoggingLevel LOGGING_LEVEL = LoggingLevel::info;
 #else  // Debug build
 inline LoggingLevel LOGGING_LEVEL = LoggingLevel::debug;
 #endif
