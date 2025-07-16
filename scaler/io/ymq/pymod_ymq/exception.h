@@ -1,6 +1,7 @@
 #pragma once
 
 // Python
+#include "pyport.h"
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
@@ -8,6 +9,10 @@
 // First-party
 #include "scaler/io/ymq/pymod_ymq/ymq.h"
 #include "ymq.h"
+
+// the order of the members in the exception args tuple
+const Py_ssize_t errorCodeIndex = 0;
+const Py_ssize_t messageIndex   = 1;
 
 struct YMQException {
     PyException_HEAD;
@@ -17,10 +22,9 @@ extern "C" {
 
 static int YMQException_init(YMQException* self, PyObject* args, PyObject* kwds) {
     // check the args
-    PyObject* code              = nullptr;
-    PyObject* message           = nullptr;
-    static const char* kwlist[] = {"code", "message", nullptr};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO", (char**)kwlist, &code, &message))
+    PyObject* code    = nullptr;
+    PyObject* message = nullptr;
+    if (!PyArg_ParseTuple(args, "OO", &code, &message))
         return -1;
 
     // replace with PyType_GetModuleByDef(Py_TYPE(self), &ymq_module) in a newer Python version
@@ -56,11 +60,11 @@ static void YMQException_dealloc(YMQException* self) {
 }
 
 static PyObject* YMQException_code_getter(YMQException* self, void* Py_UNUSED(closure)) {
-    return PySequence_GetItem(self->args, 0);  // code is the first item in args
+    return PySequence_GetItem(self->args, errorCodeIndex);
 }
 
 static PyObject* YMQException_message_getter(YMQException* self, void* Py_UNUSED(closure)) {
-    return PySequence_GetItem(self->args, 1);  // message is the second item in args
+    return PySequence_GetItem(self->args, messageIndex);
 }
 }
 
