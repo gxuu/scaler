@@ -58,7 +58,7 @@ private:
         onClose();
     };
 
-    std::expected<void, int> tryReadMessages();
+    std::expected<void, int> tryReadMessages(bool readOneMessage);
     std::expected<size_t, int> trySendQueuedMessages();
     void updateWriteOperations(size_t n);
     void updateReadOperation();
