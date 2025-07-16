@@ -238,7 +238,7 @@ static int ymq_createErrorCodeEnum(PyObject* pyModule, YMQState* state) {
     // for some reason this does not seem to work with the c api
     // docs and examples are unfortunately scarce for this
     // for now this will work just fine
-    PyObject* item;
+    PyObject* item = nullptr;
     while ((item = PyIter_Next(iter)) != nullptr) {
         auto fn = PyCMethod_New(&YMQErrorCode_explanation_def, item, pyModule, nullptr);
         if (!fn) {
