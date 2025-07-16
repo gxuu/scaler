@@ -262,13 +262,22 @@ static int ymq_createErrorCodeEnum(PyObject* pyModule, YMQState* state) {
 }
 }
 
+// internal convenience function to create a type and add it to the module
 static int ymq_createType(
+    // the module object
     PyObject* pyModule,
+    // storage for the generated type object
     PyObject** storage,
+    // the type's spec
     PyType_Spec* spec,
+    // the name of the type, can be omitted if `add` is false
     const char* name,
+    // whether or not to add this type to the module
     bool add        = true,
+    // the types base classes
     PyObject* bases = nullptr) {
+    assert(storage != nullptr);
+
     *storage = PyType_FromModuleAndSpec(pyModule, spec, bases);
 
     if (!*storage) {
