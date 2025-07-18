@@ -13,7 +13,7 @@ constexpr inline void ymqUnrecoverableError(scaler::ymq::Error e) {
 }
 
 PyMODINIT_FUNC PyInit_ymq(void) {
-    unrecoverableErrorFunctionHookPtr = myUnrecoverableError;
+    unrecoverableErrorFunctionHookPtr = ymqUnrecoverableError;
 
     return PyModuleDef_Init(&ymq_module);
 }
