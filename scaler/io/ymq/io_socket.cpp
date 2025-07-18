@@ -1,7 +1,6 @@
 #include "scaler/io/ymq/io_socket.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <expected>
 #include <memory>
 #include <optional>

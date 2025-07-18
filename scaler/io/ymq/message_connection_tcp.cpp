@@ -239,7 +239,7 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages() {
                 iovHeader.iov_base  = nullptr;
                 iovHeader.iov_len   = 0;
                 iovPayload.iov_base = (char*)(it->_payload.data()) + (_sendCursor - HEADER_SIZE);
-                iovPayload.iov_len  = it->_payload.len() + (_sendCursor - HEADER_SIZE);
+                iovPayload.iov_len  = it->_payload.len() - (_sendCursor - HEADER_SIZE);
             }
         } else {
             iovHeader.iov_base  = (void*)(&it->_header);
