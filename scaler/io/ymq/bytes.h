@@ -23,13 +23,12 @@ class Bytes {
         if (is_empty())
             return;
         delete[] _data;
+        _data = nullptr;
     }
 
-    explicit Bytes(uint8_t* m_data, size_t m_len): _data(m_data), _len(m_len) {}
+    explicit Bytes(uint8_t* data, size_t len): _data(data), _len(len) {}
 
 public:
-    Bytes(char* data, size_t len): _data(datadup((uint8_t*)data, len)), _len(len) {}
-
     Bytes(): _data {}, _len {} {}
 
     Bytes(const Bytes& other) noexcept {
@@ -85,7 +84,7 @@ public:
         return std::string((char*)_data, _len);
     }
 
-    [[nodiscard("Allocated Bytes is not used, likely causing memory leak")]]
+    [[nodiscard("Allocated Bytes is not used, likely causing a memory leak")]]
     static Bytes alloc(size_t m_len) noexcept {
         auto ptr = new uint8_t[m_len];  // we just assume the allocation will succeed
         return Bytes {ptr, m_len};
