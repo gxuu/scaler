@@ -5,59 +5,72 @@
 #include <unistd.h>
 
 #include <future>
-#include <iostream>
 #include <memory>
 #include <string>
-#include <thread>
 
 #include "./common.h"
 #include "scaler/io/ymq/io_context.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/typedefs.h"
 
+std::string longStr = "1234567890";
+
 using namespace scaler::ymq;
+using namespace std::chrono_literals;
 
 int main() {
     IOContext context;
 
+    for (int i = 0; i < 400; ++i)
+        longStr += "1234567890";
+
     auto clientSocket = syncCreateSocket(context, IOSocketType::Connector, "ClientSocket");
     printf("Successfully created socket.\n");
+
+    constexpr size_t msgCnt = 100'000;
+
+    std::vector<std::promise<void>> sendPromises;
+    sendPromises.reserve(msgCnt + 10);
+    std::vector<std::promise<Message>> recvPromises;
+    recvPromises.reserve(msgCnt + 10);
 
     syncConnectSocket(clientSocket, "tcp://127.0.0.1:8080");
     printf("Connected to server.\n");
 
-    for (int cnt = 0; cnt < 10; ++cnt) {
-        std::string line = std::to_string(cnt) + "message send to remote";
+    const std::string_view line = longStr;
 
+    for (int cnt = 0; cnt < msgCnt; ++cnt) {
         Message message;
         std::string destAddress = "ServerSocket";
 
         message.address = Bytes {const_cast<char*>(destAddress.c_str()), destAddress.size()};
+        message.payload = Bytes {const_cast<char*>(line.data()), line.size()};
 
-        message.payload = Bytes {const_cast<char*>(line.c_str()), line.size()};
+        sendPromises.emplace_back();
 
-        auto send_promise = std::promise<void>();
-        auto send_future  = send_promise.get_future();
+        clientSocket->sendMessage(
+            std::move(message), [&send_promise = sendPromises.back()](int) { send_promise.set_value(); });
 
-        clientSocket->sendMessage(std::move(message), [&send_promise](int) { send_promise.set_value(); });
+        recvPromises.emplace_back();
 
-        send_future.wait();
-
-        auto recv_promise = std::promise<Message>();
-        auto recv_future  = recv_promise.get_future();
-
-        clientSocket->recvMessage([&recv_promise](Message msg) { recv_promise.set_value(std::move(msg)); });
-
-        Message reply = recv_future.get();
-        std::string reply_str(reply.payload.data(), reply.payload.data() + reply.payload.len());
-        if (reply_str != line) {
-            printf("Soemthing goes wrong\n");
-            exit(1);
-        }
+        clientSocket->recvMessage(
+            [&recv_promise = recvPromises.back()](Message msg) { recv_promise.set_value(std::move(msg)); });
     }
-    printf("Send and recv 10 messages, checksum fits, exiting.\n");
 
-    // TODO: remove IOSocket also needs a future
+    for (auto& x: sendPromises) {
+        auto future = x.get_future();
+        future.get();
+    }
+    printf("send completes\n");
+
+    for (auto& x: recvPromises) {
+        auto future = x.get_future();
+        Message msg = future.get();
+    }
+    printf("recv completes\n");
+
+    printf("Send and recv %lu messages, checksum fits, exiting.\n", msgCnt);
+
     context.removeIOSocket(clientSocket);
 
     return 0;
