@@ -1,7 +1,6 @@
 #include "scaler/io/ymq/io_socket.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <expected>
 #include <memory>
 #include <optional>
@@ -164,9 +163,16 @@ void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept
 
     auto c = _unestablishedConnection.begin() + (_unestablishedConnection.size() - rge.begin().count());
 
-    targetConn->_writeOperations             = std::move((*c)->_writeOperations);
+    while ((*c)->_writeOperations.size()) {
+        targetConn->_writeOperations.emplace_back(std::move((*c)->_writeOperations.front()));
+        (*c)->_writeOperations.pop_front();
+    }
+
     targetConn->_pendingRecvMessageCallbacks = std::move((*c)->_pendingRecvMessageCallbacks);
-    targetConn->_receivedReadOperations      = std::move((*c)->_receivedReadOperations);
+
+    assert(targetConn->_receivedReadOperations.empty());
+    targetConn->_receivedReadOperations = std::move((*c)->_receivedReadOperations);
+
     _unestablishedConnection.erase(c);
 }
 

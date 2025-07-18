@@ -21,6 +21,10 @@ void EpollContext::execPendingFunctions() {
 void EpollContext::loop() {
     std::array<epoll_event, _reventSize> events {};
     int n = epoll_wait(_epfd, events.data(), _reventSize, -1);
+    if (n == -1) {
+        printf("EPOWAIT Something wrong, errno %d, strerror = %s\n", errno, strerror(errno));
+        exit(1);
+    }
 
     for (auto it = events.begin(); it != events.begin() + n; ++it) {
         epoll_event current_event = *it;

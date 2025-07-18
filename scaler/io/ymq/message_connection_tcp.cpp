@@ -85,13 +85,18 @@ void MessageConnectionTCP::onCreated() {
 }
 
 // on Return, unexpected value shall be interpreted as this - 0 = close, other -> errno
-std::expected<void, int> MessageConnectionTCP::tryReadMessages() {
+std::expected<void, int> MessageConnectionTCP::tryReadMessages(bool readOneMessage) {
+    bool haveReadOne = false;
     while (true) {
         char* readTo         = nullptr;
         size_t remainingSize = 0;
 
-        if (_receivedReadOperations.empty() || isCompleteMessage(_receivedReadOperations.front())) {
+        if (_receivedReadOperations.empty() || isCompleteMessage(_receivedReadOperations.back())) {
+            if (haveReadOne)
+                break;
             _receivedReadOperations.emplace();
+            if (readOneMessage)
+                haveReadOne = true;
         }
 
         auto& message = _receivedReadOperations.back();
@@ -148,17 +153,16 @@ void MessageConnectionTCP::updateReadOperation() {
 }
 
 void MessageConnectionTCP::onRead() {
-    auto res = tryReadMessages();
-    if (!res) {
-        if (res.error() == 0) {
-            onClose();
-            return;
-        }
-        printf("SOMETHING REALLY BAD HAPPENED\n");
-        exit(1);
-    }
-
     if (!_remoteIOSocketIdentity) {
+        auto res = tryReadMessages(true);
+        if (!res) {
+            if (res.error() == 0) {
+                onClose();
+                return;
+            }
+            printf("SOMETHING REALLY BAD HAPPENED\n");
+            exit(1);
+        }
         if (_receivedReadOperations.size() && isCompleteMessage(_receivedReadOperations.front())) {
             auto id = std::move(_receivedReadOperations.front());
             _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
@@ -166,6 +170,16 @@ void MessageConnectionTCP::onRead() {
             auto sock = this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
             sock->onConnectionIdentityReceived(this);
         }
+    }
+
+    auto res = tryReadMessages(false);
+    if (!res) {
+        if (res.error() == 0) {
+            onClose();
+            return;
+        }
+        printf("SOMETHING REALLY BAD HAPPENED\n");
+        exit(1);
     }
 
     updateReadOperation();
@@ -226,7 +240,7 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages() {
                 iovHeader.iov_base  = nullptr;
                 iovHeader.iov_len   = 0;
                 iovPayload.iov_base = (char*)(it->_payload.data()) + (_sendCursor - HEADER_SIZE);
-                iovPayload.iov_len  = it->_payload.len() + (_sendCursor - HEADER_SIZE);
+                iovPayload.iov_len  = it->_payload.len() - (_sendCursor - HEADER_SIZE);
             }
         } else {
             iovHeader.iov_base  = (void*)(&it->_header);
