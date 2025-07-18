@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 
+#include "scaler/io/ymq/error.h"
 #include "scaler/io/ymq/event_loop_thread.h"
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/io_socket.h"
@@ -123,7 +124,45 @@ std::expected<void, int> MessageConnectionTCP::tryReadMessages(bool readOneMessa
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 return {};  // Expected, we read until exhuastion
             } else {
-                return std::unexpected {errno};
+                const int myErrno = errno;
+                switch (myErrno) {
+                    case EBADF:
+                    case EISDIR:
+                    case EINVAL:
+                        unrecoverableError({
+                            Error::ErrorCode::CoreBug,
+                            "Originated from",
+                            "read(2)",
+                            "Errno is",
+                            strerror(myErrno),
+                            "_connfd",
+                            _connFd,
+                            "readTo",
+                            (void*)readTo,
+                            "remainingSize",
+                            remainingSize,
+                        });
+
+                    case EINTR:
+                        unrecoverableError({
+                            Error::ErrorCode::SignalNotSupported,
+                            "Originated from",
+                            "read(2)",
+                            "Errno is",
+                            strerror(myErrno),
+                        });
+
+                    case EFAULT:
+                    case EIO:
+                    default:
+                        unrecoverableError({
+                            Error::ErrorCode::ConfigurationError,
+                            "Originated from",
+                            "read(2)",
+                            "Errno is",
+                            strerror(myErrno),
+                        });
+                }
             }
         } else {
             message._cursor += n;
@@ -163,9 +202,8 @@ void MessageConnectionTCP::onRead() {
                 onClose();
                 return;
             }
-            printf("SOMETHING REALLY BAD HAPPENED\n");
-            exit(1);
         }
+
         if (_receivedReadOperations.size() && isCompleteMessage(_receivedReadOperations.front())) {
             auto id = std::move(_receivedReadOperations.front());
             _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
@@ -181,8 +219,6 @@ void MessageConnectionTCP::onRead() {
             onClose();
             return;
         }
-        printf("SOMETHING REALLY BAD HAPPENED\n");
-        exit(1);
     }
 
     updateReadOperation();
@@ -206,9 +242,6 @@ void MessageConnectionTCP::onWrite() {
     if (res.error() == ECONNRESET || res.error() == EPIPE) {
         onClose();
         return;
-    } else {
-        printf("SOMETHING REALLY BAD\n");
-        exit(1);
     }
 }
 
@@ -268,8 +301,69 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages() {
     if (bytesSent == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return 0;
-        } else
-            return std::unexpected {errno};
+        } else {
+            const int myErrno = errno;
+            switch (myErrno) {
+                case EAFNOSUPPORT:
+                case EBADF:
+                case EINVAL:
+                case EMSGSIZE:
+                case ENOTCONN:
+                case ENOTSOCK:
+                case EOPNOTSUPP:
+                case ENAMETOOLONG:
+                case ENOENT:
+                case ENOTDIR:
+                case ELOOP:
+                case EDESTADDRREQ:
+                case EHOSTUNREACH:
+                case EISCONN:
+                    unrecoverableError({
+                        Error::ErrorCode::CoreBug,
+                        "Originated from",
+                        "sendmsg(2)",
+                        "Errno is",
+                        strerror(myErrno),
+                        "_connfd",
+                        _connFd,
+                        "msg.msg_iovlen",
+                        msg.msg_iovlen,
+                    });
+                    break;
+
+                case ECONNRESET: break;  // NOTE: HANDLE BY CALLER
+
+                case EINTR:
+                    unrecoverableError({
+                        Error::ErrorCode::SignalNotSupported,
+                        "Originated from",
+                        "sendmsg(2)",
+                        "Errno is",
+                        strerror(myErrno),
+                    });
+                    break;
+
+                case EPIPE: break;  // NOTE: HANDLE BY CALLER
+
+                case EIO:
+                case EACCES:
+                case ENETDOWN:
+                case ENETUNREACH:
+                case ENOBUFS:
+                case ENOMEM:
+                default:
+                    unrecoverableError({
+                        Error::ErrorCode::ConfigurationError,
+                        "Originated from",
+                        "sendmsg(2)",
+                        "Errno is",
+                        strerror(myErrno),
+                    });
+                    break;
+            }
+
+            return std::unexpected {myErrno};
+        }
     }
 
     return bytesSent;

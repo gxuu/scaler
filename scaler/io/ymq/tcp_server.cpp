@@ -90,24 +90,61 @@ void TcpServer::onRead() {
         socklen_t remoteAddrLen = sizeof(remoteAddr);
 
         int fd = accept4(_serverFd, &remoteAddr, &remoteAddrLen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+        // TODO: Change this to a user callback
         if (fd < 0) {
-            int localErrno = errno;
-            switch (localErrno) {
+            const int myErrno = errno;
+            switch (myErrno) {
+                // Not an error
                 // case EWOULDBLOCK: // same as EAGAIN
                 case EAGAIN:
-                case ENETDOWN:
-                case EPROTO:
-                case ENOPROTOOPT:
-                case EHOSTDOWN:
-                case ENONET:
-                case EHOSTUNREACH:
-                case EOPNOTSUPP:
-                case ENETUNREACH: return;
+                case ECONNABORTED: break;
 
+                case ENOTSOCK:
+                case EOPNOTSUPP:
+                case EINVAL:
+                case EBADF:
+                    unrecoverableError({
+                        Error::ErrorCode::CoreBug,
+                        "Originated from",
+                        "accept4(2)",
+                        "Errno is",
+                        strerror(myErrno),
+                        "_serverFd",
+                        _serverFd,
+                    });
+                    break;
+
+                case EINTR:
+                    unrecoverableError({
+                        Error::ErrorCode::SignalNotSupported,
+                        "Originated from",
+                        "accept4(2)",
+                        "Errno is",
+                        strerror(myErrno),
+                    });
+                    break;
+
+                // config
+                case EMFILE:
+                case ENFILE:
+                case ENOBUFS:
+                case ENOMEM:
+                case EFAULT:
+                case EPERM:
+                case EPROTO:
+                case ENOSR:
+                case ESOCKTNOSUPPORT:
+                case EPROTONOSUPPORT:
+                case ETIMEDOUT:
                 default:
-                    fprintf(stderr, "accept4 failed with errno %d: %s\n", localErrno, strerror(localErrno));
-                    // TODO: Change this to a user callback
-                    exit(-1);
+                    unrecoverableError({
+                        Error::ErrorCode::ConfigurationError,
+                        "Originated from",
+                        "accept4(2)",
+                        "Errno is",
+                        strerror(myErrno),
+                    });
+                    break;
             }
         }
 
