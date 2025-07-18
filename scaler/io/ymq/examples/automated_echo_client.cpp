@@ -34,7 +34,7 @@ int main() {
     std::vector<std::promise<Message>> recvPromises;
     recvPromises.reserve(msgCnt + 10);
 
-    syncConnectSocket(clientSocket, "tcp://127.0.0.1:8080");
+    syncConnectSocket(clientSocket, "tcp://51.15.214.200:32912");
     printf("Connected to server.\n");
 
     const std::string_view line = longStr;
@@ -66,6 +66,10 @@ int main() {
     for (auto& x: recvPromises) {
         auto future = x.get_future();
         Message msg = future.get();
+        if (msg.payload.as_string() != longStr) {
+            printf("Checksum failed, %s\n", msg.payload.as_string().c_str());
+            exit(1);
+        }
     }
     printf("recv completes\n");
 
