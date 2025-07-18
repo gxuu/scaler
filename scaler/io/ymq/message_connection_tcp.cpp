@@ -153,6 +153,10 @@ void MessageConnectionTCP::updateReadOperation() {
 }
 
 void MessageConnectionTCP::onRead() {
+    if (_connFd == 0) {
+        return;
+    }
+
     if (!_remoteIOSocketIdentity) {
         auto res = tryReadMessages(true);
         if (!res) {

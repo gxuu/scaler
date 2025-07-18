@@ -37,9 +37,9 @@ private:
     // It will handle error it can handle. If it is unreasonable to
     // handle the error here, pass it to onAcceptReturn()
     void onRead();
-    void onWrite() {}
-    void onClose() {}
-    void onError() {}
+    void onWrite() { printf("%s\n", __PRETTY_FUNCTION__); }
+    void onClose() { printf("%s\n", __PRETTY_FUNCTION__); }
+    void onError() { printf("%s\n", __PRETTY_FUNCTION__); }
 
     int createAndBindSocket();
 

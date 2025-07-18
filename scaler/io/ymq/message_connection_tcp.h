@@ -53,8 +53,8 @@ private:
     void onWrite();
     void onClose();
     void onError() {
+        printf("%s\n", __PRETTY_FUNCTION__);
         printf("onError (for debug don't remove) later this will be a log\n");
-        printf("Calling onClose()...\n");
         onClose();
     };
 
