@@ -97,7 +97,7 @@ void TcpServer::onRead() {
                 // Not an error
                 // case EWOULDBLOCK: // same as EAGAIN
                 case EAGAIN:
-                case ECONNABORTED: break;
+                case ECONNABORTED: return;
 
                 case ENOTSOCK:
                 case EOPNOTSUPP:

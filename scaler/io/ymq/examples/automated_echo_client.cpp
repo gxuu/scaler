@@ -34,7 +34,8 @@ int main() {
     std::vector<std::promise<Message>> recvPromises;
     recvPromises.reserve(msgCnt + 10);
 
-    syncConnectSocket(clientSocket, "tcp://51.15.214.200:32912");
+    // syncConnectSocket(clientSocket, "tcp://51.15.214.200:32912");
+    syncConnectSocket(clientSocket, "tcp://127.0.0.1:8080");
     printf("Connected to server.\n");
 
     const std::string_view line = longStr;
