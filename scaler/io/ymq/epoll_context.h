@@ -54,8 +54,11 @@ public:
     int addFdToLoop(int fd, uint64_t events, EventManager* manager);
     void removeFdFromLoop(int fd);
 
+    // NOTE: Thread-safe method to communicate with the event loop thread
     void executeNow(Function func) { _interruptiveFunctions.enqueue(std::move(func)); }
+    // WARN: NOT thread-safe. Thread safety is guaranteed by executeNow.
     void executeLater(Function func) { _delayedFunctions.emplace(std::move(func)); }
+    // WARN: NOT thread-safe. Thread safety is guaranteed by executeNow.
     Identifier executeAt(Timestamp timestamp, Function callback) {
         return _timingFunctions.push(timestamp, std::move(callback));
     }
