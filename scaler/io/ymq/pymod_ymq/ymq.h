@@ -31,7 +31,7 @@ struct YMQState {
 
 // this function must be called from a C++ thread
 // this function will lock the GIL, call `fn()` and use its return value to set the future's result/exception
-static void future_do(PyObject* future, std::function<PyObject*()> fn, const char* future_method) {
+static void future_do(PyObject* future, const std::function<PyObject*()>& fn, const char* future_method) {
     PyGILState_STATE gstate = PyGILState_Ensure();
     // begin python critical section
 
