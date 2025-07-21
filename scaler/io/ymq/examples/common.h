@@ -25,7 +25,7 @@ inline void syncBindSocket(std::shared_ptr<IOSocket> socket, std::string address
     auto bind_promise = std::promise<void>();
     auto bind_future  = bind_promise.get_future();
     // Optionally handle result in the callback
-    socket->bindTo("tcp://127.0.0.1:8080", [&bind_promise](int result) { bind_promise.set_value(); });
+    socket->bindTo(address, [&bind_promise](int result) { bind_promise.set_value(); });
     bind_future.wait();
 }
 
