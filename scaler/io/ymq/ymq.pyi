@@ -34,6 +34,9 @@ class IOSocketType(IntEnum):
     Dealer = 4
     Router = 5
     Pair = 6
+    Connector = 7
+    Unicast = 8
+    Multicast = 9
 
 class IOContext:
     num_threads: int
