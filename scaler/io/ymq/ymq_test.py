@@ -1,4 +1,5 @@
-import asyncio, ymq
+import asyncio
+import ymq
 
 
 async def main():
