@@ -29,14 +29,9 @@ class Message:
 class IOSocketType(IntEnum):
     Uninit = 0
     Binder = 1
-    Sub = 2
-    Pub = 3
-    Dealer = 4
-    Router = 5
-    Pair = 6
-    Connector = 7
-    Unicast = 8
-    Multicast = 9
+    Connector = 2
+    Unicast = 3
+    Multicast = 4
 
 class IOContext:
     num_threads: int
