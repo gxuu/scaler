@@ -168,11 +168,6 @@ static int ymq_createIOSocketTypeEnum(PyObject* pyModule, YMQState* state) {
     std::vector<std::pair<std::string, int>> ioSocketTypes = {
         {"Uninit", (int)IOSocketType::Uninit},
         {"Binder", (int)IOSocketType::Binder},
-        {"Sub", (int)IOSocketType::Sub},
-        {"Pub", (int)IOSocketType::Pub},
-        {"Dealer", (int)IOSocketType::Dealer},
-        {"Router", (int)IOSocketType::Router},
-        {"Pair", (int)IOSocketType::Pair},
         {"Connector", (int)IOSocketType::Connector},
         {"Unicast", (int)IOSocketType::Unicast},
         {"Multicast", (int)IOSocketType::Multicast},
