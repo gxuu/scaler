@@ -8,10 +8,10 @@
 
 #include <memory>
 
-#include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/event_loop_thread.h"
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/io_socket.h"
+#include "scaler/io/ymq/logging.h"
 #include "scaler/io/ymq/message_connection_tcp.h"
 #include "scaler/io/ymq/network_utils.h"
 
@@ -21,28 +21,52 @@ namespace ymq {
 int TcpServer::createAndBindSocket() {
     int server_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (server_fd == -1) {
-        perror("socket");
+        log(LoggingLevel::error,
+            "Originated from",
+            "socket(2)",
+            "Errno is",
+            strerror(errno)  // ,
+        );
+
         _onBindReturn(errno);
         return -1;
     }
 
     int optval = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
-        perror("setsockopt");
+        log(LoggingLevel::error,
+            "Originated from",
+            "setsockopt(2)",
+            "Errno is",
+            strerror(errno)  // ,
+        );
+
         close(server_fd);
         _onBindReturn(errno);
         return -1;
     }
 
     if (bind(server_fd, &_addr, sizeof(_addr)) == -1) {
-        perror("bind");
+        log(LoggingLevel::error,
+            "Originated from",
+            "bind(2)",
+            "Errno is",
+            strerror(errno)  // ,
+        );
+
         close(server_fd);
         _onBindReturn(errno);
         return -1;
     }
 
     if (listen(server_fd, SOMAXCONN) == -1) {
-        perror("listen");
+        log(LoggingLevel::error,
+            "Originated from",
+            "listen(2)",
+            "Errno is",
+            strerror(errno)  // ,
+        );
+
         close(server_fd);
         _onBindReturn(errno);
         return -1;
