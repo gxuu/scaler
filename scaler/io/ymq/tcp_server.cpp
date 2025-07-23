@@ -84,7 +84,6 @@ void TcpServer::onRead() {
         socklen_t remoteAddrLen = sizeof(remoteAddr);
 
         int fd = accept4(_serverFd, &remoteAddr, &remoteAddrLen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-        // TODO: Change this to a user callback
         if (fd < 0) {
             const int myErrno = errno;
             switch (myErrno) {
