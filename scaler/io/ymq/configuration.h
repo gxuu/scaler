@@ -12,10 +12,6 @@ class EpollContext;
 class Message;
 class IOSocket;
 
-#if __cpp_lib_move_only_function < 202110L
-    #error "This code requires C++23 or later for std::move_only_function."
-#endif
-
 struct Configuration {
     using PollingContext                  = EpollContext;
     using IOSocketIdentity                = std::string;

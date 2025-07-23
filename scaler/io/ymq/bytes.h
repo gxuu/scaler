@@ -85,18 +85,18 @@ public:
     }
 
     [[nodiscard("Allocated Bytes is not used, likely causing a memory leak")]]
-    static Bytes alloc(size_t m_len) noexcept {
-        auto ptr = new uint8_t[m_len];  // we just assume the allocation will succeed
-        return Bytes {ptr, m_len};
+    static Bytes alloc(size_t len) noexcept {
+        auto ptr = new uint8_t[len];  // we just assume the allocation will succeed
+        return Bytes {ptr, len};
     }
 
     // NOTE: Below two functions are not used by the core but appears
     // to be used by pymod YMQ. - gxu
     [[nodiscard]] static Bytes empty() { return Bytes {(uint8_t*)nullptr, 0}; }
-    [[nodiscard]] static Bytes copy(const uint8_t* m_data, size_t m_len) {
+    [[nodiscard]] static Bytes copy(const uint8_t* data, size_t len) {
         Bytes result;
-        result._data = datadup(m_data, m_len);
-        result._len  = m_len;
+        result._data = datadup(data, len);
+        result._len  = len;
         return result;
     }
 
