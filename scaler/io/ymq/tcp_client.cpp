@@ -5,7 +5,6 @@
 
 #include <cerrno>
 #include <chrono>
-#include <functional>
 #include <memory>
 
 #include "scaler/io/ymq/event_loop_thread.h"
@@ -31,22 +30,26 @@ void TcpClient::onCreated() {
     this->_connFd = sockfd;
     int ret       = connect(sockfd, (sockaddr*)&_remoteAddr, sizeof(_remoteAddr));
 
-    int passedBackValue = 0;
-    if (ret < 0) {
-        if (errno != EINPROGRESS) {
-            perror("connect");
-            close(sockfd);
-            passedBackValue = errno;
-        } else {
-            _eventLoopThread->_eventLoop.addFdToLoop(sockfd, EPOLLOUT | EPOLLET, this->_eventManager.get());
-            passedBackValue = 0;
-        }
-    } else {
+    // Very unlikely
+    if (ret >= 0) {
         std::string id = this->_localIOSocketIdentity;
         auto sock      = this->_eventLoopThread->_identityToIOSocket.at(id);
         sock->onConnectionCreated(setNoDelay(sockfd), getLocalAddr(sockfd), getRemoteAddr(sockfd), true);
 
+        if (_retryTimes == 0) {
+            _onConnectReturn(0);
+        }
+        return;
+    }
+
+    int passedBackValue = 0;
+    if (errno == EINPROGRESS) {
+        _eventLoopThread->_eventLoop.addFdToLoop(sockfd, EPOLLOUT | EPOLLET, this->_eventManager.get());
         passedBackValue = 0;
+    } else {
+        perror("connect");
+        close(sockfd);
+        passedBackValue = errno;
     }
 
     if (_retryTimes == 0) {
@@ -54,7 +57,7 @@ void TcpClient::onCreated() {
         return;
     }
 
-    if (passedBackValue < 0) {
+    if (passedBackValue != 0) {
         printf("SOMETHING REALLY BAD\n");
         exit(-1);
     }
@@ -100,7 +103,8 @@ void TcpClient::onWrite() {
     std::string id = this->_localIOSocketIdentity;
     auto sock      = this->_eventLoopThread->_identityToIOSocket.at(id);
 
-    sock->onConnectionCreated(setNoDelay(_connFd), getLocalAddr(_connFd), getRemoteAddr(_connFd), true);
+    static constexpr bool responsibleForRetry = true;
+    sock->onConnectionCreated(setNoDelay(_connFd), getLocalAddr(_connFd), getRemoteAddr(_connFd), responsibleForRetry);
 
     _connFd    = 0;
     _connected = true;
@@ -131,6 +135,7 @@ TcpClient::~TcpClient() noexcept {
     if (_connFd) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
         close(_connFd);
+        _connFd = 0;
     }
     if (_retryTimes > 0)
         _eventLoopThread->_eventLoop.cancelExecution(_retryIdentifier);
