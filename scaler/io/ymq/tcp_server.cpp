@@ -74,14 +74,8 @@ void TcpServer::onCreated() {
         _serverFd = 0;
         return;
     }
-    auto res = _eventLoopThread->_eventLoop.addFdToLoop(_serverFd, EPOLLIN | EPOLLET, this->_eventManager.get());
-    if (res == 0) {
-        _onBindReturn(0);
-    } else {
-        close(_serverFd);
-        _serverFd = 0;
-        _onBindReturn(res);
-    }
+    _eventLoopThread->_eventLoop.addFdToLoop(_serverFd, EPOLLIN | EPOLLET, this->_eventManager.get());
+    _onBindReturn(0);
 }
 
 void TcpServer::onRead() {
