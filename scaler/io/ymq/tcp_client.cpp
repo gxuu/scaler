@@ -30,8 +30,7 @@ void TcpClient::onCreated() {
     this->_connFd = sockfd;
     int ret       = connect(sockfd, (sockaddr*)&_remoteAddr, sizeof(_remoteAddr));
 
-    // Very unlikely
-    if (ret >= 0) {
+    if (ret >= 0) [[unlikely]] {
         std::string id = this->_localIOSocketIdentity;
         auto sock      = this->_eventLoopThread->_identityToIOSocket.at(id);
         sock->onConnectionCreated(setNoDelay(sockfd), getLocalAddr(sockfd), getRemoteAddr(sockfd), true);
