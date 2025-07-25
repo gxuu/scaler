@@ -48,10 +48,10 @@ inline int createTimerfd() {
                 "Errno is",
                 strerror(myErrno),
             });
+            break;
     }
 }
 
-// TODO: HANDLE ERRS
 class TimedQueue {
 public:
     using Callback            = Configuration::TimedQueueCallback;
@@ -89,10 +89,15 @@ public:
     std::vector<Callback> dequeue() {
         uint64_t numItems;
         ssize_t n = read(_timerFd, &numItems, sizeof numItems);
-        if (n != sizeof numItems) {
+        if (n != sizeof numItems) [[unlikely]] {
             // This should never happen anyway
-            assert(false);
-            return {};
+            unrecoverableError({
+                Error::ErrorCode::CoreBug,
+                "Originated from",
+                __PRETTY_FUNCTION__,
+                "Errno is",
+                strerror(errno),
+            });
         }
 
         std::vector<Callback> callbacks;
@@ -117,13 +122,36 @@ public:
             auto ts     = convertToItimerspec(nextTs);
             int ret     = timerfd_settime(_timerFd, 0, &ts, nullptr);
             if (ret == -1) {
-                unrecoverableError({
-                    Error::ErrorCode::CoreBug,
-                    "Originated from",
-                    __PRETTY_FUNCTION__,
-                    "Errno is",
-                    strerror(errno),
-                });
+                const int myErrno = errno;
+                switch (myErrno) {
+                    case EMFILE:
+                    case ENFILE:
+                    case ENODEV:
+                    case ENOMEM:
+                    case EPERM:
+                        unrecoverableError({
+                            Error::ErrorCode::ConfigurationError,
+                            "Originated from",
+                            __PRETTY_FUNCTION__,
+                            "Errno is",
+                            strerror(myErrno),
+                        });
+                        break;
+
+                    case EINVAL:
+                    case EBADF:
+                    case EFAULT:
+                    case ECANCELED:
+                    default:
+                        unrecoverableError({
+                            Error::ErrorCode::CoreBug,
+                            "Originated from",
+                            __PRETTY_FUNCTION__,
+                            "Errno is",
+                            strerror(myErrno),
+                        });
+                        break;
+                }
             }
         }
         return callbacks;
