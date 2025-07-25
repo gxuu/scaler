@@ -21,6 +21,9 @@ struct Error: std::exception {
         ConfigurationError,
         SignalNotSupported,
         CoreBug,
+        RepetetiveIOSocketIdentity,
+        RedundantIOSocketRefCount,
+        MultipleConnectToNotSupported,
     };
 
     // NOTE:
@@ -46,6 +49,13 @@ struct Error: std::exception {
             case ErrorCode::SignalNotSupported:
                 return "A function call was interrupted by signal, but signal handling is not supported";
             case ErrorCode::CoreBug: return "Likely a bug within the library";
+            case ErrorCode::RepetetiveIOSocketIdentity:
+                return "It is NOT allowed to create two IOSocket with the same identity";
+            case ErrorCode::RedundantIOSocketRefCount:
+                return "It is NOT allowed to hold IOSocket shared_ptr after you try to remove it";
+            case ErrorCode::MultipleConnectToNotSupported:
+                return "Connect to remote end without the previous such request successfully completed or exceeds "
+                       "retry limit is currently NOT supported";
         }
         std::abort();
     }
