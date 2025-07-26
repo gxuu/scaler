@@ -23,11 +23,6 @@ namespace ymq {
 void TcpClient::onCreated() {
     int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sockfd == -1) {
-        if (_retryTimes == 0) {
-            _onConnectReturn(errno);
-            return;
-        }
-
         const int myErrno = errno;
         switch (myErrno) {
             case EACCES:
@@ -79,8 +74,8 @@ void TcpClient::onCreated() {
         passedBackValue = 0;
     }
 
-    if (_retryTimes == 0) {
-        _onConnectReturn(passedBackValue);
+    if (_retryTimes == 0 && passedBackValue == 0) {
+        _onConnectReturn(std::unexpected {Error::ErrorCode::InitialConnectFailedWithInProgress});
         return;
     }
 

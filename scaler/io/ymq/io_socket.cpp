@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "scaler/io/ymq/error.h"
 #include "scaler/io/ymq/event_loop_thread.h"
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/message_connection_tcp.h"
@@ -35,12 +36,12 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) n
             if (this->socketType() == IOSocketType::Connector) {
                 address = "";
             } else if (this->socketType() == IOSocketType::Multicast) {
-                callback(0);  // SUCCESS
+                callback({});  // SUCCESS
                 for (const auto& [addr, conn]: _identityToConnection) {
                     // TODO: Currently doing N copies of the messages. Find a place to
                     // store this message and pass in reference.
                     if (addr.starts_with(address))
-                        conn->sendMessage(message, [](int) {});
+                        conn->sendMessage(message, [](auto) {});
                 }
                 return;
             }
@@ -100,7 +101,7 @@ void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindRetur
     _eventLoopThread->_eventLoop.executeNow(
         [this, networkAddress = std::move(networkAddress), callback = std::move(onBindReturn)] mutable {
             if (_tcpServer) {
-                callback(-1);
+                callback(std::unexpected {Error::ErrorCode::MultipleBindToNotSupported});
                 return;
             }
             auto res = stringToSockaddr(std::move(networkAddress));
@@ -126,15 +127,15 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept {
         auto destructWriteOp = std::move(connPtr->_writeOperations);
         connPtr->_writeOperations.clear();
         while (_pendingRecvMessages->size()) {
-            // TODO: Replace this with error didNotReceive or something like that
-            _pendingRecvMessages->front()({});
+            _pendingRecvMessages->front()(
+                {{}, Error::ErrorCode::RemoteEndDisconnectedOnSocketWithoutGuaranteedDelivery});
             _pendingRecvMessages->pop();
         }
         auto destructReadOp = std::move(connPtr->_receivedReadOperations);
     }
 
     if (connPtr->_responsibleForRetry) {
-        connectTo(connPtr->_remoteAddr, [](int) {});  // as the user callback is one-shot
+        connectTo(connPtr->_remoteAddr, [](auto) {});  // as the user callback is one-shot
     }
 }
 

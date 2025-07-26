@@ -24,6 +24,12 @@ struct Error: std::exception {
         RepetetiveIOSocketIdentity,
         RedundantIOSocketRefCount,
         MultipleConnectToNotSupported,
+        MultipleBindToNotSupported,
+        InitialConnectFailedWithInProgress,
+        SendMessageRequestCouldNotComplete,
+        SetSockOptNonFatalFailure,
+        IPv6NotSupported,
+        RemoteEndDisconnectedOnSocketWithoutGuaranteedDelivery,
     };
 
     // NOTE:
@@ -37,6 +43,8 @@ struct Error: std::exception {
     constexpr Error(ErrorCode e, Args&&... args) noexcept
         : _errorCode(e)
         , _logMsg(argsToString(Timestamp {}, convertErrorToExplanation(e), std::forward<Args>(args)...)) {}
+
+    constexpr Error() noexcept: _errorCode(ErrorCode::Uninit) {}
 
     static constexpr std::string_view convertErrorToExplanation(ErrorCode e) noexcept {
         switch (e) {
@@ -56,6 +64,18 @@ struct Error: std::exception {
             case ErrorCode::MultipleConnectToNotSupported:
                 return "Connect to remote end without the previous such request successfully completed or exceeds "
                        "retry limit is currently NOT supported";
+            case ErrorCode::MultipleBindToNotSupported:
+                return "Bind to multiple IP addresses is currently not supported";
+            case ErrorCode::InitialConnectFailedWithInProgress:
+                return "The first connect(2) call to an socket failed with EINPROGRESS, expected";
+            case ErrorCode::SendMessageRequestCouldNotComplete:
+                return "sendMessage request could not complete. Possibly because the underlying connection has been "
+                       "destructed because it exceeds maximum retry limit";
+            case ErrorCode::SetSockOptNonFatalFailure: return "sendsockopt(3) gets unfatal failure";
+            case ErrorCode::IPv6NotSupported: return "IPv6 is currently not supported";
+            case ErrorCode::RemoteEndDisconnectedOnSocketWithoutGuaranteedDelivery:
+                return "You are using IOSocket::Unicast or IOSocket::Multicast, which do not support guaranteed "
+                       "message delivery, and the connection(s) disconnects";
         }
         std::abort();
     }
