@@ -165,11 +165,11 @@ class ClientAgent(threading.Thread):
     async def __get_loops(self):
         await self._heartbeat_manager.send_heartbeat()
 
-        loops = await asyncio.gather(
+        loops = [
             create_async_loop_routine(self._connector_external.routine, 0),
             create_async_loop_routine(self._connector_internal.routine, 0),
             create_async_loop_routine(self._heartbeat_manager.routine, self._heartbeat_interval_seconds),
-        )
+        ]
 
         exception = None
         try:
