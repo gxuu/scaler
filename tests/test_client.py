@@ -35,9 +35,9 @@ class TestClient(unittest.TestCase):
         setup_logger()
         logging_test_name(self)
         self._workers = 3
-        # self.cluster = SchedulerClusterCombo(n_workers=self._workers, event_loop="builtin")
-        # self.address = self.cluster.get_address()
-        self.address = f"tcp://127.0.0.1:2345"
+        self.cluster = SchedulerClusterCombo(n_workers=self._workers, event_loop="builtin")
+        self.address = self.cluster.get_address()
+        # self.address = f"tcp://127.0.0.1:2345"
 
     def tearDown(self) -> None:
         # self.cluster.shutdown()
