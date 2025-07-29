@@ -12,6 +12,7 @@ def sleep_and_return_pid(sec: int):
     time.sleep(sec)
     return os.getpid()
 
+
 @unittest.skip("Because balance_manager is not yet integrated into scaler.")
 class TestBalance(unittest.TestCase):
     def setUp(self) -> None:
