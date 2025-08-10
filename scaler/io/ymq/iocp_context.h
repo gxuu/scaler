@@ -1,8 +1,8 @@
 #pragma once
-#ifdef __linux__
+#ifdef _WIN32
 
 // System
-#include <sys/epoll.h>
+// #include <sys/epoll.h>
 
 // C++
 #include <functional>
@@ -12,7 +12,6 @@
 #include "scaler/io/ymq/timed_queue.h"
 
 // First-party
-#include "scaler/io/ymq/file_descriptor.h"
 #include "scaler/io/ymq/interruptive_concurrent_queue.h"
 #include "scaler/io/ymq/timestamp.h"
 
@@ -23,33 +22,18 @@ class EventManager;
 
 // In the constructor, the epoll context should register eventfd/timerfd from
 // This way, the queues need not know about the event manager. We don't use callbacks.
-class EpollContext {
+class IocpContext {
 public:
     using Function             = Configuration::ExecutionFunction;
     using DelayedFunctionQueue = std::queue<Function>;
     using Identifier           = Configuration::ExecutionCancellationIdentifier;
 
-    EpollContext()
+    IocpContext()
     {
-        _epfd = epoll_create1(0);
-        epoll_event event {};
-
-        event.events   = EPOLLIN | EPOLLET;
-        event.data.u64 = _isInterruptiveFd;
-        epoll_ctl(_epfd, EPOLL_CTL_ADD, _interruptiveFunctions.eventFd(), &event);
-
-        event          = {};
-        event.events   = EPOLLIN | EPOLLET;
-        event.data.u64 = _isTimingFd;
-        epoll_ctl(_epfd, EPOLL_CTL_ADD, _timingFunctions.timingFd(), &event);
     }
 
-    ~EpollContext()
+    ~IocpContext()
     {
-        epoll_ctl(_epfd, EPOLL_CTL_DEL, _interruptiveFunctions.eventFd(), nullptr);
-        epoll_ctl(_epfd, EPOLL_CTL_DEL, _timingFunctions.timingFd(), nullptr);
-
-        close(_epfd);
     }
 
     void loop();

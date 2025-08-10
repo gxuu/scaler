@@ -10,12 +10,19 @@ namespace scaler {
 namespace ymq {
 
 class EpollContext;
+class IocpContext;
 class Message;
 class IOSocket;
 class Error;
 
 struct Configuration {
+#ifdef __linux__
     using PollingContext                  = EpollContext;
+#endif  // __linux__
+
+#ifdef _WIN32
+    using PollingContext                  = IocpContext;
+#endif  // _WIN32
     using IOSocketIdentity                = std::string;
     using SendMessageCallback             = std::move_only_function<void(std::expected<void, Error>)>;
     using RecvMessageCallback             = std::move_only_function<void(std::pair<Message, Error>)>;

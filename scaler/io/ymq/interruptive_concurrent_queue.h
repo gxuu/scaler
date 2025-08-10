@@ -1,7 +1,12 @@
 #pragma once
 
+#ifdef __linux__
 #include <sys/eventfd.h>
 #include <unistd.h>
+#endif  // __linux__
+#ifdef _WIN32
+#include <windows.h>
+#endif  // _WIN32
 
 // C++
 #include <cstdlib>
@@ -15,6 +20,7 @@ namespace ymq {
 
 class EventManager;
 
+#ifdef __linux__
 template <typename T>
 class InterruptiveConcurrentQueue {
     int _eventFd;
@@ -108,6 +114,44 @@ public:
 
     ~InterruptiveConcurrentQueue() { close(_eventFd); }
 };
+#endif  // __linux__
+
+#ifdef _WIN32
+template <typename T>
+class InterruptiveConcurrentQueue {
+    HANDLE _completionPort;
+    moodycamel::ConcurrentQueue<T> _queue;
+
+public:
+    InterruptiveConcurrentQueue(HANDLE completionPort): _queue(), _completionPort(completionPort) { }
+
+    void enqueue(T item)
+    {
+        _queue.enqueue(std::move(item));
+        PostQueuedCompletionStatus(_completionPort, 0, (ULONG_PTR)_completionPort, nullptr);
+    }
+
+    // NOTE: this method will block until an item is available
+    // NOTE: On Windows, due to how the polling mechanism work, we can only do it 1 by 1.
+    // NOTE: On Windows, we don't have a guaranteed number of functions, unlike with eventfd.
+    std::vector<T> dequeue()
+    {
+        std::vector<T> vecT(1);
+		while (!_queue.try_dequeue(vecT[0]))
+			;
+        return vecT;
+    }
+
+    // unmovable, uncopyable
+    InterruptiveConcurrentQueue(const InterruptiveConcurrentQueue&)            = delete;
+    InterruptiveConcurrentQueue& operator=(const InterruptiveConcurrentQueue&) = delete;
+    InterruptiveConcurrentQueue(InterruptiveConcurrentQueue&&)                 = delete;
+    InterruptiveConcurrentQueue& operator=(InterruptiveConcurrentQueue&&)      = delete;
+
+    // ~InterruptiveConcurrentQueue() { close(_eventFd); } // No need on Windows
+};
+
+#endif  // _WIN32
 
 }  // namespace ymq
 }  // namespace scaler
