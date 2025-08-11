@@ -5,7 +5,7 @@
 #endif  // __linux__
 #ifdef _WIN32
 #include <windows.h>
-#endif  // __linux__
+#endif  // _WIN32
 
 #include <cassert>
 #include <chrono>
@@ -64,8 +64,8 @@ inline LARGE_INTEGER convertToLARGE_INTEGER(Timestamp ts)
     const auto duration = ts.timestamp - std::chrono::system_clock::now();
     assert(duration.count() >= 0);
     const auto nanosecs        = duration_cast<nanoseconds>(duration);
-    long long hundredNanos = nanosecs.count() / 100;
-    return (LARGE_INTEGER)hundredNanos;
+    long long relaiveHundredNanos = nanosecs.count() / 100 * -1;
+    return (LARGE_INTEGER)relaiveHundredNanos;
 }
 #endif  // _WIN32
 

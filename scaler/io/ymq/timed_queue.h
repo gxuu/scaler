@@ -227,19 +227,6 @@ public:
 
     std::vector<Callback> dequeue()
     {
-        uint64_t numItems;
-        ssize_t n = read(_timerFd, &numItems, sizeof numItems);
-        if (n != sizeof numItems) [[unlikely]] {
-            // This should never happen anyway
-            unrecoverableError({
-                Error::ErrorCode::CoreBug,
-                "Originated from",
-                __PRETTY_FUNCTION__,
-                "Errno is",
-                strerror(errno),
-            });
-        }
-
         std::vector<Callback> callbacks;
 
         Timestamp now;
@@ -259,40 +246,14 @@ public:
 
         if (!pq.empty()) {
             auto nextTs = std::get<0>(pq.top());
-            auto ts     = convertToItimerspec(nextTs);
-            int ret     = timerfd_settime(_timerFd, 0, &ts, nullptr);
-            if (ret == -1) {
-                const int myErrno = errno;
-                switch (myErrno) {
-                    case EMFILE:
-                    case ENFILE:
-                    case ENODEV:
-                    case ENOMEM:
-                    case EPERM:
-                        unrecoverableError({
-                            Error::ErrorCode::ConfigurationError,
-                            "Originated from",
-                            __PRETTY_FUNCTION__,
-                            "Errno is",
-                            strerror(myErrno),
-                        });
-                        break;
-
-                    case EINVAL:
-                    case EBADF:
-                    case EFAULT:
-                    case ECANCELED:
-                    default:
-                        unrecoverableError({
-                            Error::ErrorCode::CoreBug,
-                            "Originated from",
-                            __PRETTY_FUNCTION__,
-                            "Errno is",
-                            strerror(myErrno),
-                        });
-                        break;
-                }
-            }
+            auto ts     = convertToLARGE_INTEGER(nextTs);
+            SetWaitableTimer(
+                _timerFd,
+                (LARGE_INTEGER*)&ts,
+                0,
+                +[_completionPort](HANDLE, DWORD, DWORD) { PostQueuedCompletionStatus(_completionPort, 0, (ULONG_PTR)_timerFd, nullptr); },
+                nullptr,
+                false);
         }
         return callbacks;
     }

@@ -1,8 +1,7 @@
 #pragma once
 #ifdef _WIN32
 
-// System
-// #include <sys/epoll.h>
+#include <windows.h>
 
 // C++
 #include <functional>
@@ -27,9 +26,10 @@ public:
     using Function             = Configuration::ExecutionFunction;
     using DelayedFunctionQueue = std::queue<Function>;
     using Identifier           = Configuration::ExecutionCancellationIdentifier;
+    HANDLE _completionPort;
 
-    IocpContext()
-    {
+    IocpContext() { 
+        _completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, (ULONG_PTR)0, 1);
     }
 
     ~IocpContext()

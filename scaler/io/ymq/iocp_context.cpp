@@ -2,8 +2,6 @@
 
 #include "scaler/io/ymq/iocp_context.h"
 
-// #include <sys/epoll.h>
-
 #include <cerrno>
 #include <functional>
 

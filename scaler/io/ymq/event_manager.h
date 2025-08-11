@@ -10,7 +10,6 @@
 
 // First-party
 #include "scaler/io/ymq/configuration.h"
-#include "scaler/io/ymq/file_descriptor.h"
 
 namespace scaler {
 namespace ymq {
