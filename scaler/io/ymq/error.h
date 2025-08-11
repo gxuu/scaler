@@ -45,7 +45,7 @@ struct Error: std::exception {
     {
     }
 
-    constexpr Error() noexcept: _errorCode(ErrorCode::Uninit) {}
+    Error() noexcept: _errorCode(ErrorCode::Uninit) {}
 
     static constexpr std::string_view convertErrorToExplanation(ErrorCode e) noexcept
     {
@@ -108,7 +108,7 @@ struct std::formatter<scaler::ymq::Error, char> {
 
 using UnrecoverableErrorFunctionHookPtr = std::function<void(scaler::ymq::Error)>;
 
-[[noreturn]] constexpr inline void defaultUnrecoverableError(scaler::ymq::Error e) noexcept
+[[noreturn]] inline void defaultUnrecoverableError(scaler::ymq::Error e) noexcept
 {
     std::print(stderr, "{}\n", e);
     exit(1);
@@ -116,7 +116,7 @@ using UnrecoverableErrorFunctionHookPtr = std::function<void(scaler::ymq::Error)
 
 inline UnrecoverableErrorFunctionHookPtr unrecoverableErrorFunctionHookPtr = defaultUnrecoverableError;
 
-[[noreturn]] constexpr inline void unrecoverableError(scaler::ymq::Error e)
+[[noreturn]] inline void unrecoverableError(scaler::ymq::Error e)
 {
     unrecoverableErrorFunctionHookPtr(std::move(e));
     exit(1);

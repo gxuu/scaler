@@ -120,15 +120,16 @@ public:
 template <typename T>
 class InterruptiveConcurrentQueue {
     HANDLE _completionPort;
+    const size_t _key;
     moodycamel::ConcurrentQueue<T> _queue;
 
 public:
-    InterruptiveConcurrentQueue(HANDLE completionPort): _queue(), _completionPort(completionPort) { }
+    InterruptiveConcurrentQueue(HANDLE completionPort, size_t key): _queue(), _completionPort(completionPort), _key(key) { }
 
     void enqueue(T item)
     {
         _queue.enqueue(std::move(item));
-        PostQueuedCompletionStatus(_completionPort, 0, (ULONG_PTR)_completionPort, nullptr);
+        PostQueuedCompletionStatus(_completionPort, 0, (ULONG_PTR)_key, nullptr);
     }
 
     // NOTE: this method will block until an item is available

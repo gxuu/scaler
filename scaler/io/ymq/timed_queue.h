@@ -188,8 +188,9 @@ public:
     constexpr static auto cmp = [](const auto& x, const auto& y) { return std::get<0>(x) < std::get<0>(y); };
     using PriorityQueue       = std::priority_queue<TimedFunc, std::vector<TimedFunc>, decltype(cmp)>;
     HANDLE _completionPort;
+    const size_t _key;
 
-    TimedQueue(HANDLE completionPort): _completionPort(completionPort), _timerFd(CreateWaitableTimer(NULL, 0, NULL)), _currentId {} { assert(_timerFd); }
+    TimedQueue(HANDLE completionPort, size_t key): _completionPort(completionPort), _key(key), _timerFd(CreateWaitableTimer(NULL, 0, NULL)), _currentId {} { assert(_timerFd); }
     ~TimedQueue()
     {
         if (_timerFd) {
@@ -205,8 +206,10 @@ public:
                 _timerFd,
                 (LARGE_INTEGER*)&ts,
                 0,
-                +[_completionPort](HANDLE, DWORD, DWORD) { PostQueuedCompletionStatus(_completionPort, 0, (ULONG_PTR)_timerFd, nullptr); },
-                nullptr,
+                [](LPVOID thisPointer, DWORD, DWORD) { 
+                    auto* self = (TimedQueue*)thisPointer;
+                    PostQueuedCompletionStatus(self->_completionPort, 0, (ULONG_PTR)(self->_timerFd), nullptr); },
+                (LPVOID)this,
                 false);
             // int ret = timerfd_settime(_timerFd, 0, &ts, nullptr);
             // if (ret == -1) {
@@ -251,8 +254,10 @@ public:
                 _timerFd,
                 (LARGE_INTEGER*)&ts,
                 0,
-                +[_completionPort](HANDLE, DWORD, DWORD) { PostQueuedCompletionStatus(_completionPort, 0, (ULONG_PTR)_timerFd, nullptr); },
-                nullptr,
+                [](LPVOID thisPointer, DWORD, DWORD) { 
+                    auto* self = (TimedQueue*)thisPointer;
+                    PostQueuedCompletionStatus(self->_completionPort, 0, (ULONG_PTR)(self->_timerFd), nullptr); },
+                (LPVOID)this,
                 false);
         }
         return callbacks;
@@ -264,7 +269,7 @@ private:
     std::set<Identifier> _cancelledFunctions;
 };
 
-#endif  // __linux__
+#endif  // _WIN32
 
 }  // namespace ymq
 }  // namespace scaler

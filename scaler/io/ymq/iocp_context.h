@@ -28,13 +28,13 @@ public:
     using Identifier           = Configuration::ExecutionCancellationIdentifier;
     HANDLE _completionPort;
 
-    IocpContext() { 
-        _completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, (ULONG_PTR)0, 1);
-    }
+    IocpContext()
+        : _completionPort(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, (ULONG_PTR)0, 1))
+        , _timingFunctions(_completionPort, _isTimingFd)
+        , _interruptiveFunctions(_completionPort, _isInterruptiveFd)
+    { }
 
-    ~IocpContext()
-    {
-    }
+    ~IocpContext() { CloseHandle(_completionPort); }
 
     void loop();
 
@@ -54,7 +54,6 @@ public:
 
 private:
     void execPendingFunctions();
-    int _epfd;
     TimedQueue _timingFunctions;
     DelayedFunctionQueue _delayedFunctions;
     InterruptiveConcurrentQueue<Function> _interruptiveFunctions;

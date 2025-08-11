@@ -50,7 +50,7 @@ inline void print_trace(void)
 }
 
 [[nodiscard("Memory is allocated but not used, likely causing a memory leak")]]
-constexpr inline uint8_t* datadup(const uint8_t* data, size_t len) noexcept
+inline uint8_t* datadup(const uint8_t* data, size_t len) noexcept
 {
     uint8_t* dup = new uint8_t[len];  // we just assume allocation will succeed
     std::memcpy(dup, data, len);

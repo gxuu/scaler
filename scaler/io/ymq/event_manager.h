@@ -1,7 +1,9 @@
 #pragma once
 
 // C++
+#ifdef __linux__
 #include <sys/epoll.h>
+#endif  // __linux__
 
 #include <concepts>
 #include <cstdint>  // uint64_t
@@ -23,6 +25,7 @@ class EventManager {
 public:
     void onEvents(uint64_t events)
     {
+#ifdef __linux__
         if constexpr (std::same_as<Configuration::PollingContext, EpollContext>) {
             int realEvents = (int)events;
             if ((realEvents & EPOLLHUP) && !(realEvents & EPOLLIN)) {
@@ -38,6 +41,8 @@ public:
                 onWrite();
             }
         }
+#endif  // __linux__
+
     }
 
     // User that registered them should have everything they need
