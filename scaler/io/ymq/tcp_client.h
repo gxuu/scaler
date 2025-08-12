@@ -1,6 +1,13 @@
 #pragma once
 
+#ifdef __linux__
 #include <sys/socket.h>
+#endif  // __linux__
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#endif  // _WIN32
+
 
 #include <memory>
 

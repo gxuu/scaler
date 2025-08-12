@@ -45,7 +45,7 @@ public:
 
     // NOTE: These two functions are not used. - gxu
     void registerCallbackBeforeLoop(EventManager*);
-    void registerEventManager(EventManager& em) { backend.registerEventManager(em); }
+    void registerEventManager(EventManager& em) { /*  backend.registerEventManager(em); */ }
 
     auto addFdToLoop(int fd, uint64_t events, EventManager* manager)
     {

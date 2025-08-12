@@ -1,7 +1,15 @@
 #pragma once
 
 // C++
+#ifdef __linux__
 #include <sys/socket.h>
+#endif  // __linux__
+#ifdef _WIN32
+#include <winsock2.h>
+#include <mswsock.h>
+#define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif  // _WIN32
+
 
 #include <memory>
 
@@ -48,6 +56,14 @@ private:
     std::string _localIOSocketIdentity;
 
     std::unique_ptr<EventManager> _eventManager;  // will copy the `onRead()` to itself
+
+#ifdef _WIN32
+    // TODO: Put those in the constructor
+    LPFN_ACCEPTEX _acceptExFunc;
+    SOCKET _newConn {0}; 
+    char _buffer[128] {};
+    void prepareAcceptSocket();
+#endif  // _WIN32
 };
 
 }  // namespace ymq

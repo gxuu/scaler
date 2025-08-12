@@ -1,7 +1,9 @@
 
 #include "scaler/io/ymq/message_connection_tcp.h"
 
+#ifdef __linux__
 #include <unistd.h>
+#endif  // __linux__
 
 #include <algorithm>
 #include <cerrno>

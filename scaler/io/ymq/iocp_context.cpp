@@ -35,7 +35,7 @@ void IocpContext::loop()
             auto vec = _timingFunctions.dequeue();
             std::ranges::for_each(vec, [](auto& x) { x(); });
         } else {
-            auto event = (EventManager*)(current_event.lpCompletionKey);
+            auto event = (EventManager*)(current_event.lpOverlapped);
             // TODO: Figure out the best stuff to put in
             event->onEvents(0);
         }
@@ -46,6 +46,10 @@ void IocpContext::loop()
 
 void IocpContext::addFdToLoop(int fd, uint64_t events, EventManager* manager)
 {
+    if (!CreateIoCompletionPort((HANDLE)fd, _completionPort, static_cast<ULONG_PTR>(fd), 0)) {
+        // TODO: Handle error
+        exit(1);
+    }
 }
 
 void IocpContext::removeFdFromLoop(int fd)

@@ -1,7 +1,9 @@
 #include "scaler/io/ymq/tcp_client.h"
 
+#ifdef __linux__
 #include <netinet/in.h>
 #include <sys/socket.h>
+#endif  // __linux__
 
 #include <cerrno>
 #include <chrono>
