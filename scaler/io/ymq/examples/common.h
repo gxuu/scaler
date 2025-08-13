@@ -1,7 +1,5 @@
 #pragma once
 
-#include <unistd.h>
-
 #include <future>
 #include <memory>
 

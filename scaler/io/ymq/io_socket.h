@@ -13,6 +13,10 @@
 #include "scaler/io/ymq/tcp_server.h"
 #include "scaler/io/ymq/typedefs.h"
 
+#ifdef _WIN32
+#undef SendMessageCallback
+#endif  // _WIN32
+
 namespace scaler {
 namespace ymq {
 

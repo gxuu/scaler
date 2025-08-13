@@ -6,6 +6,10 @@
 #include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/message.h"
 
+#ifdef _WIN32
+#undef SendMessageCallback
+#endif  // _WIN32
+
 namespace scaler {
 namespace ymq {
 

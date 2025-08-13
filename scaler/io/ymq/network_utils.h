@@ -6,9 +6,9 @@
 #include <netinet/tcp.h>
 #endif  // __linux__
 #ifdef _WIN32
+#include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <windows.h>
 #endif  // _WIN32
 
 
@@ -21,6 +21,17 @@
 
 namespace scaler {
 namespace ymq {
+
+inline constexpr void CloseAndZeroSocket(auto& fd)
+{
+#ifdef __linux__
+    close(fd);
+#endif  // __linux__
+#ifdef _WIN32
+    closesocket(fd);
+#endif  // _WIN32
+    fd = 0;
+}
 
 inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
 {

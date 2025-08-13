@@ -8,8 +8,8 @@
 #include <unistd.h>
 #endif  // __linux__
 #ifdef _WIN32
-#include <winsock2.h>
 #include <windows.h>
+#include <winsock2.h>
 #endif  // _WIN32
 
 
@@ -28,18 +28,7 @@
 namespace scaler {
 namespace ymq {
 
-static constexpr void CloseAndZeroSocket(auto& fd)
-{
-#ifdef __linux__
-    close(fd);
-#endif  // __linux__
-#ifdef _WIN32
-    closesocket(fd);
-#endif  // _WIN32
-    fd = 0;
-}
-
-static constexpr auto GetErrorCode()
+static auto GetErrorCode()
 {
 #ifdef __linux__
     return errno;

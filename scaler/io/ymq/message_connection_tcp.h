@@ -10,6 +10,11 @@
 #include "scaler/io/ymq/message_connection.h"
 #include "scaler/io/ymq/tcp_operations.h"
 
+// Because the devil cast spells in plain English.
+#ifdef _WIN32
+#undef SendMessageCallback
+#endif  // _WIN32
+
 namespace scaler {
 namespace ymq {
 

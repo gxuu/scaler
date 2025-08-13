@@ -103,6 +103,7 @@ void IOSocket::connectTo(
     connectTo(std::move(res.value()), std::move(onConnectReturn), maxRetryTimes);
 }
 
+
 void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindReturn) noexcept
 {
     _eventLoopThread->_eventLoop.executeNow(

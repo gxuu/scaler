@@ -4,8 +4,8 @@
 #include <sys/socket.h>
 #endif  // __linux__
 #ifdef _WIN32
-#include <winsock2.h>
 #include <windows.h>
+#include <winsock2.h>
 #endif  // _WIN32
 
 

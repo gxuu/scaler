@@ -24,7 +24,14 @@ namespace ymq {
 
 void TcpClient::onCreated()
 {
-    int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+#ifdef __linux__
+    int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+#endif  // __linux__
+#ifdef _WIN32
+    // TODO: Do something to make the socket non-blocking
+    int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#endif  // _WIN32
+
     if (sockfd == -1) {
         const int myErrno = errno;
         switch (myErrno) {
@@ -72,14 +79,20 @@ void TcpClient::onCreated()
     }
 
     if (errno == EINPROGRESS) {
+#ifdef __linux__
         _eventLoopThread->_eventLoop.addFdToLoop(sockfd, EPOLLOUT | EPOLLET, this->_eventManager.get());
+#endif  // __linux__
+#ifdef _WIN32
+        _eventLoopThread->_eventLoop.addFdToLoop(sockfd, 0, nullptr);
+#endif  // _WIN32
+
         if (_retryTimes == 0) {
             _onConnectReturn(std::unexpected {Error::ErrorCode::InitialConnectFailedWithInProgress});
         }
         return;
     }
 
-    close(sockfd);
+    CloseAndZeroSocket(sockfd);
 
     const int myErrno = errno;
     switch (myErrno) {
@@ -161,6 +174,8 @@ TcpClient::TcpClient(
 
 void TcpClient::onWrite()
 {
+#ifdef __linux__
+
     _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
 
     int err {};
@@ -224,6 +239,8 @@ void TcpClient::onWrite()
     _connected = true;
 
     _eventLoopThread->_eventLoop.executeLater([sock] { sock->removeConnectedTcpClient(); });
+
+#endif  // __linux__
 }
 
 void TcpClient::onRead()
@@ -239,8 +256,7 @@ void TcpClient::retry()
     }
 
     log(LoggingLevel::debug, "Client retrying times", _retryTimes);
-    close(_connFd);
-    _connFd = 0;
+    CloseAndZeroSocket(_connFd);
 
     Timestamp now;
     auto at = now.createTimestampByOffsetDuration(std::chrono::seconds(2 << _retryTimes++));
@@ -252,8 +268,7 @@ TcpClient::~TcpClient() noexcept
 {
     if (_connFd) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
-        close(_connFd);
-        _connFd = 0;
+        CloseAndZeroSocket(_connFd);
     }
     if (_retryTimes > 0) {
         _eventLoopThread->_eventLoop.cancelExecution(_retryIdentifier);

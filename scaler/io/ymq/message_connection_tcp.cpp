@@ -4,6 +4,11 @@
 #ifdef __linux__
 #include <unistd.h>
 #endif  // __linux__
+#ifdef _WIN32
+#include <windows.h>
+#include <winsock2.h>
+#include <mswsock.h>
+#endif  // _WIN32
 
 #include <algorithm>
 #include <cerrno>
@@ -19,6 +24,7 @@
 #include "scaler/io/ymq/event_loop_thread.h"
 #include "scaler/io/ymq/event_manager.h"
 #include "scaler/io/ymq/io_socket.h"
+#include "scaler/io/ymq/network_utils.h"
 
 namespace scaler {
 namespace ymq {
@@ -86,16 +92,24 @@ MessageConnectionTCP::MessageConnectionTCP(
 void MessageConnectionTCP::onCreated()
 {
     if (_connFd != 0) {
+#ifdef __linux__
         this->_eventLoopThread->_eventLoop.addFdToLoop(
             _connFd, EPOLLIN | EPOLLOUT | EPOLLET, this->_eventManager.get());
+#endif  // __linux__
+#ifdef _WIN32
+        this->_eventLoopThread->_eventLoop.addFdToLoop(_connFd, 0, nullptr);
+#endif  // _WIN32
         _writeOperations.emplace_back(
             Bytes {_localIOSocketIdentity.data(), _localIOSocketIdentity.size()}, [](auto) {});
     }
 }
 
+// TODO: Implement this function on Windows!!
 // on Return, unexpected value shall be interpreted as this - 0 = close, other -> errno
 std::expected<void, int> MessageConnectionTCP::tryReadMessages(bool readOneMessage)
 {
+#ifdef __linux__
+
     bool haveReadOne = false;
     while (true) {
         char* readTo         = nullptr;
@@ -178,6 +192,9 @@ std::expected<void, int> MessageConnectionTCP::tryReadMessages(bool readOneMessa
             message._cursor += n;
         }
     }
+    return {};
+
+#endif  // __linux__
     return {};
 }
 
@@ -262,8 +279,7 @@ void MessageConnectionTCP::onClose()
 {
     if (_connFd) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
-        close(_connFd);
-        _connFd    = 0;
+        CloseAndZeroSocket(_connFd);
         auto& sock = _eventLoopThread->_identityToIOSocket.at(_localIOSocketIdentity);
         sock->onConnectionDisconnected(this);
     }
@@ -271,6 +287,8 @@ void MessageConnectionTCP::onClose()
 
 std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages()
 {
+#ifdef __linux
+
     std::vector<struct iovec> iovecs;
     iovecs.reserve(IOV_MAX);
 
@@ -382,6 +400,9 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages()
     }
 
     return bytesSent;
+
+#endif  // __linux
+    return {};
 }
 
 // TODO: There is a classic optimization that can (and should) be done. That is, we store
@@ -444,9 +465,15 @@ MessageConnectionTCP::~MessageConnectionTCP() noexcept
 {
     if (_connFd != 0) {
         _eventLoopThread->_eventLoop.removeFdFromLoop(_connFd);
+
+#ifdef __linux__
         shutdown(_connFd, SHUT_RDWR);
-        close(_connFd);
-        _connFd = 0;
+#endif  // __linux__
+#ifdef _WIN32
+        shutdown(_connFd, SD_BOTH);
+#endif  // _WIN32
+
+        CloseAndZeroSocket(_connFd);
     }
 
     std::ranges::for_each(_writeOperations, [](auto&& x) {

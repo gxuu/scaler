@@ -6,6 +6,12 @@
 #include <memory>
 #include <string>
 
+// Because the devil cast spells in plain English.
+#ifdef _WIN32
+#undef SendMessageCallback
+#endif  // _WIN32
+
+
 namespace scaler {
 namespace ymq {
 
