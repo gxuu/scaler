@@ -1,5 +1,15 @@
 #pragma once
 
+#if defined(_WIN32)
+#ifdef BUILDING_CC_YMQ
+#define CC_YMQ_API __declspec(dllexport)
+#else
+#define CC_YMQ_API __declspec(dllimport)
+#endif
+#else
+#define CC_YMQ_API
+#endif
+
 // C++
 #include <memory>
 #include <vector>
@@ -14,7 +24,7 @@ namespace ymq {
 class IOSocket;
 class EventLoopThread;
 
-class IOContext {
+class CC_YMQ_API IOContext {
 public:
     using Identity               = Configuration::IOSocketIdentity;
     using CreateIOSocketCallback = Configuration::CreateIOSocketCallback;

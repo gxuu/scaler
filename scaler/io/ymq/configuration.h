@@ -21,7 +21,17 @@ class Message;
 class IOSocket;
 class Error;
 
-struct Configuration {
+#if defined(_WIN32)
+#ifdef BUILDING_CC_YMQ
+#define CC_YMQ_API __declspec(dllexport)
+#else
+#define CC_YMQ_API __declspec(dllimport)
+#endif
+#else
+#define CC_YMQ_API
+#endif
+
+struct CC_YMQ_API Configuration {
 #ifdef __linux__
     using PollingContext                  = EpollContext;
 #endif  // __linux__

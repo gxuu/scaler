@@ -11,6 +11,9 @@
 // For test directory, okay to not use project path
 #include "./common.h"
 
+#ifdef BUILDING_CC_YMQ
+#error "Fucked"
+#endif
 using namespace scaler::ymq;
 
 int main()
