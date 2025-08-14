@@ -1,5 +1,5 @@
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS on)
 add_library(cc_ymq SHARED)
-target_compile_definitions(cc_ymq PRIVATE BUILDING_CC_YMQ)
 
 target_sources(cc_ymq PRIVATE
   bytes.h

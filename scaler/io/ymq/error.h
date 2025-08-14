@@ -13,7 +13,7 @@
 namespace scaler {
 namespace ymq {
 
-struct Error: std::exception {
+struct Error : public std::exception {
     enum struct ErrorCode {
         Uninit,
         InvalidPortFormat,
@@ -47,7 +47,7 @@ struct Error: std::exception {
 
     Error() noexcept: _errorCode(ErrorCode::Uninit) {}
 
-    static constexpr std::string_view convertErrorToExplanation(ErrorCode e) noexcept
+    static inline constexpr std::string_view convertErrorToExplanation(ErrorCode e) noexcept
     {
         switch (e) {
             case ErrorCode::Uninit: return "";
@@ -79,7 +79,7 @@ struct Error: std::exception {
                 return "You are using IOSocket::Unicast or IOSocket::Multicast, which do not support guaranteed "
                        "message delivery, and the connection(s) disconnects";
         }
-        std::abort();
+        exit(1);
     }
 
     constexpr const char* what() const noexcept override { return _logMsg.c_str(); }

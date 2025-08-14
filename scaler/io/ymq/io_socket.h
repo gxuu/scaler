@@ -1,11 +1,17 @@
 #pragma once
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <mswsock.h>
+#endif  // _WIN32
+
 
 // C++
 #include <map>
 #include <memory>
 #include <optional>
 #include <queue>
+#include <string>
 
 // First-party
 #include "scaler/io/ymq/configuration.h"
@@ -18,16 +24,6 @@
 #undef SendMessageCallback
 #endif  // _WIN32
 
-#if defined(_WIN32)
-#ifdef BUILDING_CC_YMQ
-#define CC_YMQ_API __declspec(dllexport)
-#else
-#define CC_YMQ_API __declspec(dllimport)
-#endif
-#else
-#define CC_YMQ_API
-#endif
-
 namespace scaler {
 namespace ymq {
 
@@ -35,7 +31,7 @@ class EventLoopThread;
 class MessageConnectionTCP;
 class TcpWriteOperation;
 
-class CC_YMQ_API IOSocket {
+class IOSocket {
 public:
     using ConnectReturnCallback = Configuration::ConnectReturnCallback;
     using BindReturnCallback    = Configuration::BindReturnCallback;
@@ -58,7 +54,7 @@ public:
     void connectTo(
         std::string networkAddress, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
 
-   void bindTo(std::string networkAddress, BindReturnCallback onBindReturn) noexcept;
+    void bindTo(std::string networkAddress, BindReturnCallback onBindReturn) noexcept;
 
     [[nodiscard]] constexpr Identity identity() const { return _identity; }
 
