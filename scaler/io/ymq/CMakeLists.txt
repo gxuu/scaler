@@ -1,5 +1,10 @@
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS on)
 add_library(cc_ymq SHARED)
+
+if(WIN32)
+  target_link_libraries(cc_ymq PRIVATE "ws2_32")
+  target_compile_definitions(cc_ymq PRIVATE _WINSOCKAPI_=) # Yes, trailing equal to guarantee empty def
+  target_compile_options(cc_ymq PRIVATE "/EHsc")
+endif()
 
 target_sources(cc_ymq PRIVATE
   bytes.h
@@ -53,13 +58,6 @@ target_sources(cc_ymq PRIVATE
 
   logging.h
 )
-
-if(WIN32)
-  target_link_libraries(cc_ymq PUBLIC "ws2_32")
-  add_compile_definitions(_WINSOCKAPI_=) # Yes, trailing equal to guarantee empty def
-  add_compile_definitions(WIN32_LEAN_AND_MEAN)
-  add_compile_options(/EHsc)
-endif()
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/scaler/io/ymq)
 
