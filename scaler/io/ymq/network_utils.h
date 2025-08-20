@@ -1,8 +1,10 @@
 #pragma once
 
+#ifdef __linux__
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#endif  // __linux__
 #include <string.h>
 
 #include <cassert>
@@ -16,7 +18,7 @@ namespace ymq {
 inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
 {
     // Check and strip the "tcp://" prefix
-    static const constexpr std::string prefix = "tcp://";
+    static const std::string prefix = "tcp://";
     if (address.substr(0, prefix.size()) != prefix) {
         unrecoverableError({
             Error::ErrorCode::InvalidAddressFormat,
@@ -90,7 +92,7 @@ inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
 inline int setNoDelay(int fd)
 {
     int optval = 1;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval)) == -1) {
+    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char*)&optval, sizeof(optval)) == -1) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
             "Originated from",

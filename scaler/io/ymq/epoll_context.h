@@ -1,4 +1,5 @@
 #pragma once
+#ifdef __linux__
 
 // System
 #include <sys/epoll.h>
@@ -80,3 +81,5 @@ private:
 
 }  // namespace ymq
 }  // namespace scaler
+
+#endif  // __linux__
