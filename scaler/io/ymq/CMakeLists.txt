@@ -1,5 +1,10 @@
 add_library(cc_ymq SHARED)
 
+if(WIN32)
+  target_link_libraries(cc_ymq PRIVATE "ws2_32")
+  target_compile_definitions(cc_ymq PRIVATE _WINSOCKAPI_=) # Yes, trailing equal to guarantee empty def
+endif()
+
 target_sources(cc_ymq PRIVATE
   bytes.h
   common.h
@@ -7,6 +12,9 @@ target_sources(cc_ymq PRIVATE
 
   epoll_context.h
   epoll_context.cpp
+
+  iocp_context.h
+  iocp_context.cpp
 
   event_loop.h
 

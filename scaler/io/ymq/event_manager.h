@@ -1,7 +1,14 @@
 #pragma once
 
 // C++
+#ifdef __linux__
 #include <sys/epoll.h>
+#define INHERIT_OVERLAPPED
+#endif  // __linux__
+#ifdef _WIN32
+#include <windows.h>
+#define INHERIT_OVERLAPPED :public OVERLAPPED
+#endif
 
 #include <concepts>
 #include <cstdint>  // uint64_t
@@ -10,7 +17,6 @@
 
 // First-party
 #include "scaler/io/ymq/configuration.h"
-#include "scaler/io/ymq/file_descriptor.h"
 
 namespace scaler {
 namespace ymq {
@@ -18,12 +24,13 @@ namespace ymq {
 class EventLoopThread;
 
 // TODO: Add the _fd back
-class EventManager {
+class EventManager INHERIT_OVERLAPPED {
     // FileDescriptor _fd;
 
 public:
     void onEvents(uint64_t events)
     {
+#ifdef __linux__
         if constexpr (std::same_as<Configuration::PollingContext, EpollContext>) {
             int realEvents = (int)events;
             if ((realEvents & EPOLLHUP) && !(realEvents & EPOLLIN)) {
@@ -39,6 +46,16 @@ public:
                 onWrite();
             }
         }
+#endif  // __linux__
+#ifdef _WIN32
+        if constexpr (std::same_as<Configuration::PollingContext, IocpContext>) {
+            onRead();
+            onWrite();
+            if (events & IOCP_SOCKET_CLOSED) {
+                onClose();
+            }
+        }
+#endif  // _WIN32
     }
 
     // User that registered them should have everything they need
@@ -49,7 +66,12 @@ public:
     OnEventCallback onClose;
     OnEventCallback onError;
     // EventManager(): _fd {} {}
-    EventManager() {};
+    EventManager()
+    {
+#ifdef _WIN32
+        ZeroMemory(this, sizeof(*this));
+#endif  // _WIN32
+    };
 };
 
 }  // namespace ymq
