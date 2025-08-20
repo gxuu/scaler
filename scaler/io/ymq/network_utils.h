@@ -5,6 +5,14 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #endif  // __linux__
+#ifdef _WIN32
+// clang-format off
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+// clang-format on
+#endif  // _WIN32
+
 #include <string.h>
 
 #include <cassert>
@@ -14,6 +22,27 @@
 
 namespace scaler {
 namespace ymq {
+
+inline auto GetErrorCode()
+{
+#ifdef __linux__
+    return errno;
+#endif  // __linux__
+#ifdef _WIN32
+    return WSAGetLastError();
+#endif  // _WIN32
+}
+
+inline constexpr void CloseAndZeroSocket(auto& fd)
+{
+#ifdef __linux__
+    close(fd);
+#endif  // __linux__
+#ifdef _WIN32
+    closesocket(fd);
+#endif  // _WIN32
+    fd = 0;
+}
 
 inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
 {
