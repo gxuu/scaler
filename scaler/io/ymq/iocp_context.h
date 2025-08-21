@@ -31,6 +31,7 @@ public:
     using Identifier           = Configuration::ExecutionCancellationIdentifier;
     HANDLE _completionPort;
 
+    // TODO: Handle error with unrecoverable error in the next PR.
     IocpContext()
         : _completionPort(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, (ULONG_PTR)0, 1))
         , _timingFunctions(_completionPort, _isTimingFd)
@@ -70,4 +71,4 @@ private:
 }  // namespace ymq
 }  // namespace scaler
 
-#endif  // __linux__
+#endif  // _WIN32

@@ -64,8 +64,8 @@ inline LARGE_INTEGER convertToLARGE_INTEGER(Timestamp ts)
     const auto duration = ts.timestamp - std::chrono::system_clock::now();
     assert(duration.count() >= 0);
     const auto nanosecs           = duration_cast<nanoseconds>(duration);
-    long long relaiveHundredNanos = 1LL * nanosecs.count() / 100 * -1;
-    return *(LARGE_INTEGER*)&relaiveHundredNanos;
+    long long relativeHundredNanos = 1LL * nanosecs.count() / 100 * -1;
+    return *(LARGE_INTEGER*)&relativeHundredNanos;
 }
 #endif  // _WIN32
 

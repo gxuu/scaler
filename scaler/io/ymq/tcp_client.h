@@ -49,8 +49,8 @@ private:
     // handle the error here, pass it to onConnectReturn()
     void onRead();
     void onWrite();
-    void onClose() { printf("%s\n", __PRETTY_FUNCTION__); }
-    void onError() { printf("%s\n", __PRETTY_FUNCTION__); }
+    void onClose() {}
+    void onError() {}
 
     ConnectReturnCallback _onConnectReturn;
     int _connFd;

@@ -10,7 +10,7 @@
 // ^-- The linker complains when the file is not here.
 #include "scaler/io/ymq/error.h"
 
-// Because the devil cast spells in plain English.
+// Because the devil casts spells in plain English.
 #ifdef _WIN32
 #undef SendMessageCallback
 #define __PRETTY_FUNCTION__ __FUNCSIG__

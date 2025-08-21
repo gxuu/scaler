@@ -214,7 +214,7 @@ std::expected<void, int> MessageConnectionTCP::tryReadMessages(bool readOneMessa
                         });
                 }
             }
-#endif
+#endif // __linux__
         } else {
             message._cursor += n;
         }
@@ -539,7 +539,7 @@ void MessageConnectionTCP::updateWriteOperations(size_t n)
     }
 
     const int numPopItems = std::distance(_writeOperations.begin(), firstIncomplete);
-    for (int i = 0; i != numPopItems; ++i) {
+    for (int i = 0; i < numPopItems; ++i) {
         _writeOperations.pop_front();
     }
 
