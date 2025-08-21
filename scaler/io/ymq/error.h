@@ -79,6 +79,7 @@ struct Error: public std::exception {
                 return "You are using IOSocket::Unicast or IOSocket::Multicast, which do not support guaranteed "
                        "message delivery, and the connection(s) disconnects";
         }
+        fprintf(stderr, "Unrecognized ErrorCode value, program exits\n");
         std::exit(1);
     }
 

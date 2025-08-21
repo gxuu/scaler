@@ -90,4 +90,4 @@ void IocpContext::removeFdFromLoop(int fd)
 }  // namespace ymq
 }  // namespace scaler
 
-#endif  // __linux__
+#endif  // _WIN32

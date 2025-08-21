@@ -3,12 +3,10 @@
 // C++
 #ifdef __linux__
 #include <sys/epoll.h>
-#define INHERIT_OVERLAPPED
 #endif  // __linux__
 #ifdef _WIN32
 #include <windows.h>
-#define INHERIT_OVERLAPPED :public OVERLAPPED
-#endif
+#endif // _WIN32
 
 #include <concepts>
 #include <cstdint>  // uint64_t
@@ -24,7 +22,12 @@ namespace ymq {
 class EventLoopThread;
 
 // TODO: Add the _fd back
-class EventManager INHERIT_OVERLAPPED {
+#ifdef _WIN32
+class EventManager :public OVERLAPPED {
+#endif // _WIN32
+#ifdef __linux__
+class EventManager {
+#endif // __linux
     // FileDescriptor _fd;
 
 public:

@@ -36,6 +36,7 @@ void TcpServer::prepareAcceptSocket()
         exit(1);
     }
 
+    // TODO: Think about RawSocket abstraction that implements read/write/accept/connect/etc.
     DWORD bytesReturned                 = 0;
     const size_t requiredRedundantSpace = 16;
     if (!_acceptExFunc(
