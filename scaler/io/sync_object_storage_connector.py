@@ -1,5 +1,10 @@
 import collections
 import socket
+
+import uuid
+import struct
+import os
+
 from threading import Lock
 from typing import Iterable, List, Optional, Tuple
 
@@ -20,12 +25,17 @@ class PySyncObjectStorageConnector(SyncObjectStorageConnector):
         self._host = host
         self._port = port
 
+        self._identity: bytes = f"{os.getpid()}|{socket.gethostname().split('.')[0]}|{uuid.uuid4()}".encode()
+
         self._socket: Optional[socket.socket] = socket.create_connection((self._host, self._port))
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
         self._next_request_id = 0
 
         self._socket_lock = Lock()
+
+        self.__send_buffer(self.__frame(self._identity))
+        self.__read_framed_message()  # receive server identity
 
     def __del__(self):
         self.destroy()
@@ -137,9 +147,9 @@ class PySyncObjectStorageConnector(SyncObjectStorageConnector):
         header_bytes = header.get_message().to_bytes()
 
         if payload is not None:
-            self.__send_buffers([header_bytes, payload])
+            self.__send_buffers([self.__frame(header_bytes), self.__frame(payload)])
         else:
-            self.__send_buffer(header_bytes)
+            self.__send_buffer(self.__frame(header_bytes))
 
     def __send_buffers(self, buffers: List[bytes]) -> None:
         if len(buffers) < 1:
@@ -193,7 +203,7 @@ class PySyncObjectStorageConnector(SyncObjectStorageConnector):
     def __read_response_header(self) -> ObjectResponseHeader:
         assert self._socket is not None
 
-        header_bytearray = self.__read_exactly(ObjectResponseHeader.MESSAGE_LENGTH)
+        header_bytearray = self.__read_framed_message()
 
         # pycapnp does not like to read from a bytearray object. This look like an not-yet-resolved issue.
         # That's is annoying because it leads to an unnecessary copy of the header's buffer.
@@ -205,7 +215,9 @@ class PySyncObjectStorageConnector(SyncObjectStorageConnector):
 
     def __read_response_payload(self, header: ObjectResponseHeader) -> bytearray:
         if header.payload_length > 0:
-            return self.__read_exactly(header.payload_length)
+            res = self.__read_framed_message()
+            assert len(res) == header.payload_length
+            return res
         else:
             return bytearray()
 
@@ -223,6 +235,14 @@ class PySyncObjectStorageConnector(SyncObjectStorageConnector):
             total_received += received
 
         return buffer
+
+    def __read_framed_message(self) -> bytearray:
+        length_bytes = self.__read_exactly(8)
+        (payload_length,) = struct.unpack("<Q", length_bytes)
+        return self.__read_exactly(payload_length) if payload_length > 0 else bytearray()
+
+    def __frame(self, payload: bytes) -> bytes:
+        return struct.pack("<Q", len(payload)) + payload
 
     @staticmethod
     def __raise_connection_failure():
