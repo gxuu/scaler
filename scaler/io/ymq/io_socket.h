@@ -59,7 +59,7 @@ public:
     [[nodiscard]] constexpr IOSocketType socketType() const { return _socketType; }
 
     // From Connection Class only
-    void onConnectionDisconnected(MessageConnectionTCP* conn) noexcept;
+    void onConnectionDisconnected(MessageConnectionTCP* conn, bool keepInBook = true) noexcept;
     // From Connection Class only
     void onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;
 

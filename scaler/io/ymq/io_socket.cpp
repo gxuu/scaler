@@ -119,7 +119,9 @@ void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindRetur
         });
 }
 
-void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept
+// TODO: The function should be separated into onConnectionAborted, onConnectionDisconnected,
+// and probably onConnectionAbortedBeforeEstablished(?)
+void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn, bool keepInBook) noexcept
 {
     if (!conn->_remoteIOSocketIdentity) {
         return;
@@ -130,6 +132,18 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn) noexcept
     _unestablishedConnection.push_back(std::move(connIt->second));
     this->_identityToConnection.erase(connIt);
     auto& connPtr = _unestablishedConnection.back();
+
+    if (!keepInBook) {
+        if (IOSocketType::Connector == this->_socketType) {
+            while (this->_pendingRecvMessages->size()) {
+                auto top = std::move(this->_pendingRecvMessages->front());
+                top({Message {}, {Error::ErrorCode::ConnectorSocketClosedByRemoteEnd}});
+                this->_pendingRecvMessages->pop();
+            }
+        }
+        _unestablishedConnection.pop_back();
+        return;
+    }
 
     if (socketType() == IOSocketType::Unicast || socketType() == IOSocketType::Multicast) {
         auto destructWriteOp = std::move(connPtr->_writeOperations);
@@ -226,6 +240,10 @@ void IOSocket::removeConnectedTcpClient() noexcept
 
 IOSocket::~IOSocket() noexcept
 {
+    for (const auto& [k, v]: _identityToConnection) {
+        v->disconnect();
+    }
+
     while (_pendingRecvMessages->size()) {
         auto readOp = std::move(_pendingRecvMessages->front());
         _pendingRecvMessages->pop();
