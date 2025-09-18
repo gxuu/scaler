@@ -58,7 +58,6 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) n
                     conn = it->get();
                 } else {
                     onConnectionCreated(address);
-                    // onConnectionCreated(0, {}, {}, false, address);
                     conn = _unestablishedConnection.back().get();
                 }
             }

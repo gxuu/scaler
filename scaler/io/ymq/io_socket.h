@@ -59,6 +59,9 @@ public:
     [[nodiscard]] constexpr IOSocketType socketType() const { return _socketType; }
 
     // From Connection Class only
+    // TODO: Maybe figure out a better name than keepInBook. When keepInBook is true, the system will remember this
+    // remote identity and will treat the next connection with that identity as the reincarnation of this identity.
+    // Thus, keeping the identity in the book.
     void onConnectionDisconnected(MessageConnectionTCP* conn, bool keepInBook = true) noexcept;
     // From Connection Class only
     void onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;

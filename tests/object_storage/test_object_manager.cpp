@@ -15,10 +15,7 @@ TEST(ObjectManagerTestSuite, TestSetObject)
     EXPECT_EQ(objectManager.size(), 0);
     EXPECT_EQ(objectManager.sizeUnique(), 0);
 
-    {
-        scaler::object_storage::ObjectPayload tmp = payload;
-        objectManager.setObject(objectID1, std::move(tmp));
-    }
+    objectManager.setObject(objectID1, scaler::object_storage::ObjectPayload(payload));
 
     EXPECT_TRUE(objectManager.hasObject(objectID1));
     EXPECT_EQ(objectManager.size(), 1);
@@ -26,10 +23,7 @@ TEST(ObjectManagerTestSuite, TestSetObject)
 
     scaler::object_storage::ObjectID objectID2 {3, 2, 1, 0};
 
-    {
-        scaler::object_storage::ObjectPayload tmp = payload;
-        objectManager.setObject(objectID2, std::move(tmp));
-    }
+    objectManager.setObject(objectID2, scaler::object_storage::ObjectPayload(payload));
 
     EXPECT_TRUE(objectManager.hasObject(objectID2));
     EXPECT_EQ(objectManager.size(), 2);
@@ -46,10 +40,7 @@ TEST(ObjectManagerTestSuite, TestGetObject)
 
     EXPECT_EQ(payloadPtr, nullptr);  // not yet existing object
 
-    {
-        scaler::object_storage::ObjectPayload tmp = payload;
-        objectManager.setObject(objectID1, std::move(tmp));
-    }
+    objectManager.setObject(objectID1, scaler::object_storage::ObjectPayload(payload));
 
     payloadPtr = objectManager.getObject(objectID1);
 
@@ -62,10 +53,7 @@ TEST(ObjectManagerTestSuite, TestDeleteObject)
 
     scaler::object_storage::ObjectID objectID1 {0, 1, 2, 3};
 
-    {
-        scaler::object_storage::ObjectPayload tmp = payload;
-        objectManager.setObject(objectID1, std::move(tmp));
-    }
+    objectManager.setObject(objectID1, scaler::object_storage::ObjectPayload(payload));
 
     bool deleted = objectManager.deleteObject(objectID1);
     EXPECT_TRUE(deleted);
@@ -89,10 +77,7 @@ TEST(ObjectManagerTestSuite, TestDuplicateObject)
     auto duplicatedObject = objectManager.duplicateObject(objectID1, objectID2);
     EXPECT_EQ(duplicatedObject, nullptr);
 
-    {
-        scaler::object_storage::ObjectPayload tmp = payload;
-        objectManager.setObject(objectID1, std::move(tmp));
-    }
+    objectManager.setObject(objectID1, scaler::object_storage::ObjectPayload(payload));
 
     duplicatedObject = objectManager.duplicateObject(objectID1, objectID2);
     EXPECT_NE(duplicatedObject, nullptr);
@@ -110,16 +95,10 @@ TEST(ObjectManagerTestSuite, TestReferenceCountObject)
     scaler::object_storage::ObjectManager objectManager;
 
     scaler::object_storage::ObjectID objectID1 {11, 0, 0, 0};
-    {
-        scaler::object_storage::ObjectPayload tmp = payload;
-        objectManager.setObject(objectID1, std::move(tmp));
-    }
+    objectManager.setObject(objectID1, scaler::object_storage::ObjectPayload(payload));
 
     scaler::object_storage::ObjectID objectID2 {12, 0, 0, 0};
-    {
-        scaler::object_storage::ObjectPayload tmp = payload;
-        objectManager.setObject(objectID2, std::move(tmp));
-    }
+    objectManager.setObject(objectID2, scaler::object_storage::ObjectPayload(payload));
 
     EXPECT_EQ(objectManager.size(), 2);
     EXPECT_EQ(objectManager.sizeUnique(), 1);

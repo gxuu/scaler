@@ -287,13 +287,15 @@ void MessageConnectionTCP::onRead()
             }
         }
 
-        if (_receivedReadOperations.size() && isCompleteMessage(_receivedReadOperations.front())) {
-            auto id = std::move(_receivedReadOperations.front());
-            _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
-            _receivedReadOperations.pop();
-            auto sock = this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
-            sock->onConnectionIdentityReceived(this);
+        if (_receivedReadOperations.empty() || !isCompleteMessage(_receivedReadOperations.front())) {
+            return;
         }
+
+        auto id = std::move(_receivedReadOperations.front());
+        _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
+        _receivedReadOperations.pop();
+        auto sock = this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
+        sock->onConnectionIdentityReceived(this);
     }
 
     auto res = tryReadMessages(false);

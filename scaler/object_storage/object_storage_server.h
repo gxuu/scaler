@@ -21,10 +21,8 @@ namespace object_storage {
 
 class ObjectStorageServer {
 public:
-    using Identity                = ymq::Configuration::IOSocketIdentity;
-    using SendMessageFuture       = std::future<std::expected<void, ymq::Error>>;
-    using PairOfSendMessageFuture = std::pair<SendMessageFuture, SendMessageFuture>;
-    using VecOfSendMessageFuture  = std::vector<SendMessageFuture>;
+    using Identity          = ymq::Configuration::IOSocketIdentity;
+    using SendMessageFuture = std::future<std::expected<void, ymq::Error>>;
 
     ObjectStorageServer();
 
@@ -71,28 +69,26 @@ private:
 
     std::atomic<bool> _stopped;
 
+    std::vector<SendMessageFuture> _pendingSendMessageFuts;
+
     void initServerReadyFds();
 
     void setServerReadyFd();
 
     void closeServerReadyFds();
 
-    ObjectRequestHeader parseRequestHeader(Bytes message);
-
     void processRequests();
 
-    VecOfSendMessageFuture processSetRequest(
-        std::shared_ptr<Client> client, std::pair<ObjectRequestHeader, Bytes> request);
+    void processSetRequest(std::shared_ptr<Client> client, std::pair<ObjectRequestHeader, Bytes> request);
 
-    PairOfSendMessageFuture processGetRequest(std::shared_ptr<Client> client, const ObjectRequestHeader& requestHeader);
+    void processGetRequest(std::shared_ptr<Client> client, const ObjectRequestHeader& requestHeader);
 
-    PairOfSendMessageFuture processDeleteRequest(std::shared_ptr<Client> client, ObjectRequestHeader& requestHeader);
+    void processDeleteRequest(std::shared_ptr<Client> client, ObjectRequestHeader& requestHeader);
 
-    VecOfSendMessageFuture processDuplicateRequest(
-        std::shared_ptr<Client> client, std::pair<ObjectRequestHeader, Bytes> request);
+    void processDuplicateRequest(std::shared_ptr<Client> client, std::pair<ObjectRequestHeader, Bytes> request);
 
     template <ObjectStorageMessage T>
-    auto writeMessage(std::shared_ptr<Client> client, T& message, std::span<const unsigned char> payload)
+    void writeMessage(std::shared_ptr<Client> client, T& message, std::span<const unsigned char> payload)
     {
         // Send OSS header
         auto messageBuffer = message.toBuffer();
@@ -102,7 +98,8 @@ private:
         auto sendHeaderFuture = ymq::futureSendMessage(client->_ioSocket, std::move(ymqHeader));
 
         if (!payload.data()) {
-            return std::pair {std::move(sendHeaderFuture), std::future<std::expected<void, ymq::Error>> {}};
+            _pendingSendMessageFuts.emplace_back(std::move(sendHeaderFuture));
+            return;
         }
 
         ymq::Message ymqPayload {};
@@ -110,37 +107,18 @@ private:
         ymqPayload.payload     = Bytes((char*)payload.data(), payload.size());
         auto sendPayloadFuture = ymq::futureSendMessage(client->_ioSocket, std::move(ymqPayload));
 
-        return std::pair {std::move(sendHeaderFuture), std::move(sendPayloadFuture)};
+        _pendingSendMessageFuts.emplace_back(std::move(sendHeaderFuture));
+        _pendingSendMessageFuts.emplace_back(std::move(sendPayloadFuture));
     }
 
-    void catFuts(std::vector<ObjectStorageServer::SendMessageFuture>& dest, PairOrVecOf<SendMessageFuture> auto&& src)
-    {
-        if constexpr (requires { src.first; }) {
-            dest.emplace_back(std::move(src.first));
-            dest.emplace_back(std::move(src.second));
-            return;
-        }
-
-        if constexpr (requires { src.begin(); }) {
-            // NOTE: Not the std::move you might expect!
-            dest.resize(dest.size() + src.size());
-            auto first = dest.end() - src.size();
-            std::move(src.begin(), src.end(), first);
-            return;
-        }
-        assert(false);
-    }
-
-    PairOfSendMessageFuture sendGetResponse(
+    void sendGetResponse(
         std::shared_ptr<Client> client,
         const ObjectRequestHeader& requestHeader,
         std::shared_ptr<const ObjectPayload> objectPtr);
 
-    PairOfSendMessageFuture sendDuplicateResponse(
-        std::shared_ptr<Client> client, const ObjectRequestHeader& requestHeader);
+    void sendDuplicateResponse(std::shared_ptr<Client> client, const ObjectRequestHeader& requestHeader);
 
-    VecOfSendMessageFuture optionallySendPendingRequests(
-        const ObjectID& objectID, std::shared_ptr<const ObjectPayload> objectPtr);
+    void optionallySendPendingRequests(const ObjectID& objectID, std::shared_ptr<const ObjectPayload> objectPtr);
 };
 
 };  // namespace object_storage

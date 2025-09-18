@@ -46,7 +46,7 @@ class PyAsyncObjectStorageConnector(AsyncObjectStorageConnector):
 
         self._reader, self._writer = await asyncio.open_connection(self._host, self._port)
         await self.__read_framed_message()
-        self._writer.write(self.__frame(self._identity))
+        self.__write_framed(self._identity)
 
         try:
             await self._writer.drain()
@@ -171,11 +171,11 @@ class PyAsyncObjectStorageConnector(AsyncObjectStorageConnector):
 
     def __write_request_header(self, header: ObjectRequestHeader):
         assert self._writer is not None
-        self._writer.write(self.__frame(header.get_message().to_bytes()))
+        self.__write_framed(header.get_message().to_bytes())
 
     def __write_request_payload(self, payload: bytes):
         assert self._writer is not None
-        self._writer.write(self.__frame(payload))
+        self.__write_framed(payload)
 
     async def __receive_response(self) -> Optional[Tuple[ObjectResponseHeader, bytes]]:
         assert self._reader is not None
@@ -215,8 +215,10 @@ class PyAsyncObjectStorageConnector(AsyncObjectStorageConnector):
         (payload_length,) = struct.unpack("<Q", length_bytes)
         return await self._reader.readexactly(payload_length) if payload_length > 0 else bytes()
 
-    def __frame(self, payload: bytes) -> bytes:
-        return struct.pack("<Q", len(payload)) + payload
+    def __write_framed(self, payload: bytes):
+        self._writer.write(struct.pack("<Q", len(payload)))
+        self._writer.write(payload)
+        return
 
     @staticmethod
     def __raise_connection_failure():

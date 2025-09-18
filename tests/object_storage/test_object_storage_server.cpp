@@ -528,48 +528,46 @@ TEST_F(ObjectStorageServerTest, TestClientDisconnect)
 }
 
 // TODO: This is a regression as ymq doesn't support actively closing an underlying connection
-// TEST_F(ObjectStorageServerTest, TestMalformedHeader)
-// {
-//     ObjectResponseHeader responseHeader;
-//     std::optional<ObjectPayload> responsePayload;
-//
-//     // Server should disconnect when it receives a garbage header
-//     {
-//         auto client = getClient();
-//
-//         std::array<uint8_t, CAPNP_HEADER_SIZE> malformedHeader;
-//         malformedHeader.fill(0xAA);
-//
-//         try {
-//             client->write(boost::asio::buffer(malformedHeader));
-//
-//             // Server should disconnect before or while we are reading the response
-//             client->readResponse(responseHeader, responsePayload);
-//
-//             ADD_FAILURE();  // Unreachable
-//         } catch (const boost::system::system_error& e) {
-//             // Expect the connection to be closed by the server
-//             EXPECT_EQ(e.code(), boost::asio::error::eof);
-//         }
-//     }
-//
-//     // Server must still answers to requests from other clients
-//     {
-//         auto client = getClient();
-//
-//         ObjectRequestHeader requestHeader {
-//             .objectID      = {0, 1, 2, 3},
-//             .payloadLength = payload.size(),
-//             .requestID     = 42,
-//             .requestType   = ObjectRequestType::SET_OBJECT,
-//         };
-//
-//         client->writeRequest(requestHeader, {payload});
-//         client->readResponse(responseHeader, responsePayload);
-//
-//         EXPECT_EQ(responseHeader.responseType, ObjectResponseType::SET_O_K);
-//     }
-// }
+TEST_F(ObjectStorageServerTest, DISABLED_TestMalformedHeader)
+{
+    ObjectResponseHeader responseHeader;
+    std::optional<ObjectPayload> responsePayload;
+
+    // Server should disconnect when it receives a garbage header
+    {
+        auto client = getClient();
+
+        std::array<uint8_t, CAPNP_HEADER_SIZE> malformedHeader;
+        malformedHeader.fill(0xAA);
+
+        // client->write(boost::asio::buffer(malformedHeader));
+        Message message;
+        message.payload = Bytes((char*)malformedHeader.begin(), malformedHeader.size());
+        client->writeYMQMessage(std::move(message));
+
+        // Server should disconnect before or while we are reading the response
+        client->readResponse(responseHeader, responsePayload);
+
+        ADD_FAILURE();  // Unreachable
+    }
+
+    // Server must still answers to requests from other clients
+    {
+        auto client = getClient();
+
+        ObjectRequestHeader requestHeader {
+            .objectID      = {0, 1, 2, 3},
+            .payloadLength = payload.size(),
+            .requestID     = 42,
+            .requestType   = ObjectRequestType::SET_OBJECT,
+        };
+
+        client->writeRequest(requestHeader, {payload});
+        client->readResponse(responseHeader, responsePayload);
+
+        EXPECT_EQ(responseHeader.responseType, ObjectResponseType::SET_O_K);
+    }
+}
 
 // This test fixture is specifically for verifying server logging behavior.
 class ObjectStorageLoggingTest: public ::testing::Test {

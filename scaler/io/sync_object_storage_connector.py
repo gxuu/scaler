@@ -34,7 +34,7 @@ class PySyncObjectStorageConnector(SyncObjectStorageConnector):
 
         self._socket_lock = Lock()
 
-        self.__send_buffer(self.__frame(self._identity))
+        self.__send_buffers([struct.pack("<Q", len(self._identity)), self._identity])
         self.__read_framed_message()  # receive server identity
 
     def __del__(self):
@@ -147,9 +147,12 @@ class PySyncObjectStorageConnector(SyncObjectStorageConnector):
         header_bytes = header.get_message().to_bytes()
 
         if payload is not None:
-            self.__send_buffers([self.__frame(header_bytes), self.__frame(payload)])
+            self.__send_buffers([struct.pack("<Q", len(header_bytes)),
+                                 header_bytes,
+                                 struct.pack("<Q", len(payload)),
+                                 payload])
         else:
-            self.__send_buffer(self.__frame(header_bytes))
+            self.__send_buffers([struct.pack("<Q", len(header_bytes)), header_bytes])
 
     def __send_buffers(self, buffers: List[bytes]) -> None:
         if len(buffers) < 1:
@@ -240,9 +243,6 @@ class PySyncObjectStorageConnector(SyncObjectStorageConnector):
         length_bytes = self.__read_exactly(8)
         (payload_length,) = struct.unpack("<Q", length_bytes)
         return self.__read_exactly(payload_length) if payload_length > 0 else bytearray()
-
-    def __frame(self, payload: bytes) -> bytes:
-        return struct.pack("<Q", len(payload)) + payload
 
     @staticmethod
     def __raise_connection_failure():

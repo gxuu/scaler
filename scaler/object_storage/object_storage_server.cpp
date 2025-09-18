@@ -118,39 +118,32 @@ void ObjectStorageServer::closeServerReadyFds()
     }
 }
 
-ObjectRequestHeader ObjectStorageServer::parseRequestHeader(Bytes message)
-{
-    assert(message.len() == CAPNP_HEADER_SIZE);
-    std::array<uint64_t, ObjectRequestHeader::bufferSize() / CAPNP_WORD_SIZE> buffer {};
-    memcpy(buffer.data(), message.data(), message.size());
-    return ObjectRequestHeader::fromBuffer(buffer);
-}
-
 void ObjectStorageServer::processRequests()
 {
     using namespace std::chrono_literals;
     try {
         std::map<ymq::Configuration::IOSocketIdentity, std::pair<ObjectRequestHeader, Bytes>> identityToFullRequest;
-        std::vector<std::future<std::expected<void, ymq::Error>>> pendingSendMessageFuts;
 
         while (true) {
-            auto invalids = std::ranges::partition(pendingSendMessageFuts, [](const auto& x) { return x.valid(); });
-            pendingSendMessageFuts.resize(std::distance(pendingSendMessageFuts.begin(), invalids.begin()));
+            auto invalids = std::ranges::remove_if(_pendingSendMessageFuts, [](const auto& x) { return !x.valid(); });
+            _pendingSendMessageFuts.erase(invalids.begin(), invalids.end());
 
-            std::ranges::for_each(pendingSendMessageFuts, [](auto& fut) {
+            std::ranges::for_each(_pendingSendMessageFuts, [](auto& fut) {
                 if (fut.wait_for(0s) == std::future_status::ready) {
                     auto res = fut.get();
                     assert(res);
                 }
             });
 
+            // TODO: This adds up to 100ms delay when trying to shutdown the server. This is due to ymq doesn't let you
+            // call removeIOSocket in another thread, which shouldn't be the case.
             auto maybeMessageFut = ymq::futureRecvMessage(_ioSocket);
             while (maybeMessageFut.wait_for(100ms) == std::future_status::timeout) {
                 if (_stopped) {
                     _logger.log(
                         scaler::ymq::Logger::LoggingLevel::info,
                         "ObjectStorageServer: stopped, number of messages leftover in the system = ",
-                        std::ranges::count_if(pendingSendMessageFuts, [](auto& x) {
+                        std::ranges::count_if(_pendingSendMessageFuts, [](auto& x) {
                             return x.valid() && x.wait_for(0s) == std::future_status::timeout;
                         }));
                     return;
@@ -168,7 +161,7 @@ void ObjectStorageServer::processRequests()
 
             auto it = identityToFullRequest.find(identity);
             if (it == identityToFullRequest.end()) {
-                identityToFullRequest[identity].first = parseRequestHeader(std::move(headerOrPayload));
+                identityToFullRequest[identity].first = ObjectRequestHeader::fromBuffer(headerOrPayload);
                 const auto& requestType               = identityToFullRequest[identity].first.requestType;
                 if (requestType == ObjectRequestType::DUPLICATE_OBJECT_I_D ||
                     requestType == ObjectRequestType::SET_OBJECT) {
@@ -187,19 +180,19 @@ void ObjectStorageServer::processRequests()
 
             switch (request.first.requestType) {
                 case ObjectRequestType::SET_OBJECT: {
-                    catFuts(pendingSendMessageFuts, processSetRequest(std::move(client), std::move(request)));
+                    processSetRequest(std::move(client), std::move(request));
                     break;
                 }
                 case ObjectRequestType::GET_OBJECT: {
-                    catFuts(pendingSendMessageFuts, processGetRequest(std::move(client), request.first));
+                    processGetRequest(std::move(client), request.first);
                     break;
                 }
                 case ObjectRequestType::DELETE_OBJECT: {
-                    catFuts(pendingSendMessageFuts, processDeleteRequest(client, request.first));
+                    processDeleteRequest(client, request.first);
                     break;
                 }
                 case ObjectRequestType::DUPLICATE_OBJECT_I_D: {
-                    catFuts(pendingSendMessageFuts, processDuplicateRequest(client, request));
+                    processDuplicateRequest(client, request);
                     break;
                 }
             }
@@ -210,7 +203,7 @@ void ObjectStorageServer::processRequests()
     }
 }
 
-std::vector<ObjectStorageServer::SendMessageFuture> ObjectStorageServer::processSetRequest(
+void ObjectStorageServer::processSetRequest(
     std::shared_ptr<Client> client, std::pair<ObjectRequestHeader, Bytes> request)
 {
     const auto requestHeader = std::move(request.first);
@@ -226,7 +219,7 @@ std::vector<ObjectStorageServer::SendMessageFuture> ObjectStorageServer::process
 
     auto objectPtr = objectManager.setObject(requestHeader.objectID, std::move(requestPayload));
 
-    auto futs = optionallySendPendingRequests(requestHeader.objectID, objectPtr);
+    optionallySendPendingRequests(requestHeader.objectID, objectPtr);
 
     ObjectResponseHeader responseHeader {
         .objectID      = requestHeader.objectID,
@@ -235,26 +228,23 @@ std::vector<ObjectStorageServer::SendMessageFuture> ObjectStorageServer::process
         .responseType  = ObjectResponseType::SET_O_K,
     };
 
-    catFuts(futs, writeMessage(client, responseHeader, {}));
-    return futs;
+    writeMessage(client, responseHeader, {});
 }
 
-ObjectStorageServer::PairOfSendMessageFuture ObjectStorageServer::processGetRequest(
-    std::shared_ptr<Client> client, const ObjectRequestHeader& requestHeader)
+void ObjectStorageServer::processGetRequest(std::shared_ptr<Client> client, const ObjectRequestHeader& requestHeader)
 {
     auto objectPtr = objectManager.getObject(requestHeader.objectID);
 
     if (objectPtr != nullptr) {
-        return sendGetResponse(client, requestHeader, objectPtr);
+        sendGetResponse(client, requestHeader, objectPtr);
+        return;
     } else {
         // We don't have the object yet. Send the response later after once we receive the SET request.
         pendingRequests[requestHeader.objectID].emplace_back(client, requestHeader);
     }
-    return {};
 }
 
-ObjectStorageServer::PairOfSendMessageFuture ObjectStorageServer::processDeleteRequest(
-    std::shared_ptr<Client> client, ObjectRequestHeader& requestHeader)
+void ObjectStorageServer::processDeleteRequest(std::shared_ptr<Client> client, ObjectRequestHeader& requestHeader)
 {
     bool success = objectManager.deleteObject(requestHeader.objectID);
 
@@ -265,10 +255,10 @@ ObjectStorageServer::PairOfSendMessageFuture ObjectStorageServer::processDeleteR
         .responseType  = success ? ObjectResponseType::DEL_O_K : ObjectResponseType::DEL_NOT_EXISTS,
     };
 
-    return writeMessage(client, responseHeader, {});
+    writeMessage(client, responseHeader, {});
 }
 
-ObjectStorageServer::VecOfSendMessageFuture ObjectStorageServer::processDuplicateRequest(
+void ObjectStorageServer::processDuplicateRequest(
     std::shared_ptr<Client> client, std::pair<ObjectRequestHeader, Bytes> request)
 {
     auto requestHeader = std::move(request.first);
@@ -284,16 +274,15 @@ ObjectStorageServer::VecOfSendMessageFuture ObjectStorageServer::processDuplicat
 
     std::vector<ObjectStorageServer::SendMessageFuture> res;
     if (objectPtr != nullptr) {
-        catFuts(res, optionallySendPendingRequests(requestHeader.objectID, objectPtr));
-        catFuts(res, sendDuplicateResponse(client, requestHeader));
+        optionallySendPendingRequests(requestHeader.objectID, objectPtr);
+        sendDuplicateResponse(client, requestHeader);
     } else {
         // We don't have the referenced original object yet. Send the response later once we receive the SET
         pendingRequests[originalObjectID].emplace_back(client, requestHeader);
     }
-    return res;
 }
 
-ObjectStorageServer::PairOfSendMessageFuture ObjectStorageServer::sendGetResponse(
+void ObjectStorageServer::sendGetResponse(
     std::shared_ptr<Client> client,
     const ObjectRequestHeader& requestHeader,
     std::shared_ptr<const ObjectPayload> objectPtr)
@@ -307,10 +296,10 @@ ObjectStorageServer::PairOfSendMessageFuture ObjectStorageServer::sendGetRespons
         .responseType  = ObjectResponseType::GET_O_K,
     };
 
-    return writeMessage(client, responseHeader, {objectPtr->data(), payloadLength});
+    writeMessage(client, responseHeader, {objectPtr->data(), payloadLength});
 }
 
-ObjectStorageServer::PairOfSendMessageFuture ObjectStorageServer::sendDuplicateResponse(
+void ObjectStorageServer::sendDuplicateResponse(
     std::shared_ptr<Client> client, const ObjectRequestHeader& requestHeader)
 {
     ObjectResponseHeader responseHeader {
@@ -320,15 +309,15 @@ ObjectStorageServer::PairOfSendMessageFuture ObjectStorageServer::sendDuplicateR
         .responseType  = ObjectResponseType::DUPLICATE_O_K,
     };
 
-    return writeMessage(client, responseHeader, {});
+    writeMessage(client, responseHeader, {});
 }
 
-ObjectStorageServer::VecOfSendMessageFuture ObjectStorageServer::optionallySendPendingRequests(
+void ObjectStorageServer::optionallySendPendingRequests(
     const ObjectID& objectID, std::shared_ptr<const ObjectPayload> objectPtr)
 {
     auto it = pendingRequests.find(objectID);
     if (it == pendingRequests.end()) {
-        return {};
+        return;
     }
 
     // Immediately remove the object's pending requests, or else another coroutine might process them too.
@@ -338,17 +327,17 @@ ObjectStorageServer::VecOfSendMessageFuture ObjectStorageServer::optionallySendP
     std::vector<ObjectStorageServer::SendMessageFuture> res;
     for (auto& request: requests) {
         if (request.requestHeader.requestType == ObjectRequestType::GET_OBJECT) {
-            catFuts(res, sendGetResponse(request.client, request.requestHeader, objectPtr));
+            sendGetResponse(request.client, request.requestHeader, objectPtr);
         } else {
             assert(request.requestHeader.requestType == ObjectRequestType::DUPLICATE_OBJECT_I_D);
             objectManager.duplicateObject(objectID, request.requestHeader.objectID);
-            catFuts(res, sendDuplicateResponse(request.client, request.requestHeader));
+            sendDuplicateResponse(request.client, request.requestHeader);
 
             // Some other pending requests might be themselves dependent on this duplicated object.
-            catFuts(res, optionallySendPendingRequests(request.requestHeader.objectID, objectPtr));
+            optionallySendPendingRequests(request.requestHeader.objectID, objectPtr);
         }
     }
-    return res;
+    return;
 }
 
 };  // namespace object_storage
