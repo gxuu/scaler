@@ -275,40 +275,46 @@ void MessageConnectionTCP::onRead()
         return;
     }
 
-    if (!_remoteIOSocketIdentity) {
-        auto res = tryReadMessages(true);
-        if (!res) {
-            if (res.error() == 0) {
-                _disconnect = true;
-            }
-            if (res.error() == 0 || res.error() == -1) {
-                onClose();
-                return;
-            }
-        }
-
-        if (_receivedReadOperations.empty() || !isCompleteMessage(_receivedReadOperations.front())) {
-            return;
-        }
-
-        auto id = std::move(_receivedReadOperations.front());
-        _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
-        _receivedReadOperations.pop();
-        auto sock = this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
-        sock->onConnectionIdentityReceived(this);
-    }
-
-    auto res = tryReadMessages(false);
-    if (!res) {
-        if (res.error() == 0) {
+    auto closeConn = [this](int err) -> std::expected<void, int> {
+        if (err == 0) {
             _disconnect = true;
         }
-        if (res.error() == 0 || res.error() == -1) {
-            onClose();
-            return;
-        }
+        onClose();
+        return std::unexpected {err};
+    };
+
+    auto res = _remoteIOSocketIdentity
+                   .or_else([this, closeConn] {
+                       auto res = tryReadMessages(true)
+                                      .or_else(closeConn)  //
+                                      .and_then([this]() -> std::expected<void, int> {
+                                          if (_receivedReadOperations.empty() ||
+                                              !isCompleteMessage(_receivedReadOperations.front())) {
+                                              return std::unexpected {0};
+                                          }
+
+                                          auto id = std::move(_receivedReadOperations.front());
+                                          _remoteIOSocketIdentity.emplace((char*)id._payload.data(), id._payload.len());
+                                          _receivedReadOperations.pop();
+                                          auto sock =
+                                              this->_eventLoopThread->_identityToIOSocket[_localIOSocketIdentity];
+                                          sock->onConnectionIdentityReceived(this);
+                                          return {};
+                                      });
+                       return _remoteIOSocketIdentity;
+                   })
+                   .and_then([this, closeConn](const std::string&) -> std::optional<std::string> {
+                       auto _ = tryReadMessages(false)
+                                    .or_else(closeConn)  //
+                                    .and_then([this]() -> std::expected<void, int> {
+                                        updateReadOperation();
+                                        return {};
+                                    });
+                       return _remoteIOSocketIdentity;
+                   });
+    if (!res) {
+        return;
     }
-    updateReadOperation();
 
 #ifdef _WIN32
     const bool ok = ReadFile((HANDLE)(SOCKET)_connFd, nullptr, 0, nullptr, this->_eventManager.get());
