@@ -9,6 +9,7 @@
 #endif  // _WIN32
 
 // C++
+#include <atomic>
 #include <map>
 #include <memory>
 #include <optional>
@@ -76,6 +77,8 @@ public:
     // From TcpClient class only
     void removeConnectedTcpClient() noexcept;
 
+    void requestStop() noexcept;
+
     std::shared_ptr<EventLoopThread> _eventLoopThread;
 
 private:
@@ -107,6 +110,8 @@ private:
     // NOTE: This variable needs to present in the IOSocket level because the user
     // does not care which connection a message is coming from.
     std::shared_ptr<std::queue<RecvMessageCallback>> _pendingRecvMessages;
+
+    std::atomic<bool> _stopped;
 };
 
 }  // namespace ymq

@@ -13,7 +13,7 @@
 namespace scaler {
 namespace object_storage {
 
-ObjectStorageServer::ObjectStorageServer(): _stopped(false)
+ObjectStorageServer::ObjectStorageServer()
 {
     initServerReadyFds();
 }
@@ -72,7 +72,8 @@ void ObjectStorageServer::waitUntilReady()
 
 void ObjectStorageServer::shutdown()
 {
-    _stopped = true;
+    if (_ioSocket)
+        _ioContext.requestIOSocketStop(_ioSocket);
 }
 
 void ObjectStorageServer::initServerReadyFds()
@@ -135,11 +136,10 @@ void ObjectStorageServer::processRequests()
                 }
             });
 
-            // TODO: This adds up to 100ms delay when trying to shutdown the server. This is due to ymq doesn't let you
-            // call removeIOSocket in another thread, which shouldn't be the case.
-            auto maybeMessageFut = ymq::futureRecvMessage(_ioSocket);
-            while (maybeMessageFut.wait_for(100ms) == std::future_status::timeout) {
-                if (_stopped) {
+            auto [message, error] = ymq::syncRecvMessage(_ioSocket);
+
+            if (error._errorCode != ymq::Error::ErrorCode::Uninit) {
+                if (error._errorCode == ymq::Error::ErrorCode::IOSocketStopRequested) {
                     _logger.log(
                         scaler::ymq::Logger::LoggingLevel::info,
                         "ObjectStorageServer: stopped, number of messages leftover in the system = ",
@@ -147,17 +147,13 @@ void ObjectStorageServer::processRequests()
                             return x.valid() && x.wait_for(0s) == std::future_status::timeout;
                         }));
                     return;
+                } else {
+                    throw error;
                 }
             }
 
-            auto maybeMessage = maybeMessageFut.get();
-
-            if (maybeMessage.second._errorCode != ymq::Error::ErrorCode::Uninit) {
-                throw maybeMessage.second;
-            }
-
-            const auto identity        = maybeMessage.first.address.as_string();
-            const auto headerOrPayload = std::move(maybeMessage.first.payload);
+            const auto identity        = message.address.as_string();
+            const auto headerOrPayload = std::move(message.payload);
 
             auto it = identityToFullRequest.find(identity);
             if (it == identityToFullRequest.end()) {

@@ -26,6 +26,7 @@ IOSocket::IOSocket(
     , _identity(std::move(identity))
     , _socketType(std::move(socketType))
     , _pendingRecvMessages(std::make_shared<std::queue<RecvMessageCallback>>())
+    , _stopped {false}
 {
 }
 
@@ -237,6 +238,16 @@ void IOSocket::removeConnectedTcpClient() noexcept
     }
 }
 
+void IOSocket::requestStop() noexcept
+{
+    _stopped = true;
+    while (_pendingRecvMessages->size()) {
+        auto readOp = std::move(_pendingRecvMessages->front());
+        _pendingRecvMessages->pop();
+        readOp({{}, Error::ErrorCode::IOSocketStopRequested});
+    }
+}
+
 IOSocket::~IOSocket() noexcept
 {
     for (const auto& [k, v]: _identityToConnection) {
@@ -246,8 +257,7 @@ IOSocket::~IOSocket() noexcept
     while (_pendingRecvMessages->size()) {
         auto readOp = std::move(_pendingRecvMessages->front());
         _pendingRecvMessages->pop();
-        // TODO: report what errorr?
-        readOp({});
+        readOp({{}, Error::ErrorCode::IOSocketStopRequested});
     }
 }
 
