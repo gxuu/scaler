@@ -55,6 +55,8 @@ public:
 
     void bindTo(std::string networkAddress, BindReturnCallback onBindReturn) noexcept;
 
+    void closeConnection(Identity remoteSocketIdentity) noexcept;
+
     [[nodiscard]] constexpr Identity identity() const { return _identity; }
 
     [[nodiscard]] constexpr IOSocketType socketType() const { return _socketType; }

@@ -119,6 +119,17 @@ void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindRetur
         });
 }
 
+void IOSocket::closeConnection(Identity remoteSocketIdentity) noexcept
+{
+    if (_stopped) {
+        return;
+    }
+    _eventLoopThread->_eventLoop.executeNow([this, remoteIdentity = std::move(remoteSocketIdentity)] mutable {
+        _eventLoopThread->_eventLoop.executeLater(
+            [this, remoteIdentity = std::move(remoteIdentity)] { _identityToConnection.erase(remoteIdentity); });
+    });
+}
+
 // TODO: The function should be separated into onConnectionAborted, onConnectionDisconnected,
 // and probably onConnectionAbortedBeforeEstablished(?)
 void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn, bool keepInBook) noexcept

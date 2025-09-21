@@ -20,7 +20,6 @@ ObjectStorageServer::ObjectStorageServer()
 
 ObjectStorageServer::~ObjectStorageServer()
 {
-    shutdown();
     closeServerReadyFds();
 }
 
@@ -122,10 +121,10 @@ void ObjectStorageServer::closeServerReadyFds()
 void ObjectStorageServer::processRequests()
 {
     using namespace std::chrono_literals;
-    try {
-        std::map<ymq::Configuration::IOSocketIdentity, std::pair<ObjectRequestHeader, Bytes>> identityToFullRequest;
-
-        while (true) {
+    Identity lastMessageIdentity;
+    std::map<Identity, std::pair<ObjectRequestHeader, Bytes>> identityToFullRequest;
+    while (true) {
+        try {
             auto invalids = std::ranges::remove_if(_pendingSendMessageFuts, [](const auto& x) { return !x.valid(); });
             _pendingSendMessageFuts.erase(invalids.begin(), invalids.end());
 
@@ -152,8 +151,8 @@ void ObjectStorageServer::processRequests()
                 }
             }
 
-            const auto identity        = message.address.as_string();
-            const auto headerOrPayload = std::move(message.payload);
+            const auto identity = lastMessageIdentity = message.address.as_string();
+            const auto headerOrPayload                = std::move(message.payload);
 
             auto it = identityToFullRequest.find(identity);
             if (it == identityToFullRequest.end()) {
@@ -192,10 +191,16 @@ void ObjectStorageServer::processRequests()
                     break;
                 }
             }
+        } catch (const kj::Exception& e) {
+            _ioSocket->closeConnection(std::move(lastMessageIdentity));
+            _logger.log(
+                scaler::ymq::Logger::LoggingLevel::error,
+                "ObjectStorageServer: Malformed capnp message. Connection closed, details: ",
+                e.getDescription().cStr());
+        } catch (const std::exception& e) {
+            _logger.log(
+                scaler::ymq::Logger::LoggingLevel::error, "ObjectStorageServer: unexpected error, reason: ", e.what());
         }
-    } catch (const std::exception& e) {
-        _logger.log(
-            scaler::ymq::Logger::LoggingLevel::error, "ObjectStorageServer: unexpected error, reason: ", e.what());
     }
 }
 
