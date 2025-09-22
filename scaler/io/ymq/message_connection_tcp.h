@@ -67,7 +67,7 @@ private:
 
     std::expected<void, IOError> tryReadOneMessage();
     std::expected<void, IOError> tryReadMessages();
-    std::expected<size_t, int> trySendQueuedMessages();
+    std::expected<size_t, IOError> trySendQueuedMessages();
     void updateWriteOperations(size_t n);
     void updateReadOperation();
 

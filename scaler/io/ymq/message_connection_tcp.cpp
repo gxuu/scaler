@@ -357,24 +357,15 @@ void MessageConnectionTCP::onWrite()
         return;
     }
 
-#ifdef __linux__
-    // EPIPE: Shutdown for writing or disconnected, since we don't provide the former,
-    // it means the later.
-    if (res.error() == ECONNRESET || res.error() == EPIPE) {
+    if (res.error() == IOError::Aborted) {
         onClose();
         return;
     }
-#endif  // __linux__
 
 #ifdef _WIN32
-    if (res.error() == WSAESHUTDOWN || res.error() == WSAENOTCONN) {
-        onClose();
-        return;
-    }
-
     // NOTE: Precondition is the queue still has messages (perhaps a partial one).
     // We don't need to update the queue because trySendQueuedMessages is okay with a complete message in front.
-    if (res.error() == WSAEWOULDBLOCK) {
+    if (res.error() == IOError::Drained) {
         void* addr = nullptr;
         if (_sendCursor < HEADER_SIZE) {
             addr = (char*)(&_writeOperations.front()._header) + _sendCursor;
@@ -416,7 +407,7 @@ void MessageConnectionTCP::onClose()
     }
 };
 
-std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages()
+std::expected<size_t, MessageConnectionTCP::IOError> MessageConnectionTCP::trySendQueuedMessages()
 {
 // typedef struct _WSABUF {
 //     ULONG(same to sizet on x64 machine) len;     /* the length of the buffer */
@@ -474,7 +465,10 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages()
     }
     const int myErrno = GetErrorCode();
     if (myErrno == WSAEWOULDBLOCK) {
-        return std::unexpected {myErrno};
+        return std::unexpected {IOError::Drained};
+    }
+    if (myErrno == WSAESHUTDOWN || myErrno == WSAENOTCONN) {
+        return std::unexpected {IOError::Aborted};
     }
     unrecoverableError({
         Error::ErrorCode::CoreBug,
@@ -497,7 +491,7 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages()
     ssize_t bytesSent = ::sendmsg(_connFd, &msg, MSG_NOSIGNAL);
     if (bytesSent == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return 0;
+            return std::unexpected {IOError::Drained};
         } else {
             const int myErrno = errno;
             switch (myErrno) {
@@ -528,7 +522,8 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages()
                     });
                     break;
 
-                case ECONNRESET: break;  // NOTE: HANDLE BY CALLER
+                case ECONNRESET:
+                case EPIPE: return std::unexpected {IOError::Aborted}; break;
 
                 case EINTR:
                     unrecoverableError({
@@ -539,8 +534,6 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages()
                         strerror(myErrno),
                     });
                     break;
-
-                case EPIPE: break;  // NOTE: HANDLE BY CALLER
 
                 case EIO:
                 case EACCES:
@@ -558,8 +551,6 @@ std::expected<size_t, int> MessageConnectionTCP::trySendQueuedMessages()
                     });
                     break;
             }
-
-            return std::unexpected {myErrno};
         }
     }
 
