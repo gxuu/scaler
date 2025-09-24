@@ -55,15 +55,15 @@ MessageConnectionTCP::MessageConnectionTCP(
     bool responsibleForRetry,
     std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks) noexcept
     : _eventLoopThread(eventLoopThread)
+    , _remoteAddr(std::move(remoteAddr))
+    , _responsibleForRetry(responsibleForRetry)
+    , _remoteIOSocketIdentity(std::nullopt)
     , _eventManager(std::make_unique<EventManager>())
     , _connFd(std::move(connFd))
     , _localAddr(std::move(localAddr))
-    , _remoteAddr(std::move(remoteAddr))
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
-    , _remoteIOSocketIdentity(std::nullopt)
-    , _responsibleForRetry(responsibleForRetry)
-    , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _sendCursor {}
+    , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _disconnect {false}
 {
     _eventManager->onRead  = [this] { this->onRead(); };
@@ -78,15 +78,15 @@ MessageConnectionTCP::MessageConnectionTCP(
     std::string remoteIOSocketIdentity,
     std::shared_ptr<std::queue<RecvMessageCallback>> pendingRecvMessageCallbacks) noexcept
     : _eventLoopThread(eventLoopThread)
+    , _remoteAddr {}
+    , _responsibleForRetry(false)
+    , _remoteIOSocketIdentity(std::move(remoteIOSocketIdentity))
     , _eventManager(std::make_unique<EventManager>())
     , _connFd {}
     , _localAddr {}
-    , _remoteAddr {}
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
-    , _remoteIOSocketIdentity(std::move(remoteIOSocketIdentity))
-    , _responsibleForRetry(false)
-    , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _sendCursor {}
+    , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _disconnect {false}
 {
     _eventManager->onRead  = [this] { this->onRead(); };

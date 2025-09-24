@@ -1,3 +1,15 @@
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+  add_compile_options(
+      -Wall
+      -Wpedantic
+      -Wunused
+      -Wunused-parameter
+      -Wunused-function
+      -Wunused-variable
+      -Wunused-local-typedefs
+  )
+endif()
+
 add_library(cc_ymq SHARED)
 
 if(WIN32)
