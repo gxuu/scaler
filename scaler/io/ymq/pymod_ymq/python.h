@@ -28,7 +28,7 @@ PyObject* PyType_GetModuleState(PyTypeObject* type)
 {
     PyObject* module = PyObject_GetAttrString((PyObject*)(type), "__module_object__");
     if (!module)
-        return NULL;
+        return nullptr;
     void* state = PyModule_GetState(module);
     Py_DECREF(module);
     return (PyObject*)state;
@@ -36,15 +36,15 @@ PyObject* PyType_GetModuleState(PyTypeObject* type)
 
 static inline PyObject* PyObject_CallNoArgs(PyObject* callable)
 {
-    return PyObject_Call(callable, PyTuple_New(0), NULL);
+    return PyObject_Call(callable, PyTuple_New(0), nullptr);
 }
 
 static inline PyObject* PyObject_CallOneArg(PyObject* callable, PyObject* arg)
 {
     PyObject* args = PyTuple_Pack(1, arg);
     if (!args)
-        return NULL;
-    PyObject* result = PyObject_Call(callable, args, NULL);
+        return nullptr;
+    PyObject* result = PyObject_Call(callable, args, nullptr);
     Py_DECREF(args);
     return result;
 }
@@ -61,7 +61,7 @@ static inline PyObject* PyType_FromModuleAndSpec(PyObject* pymodule, PyType_Spec
     if (!bases) {
         bases = PyTuple_Pack(1, (PyObject*)&PyBaseObject_Type);
         if (!bases)
-            return NULL;
+            return nullptr;
         PyObject* res = PyType_FromSpecWithBases(spec, bases);
         Py_DECREF(bases);  // avoid leak
         return res;
