@@ -6,7 +6,7 @@ import time
 import unittest
 from concurrent.futures import CancelledError
 
-from scaler import Client, SchedulerClusterCombo
+from scaler import Client, Cluster, SchedulerClusterCombo
 from scaler.utility.exceptions import MissingObjects, ProcessorDiedError
 from scaler.utility.logging.scoped_logger import ScopedLogger
 from scaler.utility.logging.utility import setup_logger
