@@ -2,6 +2,7 @@
 #include <Python.h>
 #include <pyerrors.h>
 
+#include "scaler/io/ymq/pymod_ymq/gil.h"
 #include "scaler/object_storage/object_storage_server.h"
 
 extern "C" {
@@ -53,7 +54,11 @@ static PyObject* PyObjectStorageServerRun(PyObject* self, PyObject* args)
         logging_paths.push_back(PyUnicode_AsUTF8(path_obj));
     }
 
-    auto running = []() -> bool { return PyErr_CheckSignals() == 0; };
+    auto running = []() -> bool {
+        AcquireGIL gil;
+        (void)gil;
+        return PyErr_CheckSignals() == 0;
+    };
 
     ((PyObjectStorageServer*)self)
         ->server.run(
