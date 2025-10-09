@@ -1,5 +1,6 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <pyerrors.h>
 
 #include "scaler/object_storage/object_storage_server.h"
 
@@ -52,10 +53,15 @@ static PyObject* PyObjectStorageServerRun(PyObject* self, PyObject* args)
         logging_paths.push_back(PyUnicode_AsUTF8(path_obj));
     }
 
-    ((PyObjectStorageServer*)self)
-        ->server.run(addr, std::to_string(port), identity, log_level, log_format, std::move(logging_paths));
+    auto running = []() -> bool { return PyErr_CheckSignals() == 0; };
 
-    Py_RETURN_NONE;
+    ((PyObjectStorageServer*)self)
+        ->server.run(
+            addr, std::to_string(port), identity, log_level, log_format, std::move(logging_paths), std::move(running));
+
+    // TODO: Ideally, run should return a bool and we return failure with nullptr.
+    return nullptr;
+    // Py_RETURN_NONE;
 }
 
 static PyObject* PyObjectStorageServerWaitUntilReady(PyObject* self, [[maybe_unused]] PyObject* args)
