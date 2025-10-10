@@ -91,16 +91,17 @@ class Processor(multiprocessing.get_context("spawn").Process):  # type: ignore
             context=zmq.Context(), socket_type=zmq.DEALER, address=self._agent_address, identity=None
         )
 
+        self._connector_storage: SyncObjectStorageConnector
         if DEFAULT_OSS_CLIENT_TRANSPORTATION == SCALER_OSS_USE_RAW_TCP:
-            self._connector_storage: SyncObjectStorageConnector = PySyncObjectStorageConnector(
+            self._connector_storage = PySyncObjectStorageConnector(
                 self._storage_address.host, self._storage_address.port
             )
         elif DEFAULT_OSS_CLIENT_TRANSPORTATION == SCALER_OSS_USE_YMQ:
-            self._connector_storage: SyncObjectStorageConnector = PyYMQSyncObjectStorageConnector(
+            self._connector_storage = PyYMQSyncObjectStorageConnector(
                 self._storage_address.host, self._storage_address.port
             )
         else:
-            logging.error("Cannot determine which OSS Connector to use")
+            raise ValueError("Cannot determine which OSS Connector to use")
 
         self._object_cache = ObjectCache(
             garbage_collect_interval_seconds=self._garbage_collect_interval_seconds,

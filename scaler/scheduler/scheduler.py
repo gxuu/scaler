@@ -82,12 +82,13 @@ class Scheduler:
         )
         logging.info(f"{self.__class__.__name__}: listen to scheduler address {config.scheduler_address}")
 
+        self._connector_storage: AsyncObjectStorageConnector
         if DEFAULT_OSS_CLIENT_TRANSPORTATION == SCALER_OSS_USE_RAW_TCP:
-            self._connector_storage: AsyncObjectStorageConnector = PyAsyncObjectStorageConnector()
+            self._connector_storage = PyAsyncObjectStorageConnector()
         elif DEFAULT_OSS_CLIENT_TRANSPORTATION == SCALER_OSS_USE_YMQ:
-            self._connector_storage: AsyncObjectStorageConnector = PyYMQAsyncObjectStorageConnector()
+            self._connector_storage = PyYMQAsyncObjectStorageConnector()
         else:
-            logging.error(f"{self.__class__.__name__}: Cannot determine which OSS Connector to use")
+            raise ValueError("Cannot determine which OSS Connector to use")
         logging.info(f"{self.__class__.__name__}: connect to object storage server {object_storage_address!r}")
 
         self._binder_monitor: AsyncConnector = ZMQAsyncConnector(

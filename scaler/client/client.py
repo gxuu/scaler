@@ -126,16 +126,17 @@ class Client:
         self._storage_address = self._agent.get_storage_address()
 
         logging.info(f"ScalerClient: connect to object storage at {self._storage_address}")
+        self._connector_storage: SyncObjectStorageConnector
         if DEFAULT_OSS_CLIENT_TRANSPORTATION == SCALER_OSS_USE_RAW_TCP:
-            self._connector_storage: SyncObjectStorageConnector = PySyncObjectStorageConnector(
+            self._connector_storage = PySyncObjectStorageConnector(
                 self._storage_address.host, self._storage_address.port
             )
         elif DEFAULT_OSS_CLIENT_TRANSPORTATION == SCALER_OSS_USE_YMQ:
-            self._connector_storage: SyncObjectStorageConnector = PyYMQSyncObjectStorageConnector(
+            self._connector_storage = PyYMQSyncObjectStorageConnector(
                 self._storage_address.host, self._storage_address.port
             )
         else:
-            logging.error("Cannot determine which OSS Connector to use")
+            raise ValueError("Cannot determine which OSS Connector to use")
 
         self._object_buffer = ObjectBuffer(
             self._identity, self._serializer, self._connector_agent, self._connector_storage
