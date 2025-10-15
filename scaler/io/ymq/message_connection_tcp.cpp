@@ -613,7 +613,7 @@ void MessageConnectionTCP::updateWriteOperations(size_t n)
         _writeOperations.pop_front();
     }
 
-    // _writeOperations.shrink_to_fit();
+    _writeOperations.shrink_to_fit();
 }
 
 void MessageConnectionTCP::sendMessage(Message msg, SendMessageCallback onMessageSent)

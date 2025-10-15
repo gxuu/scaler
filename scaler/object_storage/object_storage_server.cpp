@@ -13,6 +13,8 @@
 namespace scaler {
 namespace object_storage {
 
+constexpr static size_t SHRINK_THRESHOLD = 2048;
+
 ObjectStorageServer::ObjectStorageServer()
 {
     initServerReadyFds();
@@ -127,6 +129,10 @@ void ObjectStorageServer::processRequests(std::function<bool()> running)
         try {
             auto invalids = std::ranges::remove_if(_pendingSendMessageFuts, [](const auto& x) { return !x.valid(); });
             _pendingSendMessageFuts.erase(invalids.begin(), invalids.end());
+
+            if (_pendingSendMessageFuts.capacity() > SHRINK_THRESHOLD) {
+                _pendingSendMessageFuts.shrink_to_fit();
+            }
 
             std::ranges::for_each(_pendingSendMessageFuts, [](auto& fut) {
                 if (fut.wait_for(0s) == std::future_status::ready) {
