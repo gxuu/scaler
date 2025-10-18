@@ -44,10 +44,6 @@ function(add_test_executable test_name source_file)
     endif()
 endfunction()
 
-if(LINUX OR APPLE)
-  # Add the directory for the C++ tests.
-  add_subdirectory(cpp)
+# Add the directory for the C++ tests.
+add_subdirectory(cpp)
 
-  # Add the new directory for io tests.
-  add_subdirectory(io/ymq)
-endif()
