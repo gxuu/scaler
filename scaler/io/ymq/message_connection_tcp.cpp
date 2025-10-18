@@ -1,6 +1,8 @@
 
 #include "scaler/io/ymq/message_connection_tcp.h"
 
+#include <new>
+
 #include "scaler/io/ymq/configuration.h"
 
 #ifdef __linux__
@@ -147,11 +149,22 @@ std::expected<void, MessageConnectionTCP::IOError> MessageConnectionTCP::tryRead
             remainingSize = HEADER_SIZE - message._cursor;
         } else if (message._cursor == HEADER_SIZE) {
             if (message._header >= LARGEST_PAYLOAD_SIZE) {
+                _logger.log(
+                    Logger::LoggingLevel::error,
+                    "Request to allocate more than LARGEST_PAYLOAD_SIZE of bytes. Close the connection");
                 return std::unexpected {IOError::MessageTooLarge};
             }
-            message._payload = Bytes::alloc(message._header);
-            readTo           = (char*)message._payload.data();
-            remainingSize    = message._payload.len();
+            // NOTE: We probably need a better protocol to solve this issue completely, but this should let us pin down
+            // why OSS sometimes throws bad_alloc
+            try {
+                message._payload = Bytes::alloc(message._header);
+                readTo           = (char*)message._payload.data();
+                remainingSize    = message._payload.len();
+            } catch (const std::bad_alloc& e) {
+                _logger.log(
+                    Logger::LoggingLevel::error, "Trying to allocate", message._header, "bytes", "bad_alloc caught");
+                return std::unexpected {IOError::MessageTooLarge};
+            }
         } else {
             readTo        = (char*)message._payload.data() + (message._cursor - HEADER_SIZE);
             remainingSize = message._payload.len() - (message._cursor - HEADER_SIZE);
