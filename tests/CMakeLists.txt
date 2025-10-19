@@ -21,7 +21,6 @@ function(add_test_executable test_name source_file)
     target_include_directories(${test_name} PRIVATE ${CMAKE_BINARY_DIR})
 
     target_link_libraries(${test_name} PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wl,-Bdynamic>
         $<$<NOT:$<PLATFORM_ID:Windows>>:object_storage_server_objs>
         ymq_objs
         CapnProto::capnp
