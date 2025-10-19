@@ -151,12 +151,20 @@ std::expected<void, MessageConnectionTCP::IOError> MessageConnectionTCP::tryRead
             // NOTE: We probably need a better protocol to solve this issue completely, but this should let us pin down
             // why OSS sometimes throws bad_alloc
             try {
-                message._payload = Bytes::alloc(message._header);
-                readTo           = (char*)message._payload.data();
-                remainingSize    = message._payload.len();
+                // On Linux, this will never happen because this function is only called when
+                // new read comes in. On other platform, this might be different.
+                if (!message._payload.data()) {
+                    message._payload = Bytes::alloc(message._header);
+                }
+                readTo        = (char*)message._payload.data();
+                remainingSize = message._payload.len();
             } catch (const std::bad_alloc& e) {
                 _logger.log(
-                    Logger::LoggingLevel::error, "Trying to allocate", message._header, "bytes", "bad_alloc caught");
+                    Logger::LoggingLevel::error,
+                    "Trying to allocate ",
+                    message._header,
+                    " bytes.",
+                    " bad_alloc caught, connection closed");
                 return std::unexpected {IOError::MessageTooLarge};
             }
         } else {
