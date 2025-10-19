@@ -148,12 +148,6 @@ std::expected<void, MessageConnectionTCP::IOError> MessageConnectionTCP::tryRead
             readTo        = (char*)&message._header + message._cursor;
             remainingSize = HEADER_SIZE - message._cursor;
         } else if (message._cursor == HEADER_SIZE) {
-            if (message._header >= LARGEST_PAYLOAD_SIZE) {
-                _logger.log(
-                    Logger::LoggingLevel::error,
-                    "Request to allocate more than LARGEST_PAYLOAD_SIZE of bytes. Close the connection");
-                return std::unexpected {IOError::MessageTooLarge};
-            }
             // NOTE: We probably need a better protocol to solve this issue completely, but this should let us pin down
             // why OSS sometimes throws bad_alloc
             try {
