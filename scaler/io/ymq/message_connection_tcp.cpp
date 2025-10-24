@@ -364,7 +364,13 @@ void MessageConnectionTCP::onRead()
         return;
     }
 
-    // The idea is, we only submit another pending operation if we have read some bytes previously.
+    // NOTE:
+    // Because there was no way to differentiate Read/Write operation on Windows, current behaviour is that whenever an
+    // operation arrives, I call both onRead and onWrite. This creates erroneous behaviour as we are posting too much
+    // operations into the queue maintained by the kernel.
+    // Sometimes, we don't really need to queued in another operation, as we typically know that when onRead is being
+    // called with no bytes being read, we know this is a false positive call (introduce by a write-available
+    // notification for example) and the previous ReadFile notification is still in the operating system's kernel.
     if (!_readSomeBytes) {
         return;
     }
@@ -397,7 +403,6 @@ void MessageConnectionTCP::onWrite()
         return;
     }
 
-
     auto res = trySendQueuedMessages();
     if (res) {
         updateWriteOperations(res.value());
@@ -426,6 +431,10 @@ void MessageConnectionTCP::onWrite()
             onWrite();
             return;
         }
+
+        // NOTE:
+        // If you don't updateWriteOperations, the _sendCursor will not be reset and that breaks the assumption that
+        // 0 <= _sendCursor <= HEADER_SIZE + message.payload.length
         updateWriteOperations(len);
 
         const auto lastError = GetLastError();
@@ -515,6 +524,9 @@ std::expected<size_t, MessageConnectionTCP::IOError> MessageConnectionTCP::trySe
     if (myErrno == WSAEWOULDBLOCK) {
         return std::unexpected {IOError::Drained};
     }
+
+    // NOTE: On Windows, the behaviour of connection aborting is not very clear -
+    // You can get WSAECONNABORTED (Note that ECONNABORTED is not presented on GNU) when the remote connection aborts.
     if (myErrno == WSAESHUTDOWN || myErrno == WSAENOTCONN || myErrno == WSAECONNRESET) {
         return std::unexpected {IOError::Aborted};
     }
