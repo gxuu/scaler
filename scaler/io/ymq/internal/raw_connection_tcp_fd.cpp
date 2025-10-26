@@ -3,21 +3,8 @@
 #include <algorithm>
 #include <cassert>  // assert
 
-#ifdef __linux__
-#include <errno.h>  // EAGAIN etc.
-#include <limits.h>
-#include <sys/socket.h>  // ::recv
-#include <unistd.h>
-#endif  // __linux__
-#ifdef _WIN32
-// clang-format off
-#include <windows.h>
-#include <winsock2.h>
-#include <mswsock.h>
-// clang-format on
-#endif  // _WIN32
-
 #include "scaler/io/ymq/error.h"
+#include "scaler/io/ymq/internal/defs.h"
 
 namespace scaler {
 namespace ymq {

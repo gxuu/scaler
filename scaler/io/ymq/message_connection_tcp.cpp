@@ -1,22 +1,6 @@
 
 #include "scaler/io/ymq/message_connection_tcp.h"
 
-#include <new>
-#include <utility>
-
-#include "scaler/io/ymq/configuration.h"
-
-#ifdef __linux__
-#include <unistd.h>
-#endif  // __linux__
-#ifdef _WIN32
-// clang-format off
-#include <windows.h>
-#include <winsock2.h>
-#include <mswsock.h>
-// clang-format on
-#endif  // _WIN32
-
 #include <algorithm>
 #include <cerrno>
 #include <cstddef>
@@ -25,11 +9,15 @@
 #include <expected>
 #include <functional>
 #include <memory>
+#include <new>
 #include <optional>
+#include <utility>
 
+#include "scaler/io/ymq/configuration.h"
 #include "scaler/io/ymq/error.h"
 #include "scaler/io/ymq/event_loop_thread.h"
 #include "scaler/io/ymq/event_manager.h"
+#include "scaler/io/ymq/internal/defs.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/network_utils.h"
 
@@ -104,17 +92,11 @@ MessageConnectionTCP::MessageConnectionTCP(
 void MessageConnectionTCP::onCreated()
 {
     if (_connFd != 0) {
-#ifdef __linux__
         this->_eventLoopThread->_eventLoop.addFdToLoop(
             _connFd, EPOLLIN | EPOLLOUT | EPOLLET, this->_eventManager.get());
         _writeOperations.emplace_back(
             Bytes {_localIOSocketIdentity.data(), _localIOSocketIdentity.size()}, [](auto) {});
-#endif  // __linux__
 #ifdef _WIN32
-        // This probably need handle the addtwice problem
-        this->_eventLoopThread->_eventLoop.addFdToLoop(_connFd, 0, nullptr);
-        _writeOperations.emplace_back(
-            Bytes {_localIOSocketIdentity.data(), _localIOSocketIdentity.size()}, [](auto) {});
         onWrite();
 #endif
         if (_rawConn.prepareReadBytes(this->_eventManager.get())) {
