@@ -6,6 +6,7 @@
 #include <queue>
 
 #include "scaler/io/ymq/configuration.h"
+#include "scaler/io/ymq/internal/raw_connection_tcp_fd.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/logging.h"
 #include "scaler/io/ymq/message_connection.h"
@@ -93,6 +94,9 @@ private:
     // TODO: This variable records whether we have read some bytes in the last read operation.
     // The semantic of readMessage is completely broken. But that will be fixed in the refactor.
     bool _readSomeBytes;
+
+    RawConnectionTCPFD _rawConn;
+
     constexpr static bool isCompleteMessage(const TcpReadOperation& x);
     friend void IOSocket::onConnectionIdentityReceived(MessageConnectionTCP* conn) noexcept;
     friend void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn, bool keepInBook) noexcept;

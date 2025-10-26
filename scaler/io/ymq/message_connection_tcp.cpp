@@ -2,6 +2,7 @@
 #include "scaler/io/ymq/message_connection_tcp.h"
 
 #include <new>
+#include <utility>
 
 #include "scaler/io/ymq/configuration.h"
 
@@ -67,6 +68,7 @@ MessageConnectionTCP::MessageConnectionTCP(
     , _sendCursor {}
     , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _disconnect {false}
+    , _rawConn(_connFd)
 {
     _eventManager->onRead  = [this] { this->onRead(); };
     _eventManager->onWrite = [this] { this->onWrite(); };
@@ -91,6 +93,7 @@ MessageConnectionTCP::MessageConnectionTCP(
     , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _disconnect {false}
     , _readSomeBytes {false}
+    , _rawConn(_connFd)
 {
     _eventManager->onRead  = [this] { this->onRead(); };
     _eventManager->onWrite = [this] { this->onWrite(); };
@@ -113,26 +116,11 @@ void MessageConnectionTCP::onCreated()
         _writeOperations.emplace_back(
             Bytes {_localIOSocketIdentity.data(), _localIOSocketIdentity.size()}, [](auto) {});
         onWrite();
-        const bool ok = ReadFile((HANDLE)(SOCKET)_connFd, nullptr, 0, nullptr, this->_eventManager.get());
-        if (ok) {
+#endif
+        if (_rawConn.prepareReadBytes(this->_eventManager.get())) {
             onRead();
             return;
         }
-        const int lastError = GetLastError();
-        if (lastError == ERROR_IO_PENDING) {
-            return;
-        }
-
-        unrecoverableError({
-            Error::ErrorCode::CoreBug,
-            "Originated from",
-            "ReadFile",
-            "Errno is",
-            lastError,
-            "_connfd",
-            _connFd,
-        });
-#endif  // _WIN32
     }
 }
 
@@ -179,88 +167,28 @@ std::expected<void, MessageConnectionTCP::IOError> MessageConnectionTCP::tryRead
             return {};
         }
 
-        int n = ::recv(_connFd, readTo, remainingSize, 0);
-        if (n > 0) {
+        auto [bytesRead, status] = _rawConn.tryReadUntilComplete(readTo, remainingSize);
+        message._cursor += bytesRead;
+
+        if (bytesRead > 0) {
             _readSomeBytes = true;
         }
 
-        if (n == 0) {
-            return std::unexpected {IOError::Disconnected};
-        } else if (n == -1) {
-            const int myErrno = GetErrorCode();
-#ifdef _WIN32
-            if (myErrno == WSAEWOULDBLOCK) {
-                return std::unexpected {IOError::Drained};
-            }
-            if (myErrno == WSAECONNRESET || myErrno == WSAENOTSOCK || myErrno == WSAECONNABORTED) {
-                return std::unexpected {IOError::Aborted};
-            } else {
-                // NOTE: On Windows we don't have signals and weird IO Errors
-                unrecoverableError({
-                    Error::ErrorCode::CoreBug,
-                    "Originated from",
-                    "recv",
-                    "Errno is",
-                    myErrno,
-                    "_connfd",
-                    _connFd,
-                    "readTo",
-                    (void*)readTo,
-                    "remainingSize",
-                    remainingSize,
-                });
-            }
-#endif  // _WIN32
-#ifdef __linux__
-            if (myErrno == ECONNRESET) {
-                return std::unexpected {IOError::Aborted};
-            }
-            if (myErrno == EAGAIN || myErrno == EWOULDBLOCK) {
-                return std::unexpected {IOError::Drained};
-            } else {
-                const int myErrno = errno;
-                switch (myErrno) {
-                    case EBADF:
-                    case EISDIR:
-                    case EINVAL:
-                        unrecoverableError({
-                            Error::ErrorCode::CoreBug,
-                            "Originated from",
-                            "read(2)",
-                            "Errno is",
-                            strerror(myErrno),
-                            "_connfd",
-                            _connFd,
-                            "readTo",
-                            (void*)readTo,
-                            "remainingSize",
-                            remainingSize,
-                        });
-
-                    case EINTR:
-                        unrecoverableError({
-                            Error::ErrorCode::SignalNotSupported,
-                            "Originated from",
-                            "read(2)",
-                            "Errno is",
-                            strerror(myErrno),
-                        });
-
-                    case EFAULT:
-                    case EIO:
-                    default:
-                        unrecoverableError({
-                            Error::ErrorCode::ConfigurationError,
-                            "Originated from",
-                            "read(2)",
-                            "Errno is",
-                            strerror(myErrno),
-                        });
+        if (status != RawConnectionTCPFD::IOStatus::MoreBytesAvailable) {
+            switch (status) {
+                case RawConnectionTCPFD::IOStatus::Aborted: {
+                    return std::unexpected {IOError::Aborted};
+                }
+                case RawConnectionTCPFD::IOStatus::Disconnected: {
+                    return std::unexpected {IOError::Disconnected};
+                }
+                case RawConnectionTCPFD::IOStatus::Drained: {
+                    return std::unexpected {IOError::Drained};
+                }
+                case RawConnectionTCPFD::IOStatus::MoreBytesAvailable: {
+                    std::unreachable();
                 }
             }
-#endif  // __linux__
-        } else {
-            message._cursor += n;
         }
     }
     return {};
@@ -358,7 +286,6 @@ void MessageConnectionTCP::onRead()
         return;
     }
 
-#ifdef _WIN32
     // TODO: This need rewrite to better logic
     if (!_connFd) {
         return;
@@ -374,25 +301,9 @@ void MessageConnectionTCP::onRead()
     if (!_readSomeBytes) {
         return;
     }
-    const bool ok = ReadFile((HANDLE)(SOCKET)_connFd, nullptr, 0, nullptr, this->_eventManager.get());
-    if (ok) {
+    if (_rawConn.prepareReadBytes(this->_eventManager.get())) {
         onRead();
-        return;
     }
-    const auto lastError = GetLastError();
-    if (lastError == ERROR_IO_PENDING) {
-        return;
-    }
-    unrecoverableError({
-        Error::ErrorCode::CoreBug,
-        "Originated from",
-        "ReadFile",
-        "Errno is",
-        lastError,
-        "_connfd",
-        _connFd,
-    });
-#endif  // _WIN32
 }
 
 void MessageConnectionTCP::onWrite()
@@ -414,7 +325,6 @@ void MessageConnectionTCP::onWrite()
         return;
     }
 
-#ifdef _WIN32
     // NOTE: Precondition is the queue still has messages (perhaps a partial one).
     // We don't need to update the queue because trySendQueuedMessages is okay with a complete message in front.
     if (res.error() == IOError::Drained) {
@@ -425,33 +335,13 @@ void MessageConnectionTCP::onWrite()
             addr = (char*)_writeOperations.front()._payload.data() + _sendCursor - HEADER_SIZE;
         }
 
-        const size_t len        = 1;
-        const bool writeFileRes = WriteFile((HANDLE)(SOCKET)_connFd, addr, len, nullptr, _eventManager.get());
-        if (writeFileRes) {
+        const size_t len                = 1;
+        const auto [n, immediateResult] = _rawConn.prepareWriteBytes(addr, len, _eventManager.get());
+        updateWriteOperations(n);
+        if (immediateResult) {
             onWrite();
-            return;
         }
-
-        // NOTE:
-        // If you don't updateWriteOperations, the _sendCursor will not be reset and that breaks the assumption that
-        // 0 <= _sendCursor <= HEADER_SIZE + message.payload.length
-        updateWriteOperations(len);
-
-        const auto lastError = GetLastError();
-        if (lastError == ERROR_IO_PENDING) {
-            return;
-        }
-        unrecoverableError({
-            Error::ErrorCode::CoreBug,
-            "Originated from",
-            "WriteFile",
-            "Errno is",
-            lastError,
-            "_connfd",
-            _connFd,
-        });
     }
-#endif  // _WIN32
 }
 
 void MessageConnectionTCP::onClose()
@@ -466,163 +356,57 @@ void MessageConnectionTCP::onClose()
 
 std::expected<size_t, MessageConnectionTCP::IOError> MessageConnectionTCP::trySendQueuedMessages()
 {
-// typedef struct _WSABUF {
-//     ULONG(same to sizet on x64 machine) len;     /* the length of the buffer */
-//     _Field_size_bytes_(len) CHAR FAR *buf; /* the pointer to the buffer */
-// } WSABUF, FAR * LPWSABUF;
-#ifdef _WIN32
-#define iovec    ::WSABUF
-#define IOV_MAX  (1024)
-#define iov_base buf
-#define iov_len  len
-#endif  // _WIN32
-
-    std::vector<iovec> iovecs;
-    iovecs.reserve(IOV_MAX);
-    for (auto it = _writeOperations.begin(); it != _writeOperations.end(); ++it) {
-        if (iovecs.size() > IOV_MAX - 2) {
-            break;
-        }
-
-        iovec iovHeader {};
-        iovec iovPayload {};
-        if (it == _writeOperations.begin()) {
-            if (_sendCursor < HEADER_SIZE) {
-                iovHeader.iov_base  = (char*)(&it->_header) + _sendCursor;
-                iovHeader.iov_len   = HEADER_SIZE - _sendCursor;
-                iovPayload.iov_base = (char*)(it->_payload.data());
-                iovPayload.iov_len  = it->_payload.len();
-            } else {
-                iovHeader.iov_base  = nullptr;
-                iovHeader.iov_len   = 0;
-                iovPayload.iov_base = (char*)(it->_payload.data()) + (_sendCursor - HEADER_SIZE);
-                iovPayload.iov_len  = it->_payload.len() - (_sendCursor - HEADER_SIZE);
-            }
-        } else {
-            iovHeader.iov_base  = (char*)(&it->_header);
-            iovHeader.iov_len   = HEADER_SIZE;
-            iovPayload.iov_base = (char*)(it->_payload.data());
-            iovPayload.iov_len  = it->_payload.len();
-        }
-
-        iovecs.push_back(iovHeader);
-        iovecs.push_back(iovPayload);
-    }
-
-    if (iovecs.empty()) {
+    // TODO: Should this accept 0 length send?
+    if (_writeOperations.empty()) {
         return 0;
     }
-
-#ifdef _WIN32
-    DWORD bytesSent {};
-    const int sendToResult =
-        WSASendTo(_connFd, iovecs.data(), iovecs.size(), &bytesSent, 0, nullptr, 0, nullptr, nullptr);
-    if (sendToResult == 0) {
-        return bytesSent;
-    }
-    const int myErrno = GetErrorCode();
-    if (myErrno == WSAEWOULDBLOCK) {
-        return std::unexpected {IOError::Drained};
-    }
-
-    // NOTE: On Windows, the behaviour of connection aborting is not very clear -
-    // You can get WSAECONNABORTED (Note that ECONNABORTED is not presented on GNU) when the remote connection aborts.
-    if (myErrno == WSAESHUTDOWN || myErrno == WSAENOTCONN || myErrno == WSAECONNRESET) {
-        return std::unexpected {IOError::Aborted};
-    }
-    unrecoverableError({
-        Error::ErrorCode::CoreBug,
-        "Originated from",
-        "WSASendTo",
-        "Errno is",
-        myErrno,
-        "_connfd",
-        _connFd,
-        "iovecs.size()",
-        iovecs.size(),
-    });
-#endif  // _WIN32
-
-#ifdef __linux__
-    struct msghdr msg {};
-    msg.msg_iov    = iovecs.data();
-    msg.msg_iovlen = iovecs.size();
-
-    ssize_t bytesSent = ::sendmsg(_connFd, &msg, MSG_NOSIGNAL);
-    if (bytesSent == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return std::unexpected {IOError::Drained};
-        } else {
-            const int myErrno = errno;
-            switch (myErrno) {
-                case EAFNOSUPPORT:
-                case EBADF:
-                case EINVAL:
-                case EMSGSIZE:
-                case ENOTCONN:
-                case ENOTSOCK:
-                case EOPNOTSUPP:
-                case ENAMETOOLONG:
-                case ENOENT:
-                case ENOTDIR:
-                case ELOOP:
-                case EDESTADDRREQ:
-                case EHOSTUNREACH:
-                case EISCONN:
-                    unrecoverableError({
-                        Error::ErrorCode::CoreBug,
-                        "Originated from",
-                        "sendmsg(2)",
-                        "Errno is",
-                        strerror(myErrno),
-                        "_connfd",
-                        _connFd,
-                        "msg.msg_iovlen",
-                        msg.msg_iovlen,
-                    });
-                    break;
-
-                case ECONNRESET:
-                case EPIPE: return std::unexpected {IOError::Aborted}; break;
-
-                case EINTR:
-                    unrecoverableError({
-                        Error::ErrorCode::SignalNotSupported,
-                        "Originated from",
-                        "sendmsg(2)",
-                        "Errno is",
-                        strerror(myErrno),
-                    });
-                    break;
-
-                case EIO:
-                case EACCES:
-                case ENETDOWN:
-                case ENETUNREACH:
-                case ENOBUFS:
-                case ENOMEM:
-                default:
-                    unrecoverableError({
-                        Error::ErrorCode::ConfigurationError,
-                        "Originated from",
-                        "sendmsg(2)",
-                        "Errno is",
-                        strerror(myErrno),
-                    });
-                    break;
+    std::vector<std::pair<void*, size_t>> args;
+    args.reserve(_writeOperations.size());
+    for (auto it = _writeOperations.begin(); it != _writeOperations.end(); ++it) {
+        std::pair<void*, size_t> header;
+        std::pair<void*, size_t> payload;
+        if (it == _writeOperations.begin()) {
+            if (_sendCursor < HEADER_SIZE) {
+                header.first   = (char*)(&it->_header) + _sendCursor;
+                header.second  = HEADER_SIZE - _sendCursor;
+                payload.first  = (char*)(it->_payload.data());
+                payload.second = it->_payload.len();
+            } else {
+                header.first   = nullptr;
+                header.second  = 0;
+                payload.first  = (char*)(it->_payload.data()) + (_sendCursor - HEADER_SIZE);
+                payload.second = it->_payload.len() - (_sendCursor - HEADER_SIZE);
             }
+        } else {
+            header.first   = (char*)(&it->_header);
+            header.second  = HEADER_SIZE;
+            payload.first  = (char*)(it->_payload.data());
+            payload.second = it->_payload.len();
+        }
+
+        args.push_back(header);
+        args.push_back(payload);
+    }
+
+    auto [n, status] = _rawConn.tryWriteUntilComplete(args);
+    if (n > 0) {
+        return n;
+    }
+    switch (status) {
+        case RawConnectionTCPFD::IOStatus::Drained: {
+            return std::unexpected {IOError::Drained};
+        }
+        case RawConnectionTCPFD::IOStatus::Disconnected: {
+            return std::unexpected {IOError::Disconnected};
+        }
+        case RawConnectionTCPFD::IOStatus::Aborted: {
+            return std::unexpected {IOError::Aborted};
+        }
+        case RawConnectionTCPFD::IOStatus::MoreBytesAvailable: {
+            std::unreachable();
         }
     }
-
-    return bytesSent;
-#endif  // __linux__
-
-#ifdef _WIN32
-#undef iovec
-#undef IOV_MAX
-#undef iov_base
-#undef iov_len
-#endif  // _WIN32
+    std::unreachable();
 }
 
 // TODO: There is a classic optimization that can (and should) be done. That is, we store
