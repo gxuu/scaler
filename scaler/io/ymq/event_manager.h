@@ -1,20 +1,12 @@
 #pragma once
 
-// C++
-#ifdef __linux__
-#include <sys/epoll.h>
-#endif  // __linux__
-#ifdef _WIN32
-#include <windows.h>
-#endif  // _WIN32
-
 #include <concepts>
 #include <cstdint>  // uint64_t
 #include <functional>
-#include <memory>
 
 // First-party
 #include "scaler/io/ymq/configuration.h"
+#include "scaler/io/ymq/internal/defs.h"
 
 namespace scaler {
 namespace ymq {
