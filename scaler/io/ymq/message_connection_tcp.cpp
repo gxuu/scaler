@@ -96,9 +96,15 @@ void MessageConnectionTCP::onCreated()
             _connFd, EPOLLIN | EPOLLOUT | EPOLLET, this->_eventManager.get());
         _writeOperations.emplace_back(
             Bytes {_localIOSocketIdentity.data(), _localIOSocketIdentity.size()}, [](auto) {});
-#ifdef _WIN32
-        onWrite();
-#endif
+
+        const size_t len = 1;
+        const auto [n, immediateResult] =
+            _rawConn.prepareWriteBytes((void*)_writeOperations.begin()->_header, len, _eventManager.get());
+
+        updateWriteOperations(n);
+        if (immediateResult) {
+            onWrite();
+        }
         if (_rawConn.prepareReadBytes(this->_eventManager.get())) {
             onRead();
             return;

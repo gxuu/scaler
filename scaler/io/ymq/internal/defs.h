@@ -31,4 +31,5 @@
 #define EPOLLIN             (0)
 #define EPOLLOUT            (0)
 #define EPOLLET             (0)
+#undef max
 #endif  // _WIN32
