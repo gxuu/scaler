@@ -6,6 +6,7 @@
 #include <queue>
 
 #include "scaler/io/ymq/configuration.h"
+#include "scaler/io/ymq/internal/raw_connection_tcp_fd.h"
 #include "scaler/io/ymq/io_socket.h"
 #include "scaler/io/ymq/logging.h"
 #include "scaler/io/ymq/message_connection.h"
