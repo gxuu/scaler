@@ -228,55 +228,56 @@ void MessageConnectionTCP::onRead()
     if (_connFd == 0) {
         return;
     }
+
     _readSomeBytes = false;
 
-    auto maybeCloseConn = [this](IOError err) -> std::expected<void, IOError> {
-        setRemoteIdentity();
+    if (!_remoteIOSocketIdentity) {
+        auto maybeIdentity = tryReadOneMessage();
+        if (maybeIdentity) {
+            setRemoteIdentity();
+        } else {
+            switch (maybeIdentity.error()) {
+                case IOError::Aborted:
+                    _disconnect = false;
+                    onClose();
+                    return;
+                case IOError::Disconnected:
+                    _disconnect = true;
+                    onClose();
+                    return;
+                case IOError::MessageTooLarge:
+                    _disconnect = true;
+                    onClose();
+                    return;
 
-        if (_remoteIOSocketIdentity) {
-            updateReadOperation();
+                case IOError::Drained: {
+                    if (_rawConn.prepareReadBytes(this->_eventManager.get())) {
+                        onRead();
+                    }
+                    return;
+                }
+            }
         }
-
-        switch (err) {
-            case IOError::Drained: return {};
-            case IOError::Aborted: _disconnect = false; break;
-            case IOError::Disconnected: _disconnect = true; break;
-            case IOError::MessageTooLarge: _disconnect = true; break;
-        }
-
-        onClose();
-        return std::unexpected {err};
-    };
-
-    auto res = _remoteIOSocketIdentity
-                   .or_else([this, maybeCloseConn] {
-                       auto _ = tryReadOneMessage()
-                                    .or_else(maybeCloseConn)  //
-                                    .and_then([this]() -> std::expected<void, IOError> {
-                                        setRemoteIdentity();
-                                        return {};
-                                    });
-                       return _remoteIOSocketIdentity;
-                   })
-                   .and_then([this, maybeCloseConn](const std::string&) -> std::optional<std::string> {
-                       if (!_connFd) {
-                           return _remoteIOSocketIdentity;
-                       }
-                       auto _ = tryReadMessages()
-                                    .or_else(maybeCloseConn)  //
-                                    .and_then([this]() -> std::expected<void, IOError> {
-                                        updateReadOperation();
-                                        return {};
-                                    });
-                       return _remoteIOSocketIdentity;
-                   });
-    if (!res) {
-        return;
     }
 
-    // TODO: This need rewrite to better logic
-    if (!_connFd) {
-        return;
+    auto maybeMessages = tryReadMessages();
+    updateReadOperation();
+    if (!maybeMessages) {
+        switch (maybeMessages.error()) {
+            case IOError::Aborted:
+                _disconnect = false;
+                onClose();
+                return;
+            case IOError::Disconnected:
+                _disconnect = true;
+                onClose();
+                return;
+            case IOError::MessageTooLarge:
+                _disconnect = true;
+                onClose();
+                return;
+            case IOError::Drained: break;
+        }
     }
 
     // NOTE:
@@ -286,9 +287,12 @@ void MessageConnectionTCP::onRead()
     // Sometimes, we don't really need to queued in another operation, as we typically know that when onRead is being
     // called with no bytes being read, we know this is a false positive call (introduce by a write-available
     // notification for example) and the previous ReadFile notification is still in the operating system's kernel.
+    // Perhaps, we should refactor tryReadOneMessage etc so that it returns bytes read.
+    // We will do it in near future.
     if (!_readSomeBytes) {
         return;
     }
+
     if (_rawConn.prepareReadBytes(this->_eventManager.get())) {
         onRead();
     }
@@ -308,9 +312,17 @@ void MessageConnectionTCP::onWrite()
         return;
     }
 
-    if (res.error() == IOError::Aborted) {
-        onClose();
-        return;
+    switch (res.error()) {
+        case IOError::Aborted:
+            _disconnect = true;
+            onClose();
+            return;
+        case IOError::Disconnected:
+            _disconnect = true;
+            onClose();
+            return;
+        case IOError::MessageTooLarge: std::unreachable(); return;
+        case IOError::Drained: break;
     }
 
     // NOTE: Precondition is the queue still has messages (perhaps a partial one).
@@ -325,6 +337,7 @@ void MessageConnectionTCP::onWrite()
 
         const size_t len                = 1;
         const auto [n, immediateResult] = _rawConn.prepareWriteBytes(addr, len, _eventManager.get());
+        // NOTE: We do need to update the queue afterwards, though
         updateWriteOperations(n);
         if (immediateResult) {
             onWrite();
