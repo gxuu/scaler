@@ -99,7 +99,7 @@ void MessageConnectionTCP::onCreated()
 
         const size_t len = 1;
         const auto [n, immediateResult] =
-            _rawConn.prepareWriteBytes((void*)_writeOperations.begin()->_header, len, _eventManager.get());
+            _rawConn.prepareWriteBytes(&_writeOperations.back()._header, len, _eventManager.get());
 
         updateWriteOperations(n);
         if (immediateResult) {
