@@ -123,7 +123,8 @@ void IOSocket::connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn, s
                 });
             }
 
-            _tcpClient.emplace(_eventLoopThread, this->identity(), std::move(addr), std::move(callback), maxRetryTimes);
+            _tcpClient.emplace(
+                _eventLoopThread.get(), this->identity(), std::move(addr), std::move(callback), maxRetryTimes);
             _tcpClient->onCreated();
         });
 }
@@ -146,7 +147,7 @@ void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindRetur
             auto res = stringToSockaddr(std::move(networkAddress));
             assert(res);
 
-            _tcpServer.emplace(_eventLoopThread, this->identity(), std::move(res.value()), std::move(callback));
+            _tcpServer.emplace(_eventLoopThread.get(), this->identity(), std::move(res.value()), std::move(callback));
             _tcpServer->onCreated();
         });
 }
@@ -263,7 +264,7 @@ void IOSocket::onConnectionCreated(std::string remoteIOSocketIdentity) noexcept
 {
     _unestablishedConnection.push_back(
         std::make_unique<MessageConnectionTCP>(
-            _eventLoopThread,
+            _eventLoopThread.get(),
             this->identity(),
             std::move(remoteIOSocketIdentity),
             &_pendingRecvMessages,
@@ -275,7 +276,7 @@ void IOSocket::onConnectionCreated(int fd, sockaddr localAddr, sockaddr remoteAd
 {
     _unestablishedConnection.push_back(
         std::make_unique<MessageConnectionTCP>(
-            _eventLoopThread,
+            _eventLoopThread.get(),
             fd,
             std::move(localAddr),
             std::move(remoteAddr),

@@ -37,7 +37,7 @@ constexpr bool MessageConnectionTCP::isCompleteMessage(const TcpReadOperation& x
 }
 
 MessageConnectionTCP::MessageConnectionTCP(
-    std::shared_ptr<EventLoopThread> eventLoopThread,
+    EventLoopThread* eventLoopThread,
     int connFd,
     sockaddr localAddr,
     sockaddr remoteAddr,
@@ -65,7 +65,7 @@ MessageConnectionTCP::MessageConnectionTCP(
 }
 
 MessageConnectionTCP::MessageConnectionTCP(
-    std::shared_ptr<EventLoopThread> eventLoopThread,
+    EventLoopThread* eventLoopThread,
     std::string localIOSocketIdentity,
     std::string remoteIOSocketIdentity,
     std::queue<RecvMessageCallback>* pendingRecvMessageCallbacks,

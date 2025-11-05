@@ -45,7 +45,7 @@ void TcpClient::onCreated()
 }
 
 TcpClient::TcpClient(
-    std::shared_ptr<EventLoopThread> eventLoopThread,
+    EventLoopThread* eventLoopThread,
     std::string localIOSocketIdentity,
     sockaddr remoteAddr,
     ConnectReturnCallback onConnectReturn,

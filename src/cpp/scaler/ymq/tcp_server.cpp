@@ -34,7 +34,7 @@ bool TcpServer::createAndBindSocket()
 }
 
 TcpServer::TcpServer(
-    std::shared_ptr<EventLoopThread> eventLoopThread,
+    EventLoopThread* eventLoopThread,
     std::string localIOSocketIdentity,
     sockaddr addr,
     BindReturnCallback onBindReturn) noexcept

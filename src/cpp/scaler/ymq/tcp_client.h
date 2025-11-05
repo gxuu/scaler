@@ -18,7 +18,7 @@ public:
     using ConnectReturnCallback = Configuration::ConnectReturnCallback;
 
     TcpClient(
-        std::shared_ptr<EventLoopThread> eventLoopThread,
+        EventLoopThread* eventLoopThread,
         std::string localIOSocketIdentity,
         sockaddr remoteAddr,
         ConnectReturnCallback onConnectReturn,
@@ -31,7 +31,7 @@ public:
     void retry();
     void disconnect();
 
-    std::shared_ptr<EventLoopThread> _eventLoopThread; /* shared ownership */
+    EventLoopThread* _eventLoopThread; /* shared ownership */
     bool _connected;
 
 private:
