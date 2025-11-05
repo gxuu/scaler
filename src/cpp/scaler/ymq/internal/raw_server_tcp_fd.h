@@ -22,15 +22,7 @@ public:
 
     bool setReuseAddress();
     void bindAndListen();
-    auto nativeHandle() const noexcept
-    {
-#ifdef _WIN32
-        return (SOCKET)_serverFD;
-#endif  //_WIN32
-#ifdef __linux__
-        return (int)_serverFD;
-#endif
-    }
+    auto nativeHandle() const noexcept { return (RawSocketType)_serverFD; }
 
 private:
     uint64_t _serverFD;

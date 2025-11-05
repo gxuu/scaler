@@ -34,6 +34,8 @@
 #define EPOLLET             (0)
 #endif  // _WIN32
 
+namespace scaler {
+namespace ymq {
 inline auto GetErrorCode()
 {
 #ifdef __linux__
@@ -54,3 +56,12 @@ inline constexpr void CloseAndZeroSocket(auto& fd)
 #endif  // _WIN32
     fd = 0;
 }
+
+#ifdef __linux__
+using RawSocketType = int;
+#endif  // __linux__
+#ifdef _WIN32
+using RawSocketType = SOCKET;
+#endif  // _WIN32
+}  // namespace ymq
+}  // namespace scaler
