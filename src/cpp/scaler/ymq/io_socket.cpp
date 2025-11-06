@@ -47,6 +47,7 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) n
             }
             if (!message.address.data() && this->socketType() == IOSocketType::Binder) {
                 callback(std::unexpected {Error::ErrorCode::BinderSendMessageWithNoAddress});
+                return;
             }
 
             MessageConnectionTCP* conn = nullptr;
