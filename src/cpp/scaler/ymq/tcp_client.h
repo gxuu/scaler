@@ -29,6 +29,7 @@ public:
 
     void onCreated();
     void retry();
+    void disconnect();
 
     std::shared_ptr<EventLoopThread> _eventLoopThread; /* shared ownership */
     bool _connected;

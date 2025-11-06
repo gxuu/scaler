@@ -27,6 +27,7 @@ public:
     TcpServer& operator=(const TcpServer&) = delete;
     ~TcpServer() noexcept;
 
+    void disconnect();
     void onCreated();
     std::shared_ptr<EventLoopThread> _eventLoopThread;
 

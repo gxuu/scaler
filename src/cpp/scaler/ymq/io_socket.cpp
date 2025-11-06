@@ -304,6 +304,13 @@ void IOSocket::requestStop() noexcept
 
     std::ranges::for_each(_identityToConnection, [](const auto& x) { x.second->disconnect(); });
     std::ranges::for_each(_unestablishedConnection, [](const auto& x) { x->disconnect(); });
+
+    if (_tcpServer) {
+        _tcpServer->disconnect();
+    }
+    if (_tcpClient) {
+        _tcpClient->disconnect();
+    }
 }
 
 size_t IOSocket::numOfConnections()
