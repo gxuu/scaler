@@ -24,15 +24,7 @@ public:
 
     void zeroNativeHandle() noexcept;
 
-    auto nativeHandle() const noexcept
-    {
-#ifdef _WIN32
-        return (SOCKET)_clientFD;
-#endif  //_WIN32
-#ifdef __linux__
-        return (int)_clientFD;
-#endif
-    }
+    auto nativeHandle() const noexcept { return (RawSocketType)_clientFD; }
 
 private:
     uint64_t _clientFD;
