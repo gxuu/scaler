@@ -184,11 +184,7 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn, bool keepInB
     if (!keepInBook) {
         if (IOSocketType::Connector == this->_socketType) {
             _connectorDisconnected = true;
-            while (this->_pendingRecvMessages.size()) {
-                auto top = std::move(this->_pendingRecvMessages.front());
-                top({Message {}, {Error::ErrorCode::ConnectorSocketClosedByRemoteEnd}});
-                this->_pendingRecvMessages.pop();
-            }
+            fillPendingRecvMessagesWithErr(Error::ErrorCode::ConnectorSocketClosedByRemoteEnd);
         }
         _eventLoopThread->_eventLoop.executeLater([conn = std::move(connPtr)]() {});
         _unestablishedConnection.pop_back();
@@ -198,11 +194,7 @@ void IOSocket::onConnectionDisconnected(MessageConnectionTCP* conn, bool keepInB
     if (socketType() == IOSocketType::Unicast || socketType() == IOSocketType::Multicast) {
         auto destructWriteOp = std::move(connPtr->_writeOperations);
         connPtr->_writeOperations.clear();
-        while (_pendingRecvMessages.size()) {
-            _pendingRecvMessages.front()(
-                {{}, Error::ErrorCode::RemoteEndDisconnectedOnSocketWithoutGuaranteedDelivery});
-            _pendingRecvMessages.pop();
-        }
+        fillPendingRecvMessagesWithErr(Error::ErrorCode::RemoteEndDisconnectedOnSocketWithoutGuaranteedDelivery);
         auto destructReadOp = std::move(connPtr->_receivedReadOperations);
     }
 
@@ -297,11 +289,7 @@ void IOSocket::removeConnectedTcpClient() noexcept
 void IOSocket::requestStop() noexcept
 {
     _stopped = true;
-    while (_pendingRecvMessages.size()) {
-        auto readOp = std::move(_pendingRecvMessages.front());
-        _pendingRecvMessages.pop();
-        readOp({{}, Error::ErrorCode::IOSocketStopRequested});
-    }
+    fillPendingRecvMessagesWithErr(Error::ErrorCode::IOSocketStopRequested);
 
     std::ranges::for_each(_identityToConnection, [](const auto& x) { x.second->disconnect(); });
     std::ranges::for_each(_unestablishedConnection, [](const auto& x) { x->disconnect(); });
@@ -322,13 +310,18 @@ size_t IOSocket::numOfConnections()
     return connectedConnections;
 }
 
-IOSocket::~IOSocket() noexcept
+void IOSocket::fillPendingRecvMessagesWithErr(Error err)
 {
     while (_pendingRecvMessages.size()) {
         auto readOp = std::move(_pendingRecvMessages.front());
         _pendingRecvMessages.pop();
-        readOp({{}, Error::ErrorCode::IOSocketStopRequested});
+        readOp({{}, err});
     }
+}
+
+IOSocket::~IOSocket() noexcept
+{
+    fillPendingRecvMessagesWithErr(Error::ErrorCode::IOSocketStopRequested);
 }
 
 }  // namespace ymq
