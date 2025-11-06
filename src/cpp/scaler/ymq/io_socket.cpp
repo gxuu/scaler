@@ -41,30 +41,43 @@ void IOSocket::sendMessage(Message message, SendMessageCallback onMessageSent) n
                 callback(std::unexpected {Error::ErrorCode::IOSocketStopRequested});
                 return;
             }
-            if (_connectorDisconnected) {
-                callback(std::unexpected {Error::ErrorCode::ConnectorSocketClosedByRemoteEnd});
-                return;
-            }
-            if (!message.address.data() && this->socketType() == IOSocketType::Binder) {
-                callback(std::unexpected {Error::ErrorCode::BinderSendMessageWithNoAddress});
-                return;
+
+            std::string address = std::string((char*)message.address.data(), message.address.len());
+
+            // Preparation and early out
+            switch (socketType()) {
+                case IOSocketType::Binder: {
+                    if (!message.address.data()) {
+                        callback(std::unexpected {Error::ErrorCode::BinderSendMessageWithNoAddress});
+                        return;
+                    }
+                    break;
+                }
+                case IOSocketType::Connector: {
+                    if (_connectorDisconnected) {
+                        callback(std::unexpected {Error::ErrorCode::ConnectorSocketClosedByRemoteEnd});
+                        return;
+                    }
+                    address = "";
+                    break;
+                }
+                case IOSocketType::Multicast: {
+                    callback({});  // SUCCESS
+                    for (const auto& [addr, conn]: _identityToConnection) {
+                        // TODO: Currently doing N copies of the messages. Find a place to
+                        // store this message and pass in reference.
+                        if (addr.starts_with(address))
+                            conn->sendMessage(message, [](auto) {});
+                    }
+                    return;
+                }
+
+                case IOSocketType::Uninit:
+                case IOSocketType::Unicast:
+                default: break;
             }
 
             MessageConnectionTCP* conn = nullptr;
-
-            std::string address = std::string((char*)message.address.data(), message.address.len());
-            if (this->socketType() == IOSocketType::Connector) {
-                address = "";
-            } else if (this->socketType() == IOSocketType::Multicast) {
-                callback({});  // SUCCESS
-                for (const auto& [addr, conn]: _identityToConnection) {
-                    // TODO: Currently doing N copies of the messages. Find a place to
-                    // store this message and pass in reference.
-                    if (addr.starts_with(address))
-                        conn->sendMessage(message, [](auto) {});
-                }
-                return;
-            }
 
             if (this->_identityToConnection.contains(address)) {
                 conn = this->_identityToConnection[address].get();
