@@ -17,7 +17,7 @@ from scaler.config.types.zmq import ZMQConfig
 from scaler.io.async_connector import ZMQAsyncConnector
 from scaler.io.mixins import AsyncConnector
 from scaler.io.utility import create_async_connector
-from scaler.io.ymq._ymq import YMQException, ErrorCode
+from scaler.io.ymq._ymq import YMQException
 from scaler.protocol.python.common import ObjectStorageAddress
 from scaler.protocol.python.message import (
     ClientDisconnect,
@@ -192,7 +192,7 @@ class ClientAgent(threading.Thread):
             if not isinstance(exception, YMQException):
                 try:
                     await self._object_manager.clear_all_objects(clear_serializer=True)
-                except YMQException: # Above call triggers YMQ, which may raise
+                except YMQException:  # Above call triggers YMQ, which may raise
                     pass
 
             self._connector_external.destroy()

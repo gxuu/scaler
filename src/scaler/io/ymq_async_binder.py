@@ -4,13 +4,12 @@ import uuid
 from collections import defaultdict
 from typing import Awaitable, Callable, Dict, Optional
 
-
+from scaler.config.types.zmq import ZMQConfig
 from scaler.io.mixins import AsyncBinder
 from scaler.io.utility import deserialize, serialize
 from scaler.io.ymq import ymq
 from scaler.protocol.python.mixins import Message
 from scaler.protocol.python.status import BinderStatus
-from scaler.config.types.zmq import ZMQConfig
 
 
 class YMQAsyncBinder(AsyncBinder):
@@ -29,7 +28,6 @@ class YMQAsyncBinder(AsyncBinder):
 
         self._received: Dict[str, int] = defaultdict(lambda: 0)
         self._sent: Dict[str, int] = defaultdict(lambda: 0)
-
 
     @property
     def identity(self):
