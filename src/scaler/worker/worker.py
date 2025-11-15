@@ -13,7 +13,6 @@ from scaler.config.defaults import PROFILING_INTERVAL_SECONDS
 from scaler.config.types.object_storage_server import ObjectStorageConfig
 from scaler.config.types.zmq import ZMQConfig, ZMQType
 from scaler.io.async_binder import ZMQAsyncBinder
-from scaler.io.async_connector import ZMQAsyncConnector
 from scaler.io.mixins import AsyncBinder, AsyncConnector, AsyncObjectStorageConnector
 from scaler.io.utility import create_async_connector, create_async_object_storage_connector
 from scaler.io.ymq import ymq
@@ -110,7 +109,7 @@ class Worker(multiprocessing.get_context("spawn").Process):  # type: ignore
 
         self._context = zmq.asyncio.Context()
 
-        self._connector_external: AsyncConnector = create_async_connector(
+        self._connector_external = create_async_connector(
             self._context,
             name=self.name,
             socket_type=zmq.DEALER,
