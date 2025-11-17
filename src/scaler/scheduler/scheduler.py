@@ -71,7 +71,6 @@ class Scheduler:
 
         self._context = zmq.asyncio.Context(io_threads=config.io_threads)
 
-
         self._binder: AsyncBinder = create_async_binder(
             self._context, name="scheduler", address=config.scheduler_address
         )
