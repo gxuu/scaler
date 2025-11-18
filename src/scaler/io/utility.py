@@ -53,12 +53,10 @@ def create_async_connector(ctx: zmq.asyncio.Context, *args, **kwargs) -> AsyncCo
 
         kwargs["socket_type"] = ymq.IOSocketType.Connector
         return YMQAsyncConnector(*args, **kwargs)
-
     elif connector_type == NetworkBackend.tcp_zmq:
         from scaler.io.async_connector import ZMQAsyncConnector
 
         return ZMQAsyncConnector(context=ctx, *args, **kwargs)  # type: ignore[misc]
-
     else:
         raise ValueError(
             f"Invalid SCALER_NETWORK_BACKEND value." f"Expected one of: {[e.name for e in NetworkBackend]}"
