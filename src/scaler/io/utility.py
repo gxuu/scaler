@@ -35,12 +35,10 @@ def create_async_binder(ctx: zmq.asyncio.Context, *args, **kwargs) -> AsyncBinde
         from scaler.io.ymq_async_binder import YMQAsyncBinder
 
         return YMQAsyncBinder(*args, **kwargs)
-
     elif connector_type == NetworkBackend.tcp_zmq:
         from scaler.io.async_binder import ZMQAsyncBinder
 
         return ZMQAsyncBinder(context=ctx, *args, **kwargs)  # type: ignore[misc]
-
     else:
         raise ValueError(
             f"Invalid SCALER_NETWORK_BACKEND value." f"Expected one of: {[e.name for e in NetworkBackend]}"
