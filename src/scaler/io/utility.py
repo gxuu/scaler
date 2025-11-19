@@ -20,13 +20,7 @@ except ImportError:
 
 
 def get_scaler_network_backend_from_env():
-    backend_str = os.environ.get("SCALER_NETWORK_BACKEND")  # Default to tcp_zmq
-    if backend_str is None:
-        return SCALER_NETWORK_BACKEND
-    try:
-        return NetworkBackend[backend_str]
-    except KeyError:
-        return None
+    return NetworkBackend[os.environ.get("SCALER_NETWORK_BACKEND", SCALER_NETWORK_BACKEND)]
 
 
 def create_async_binder(ctx: zmq.asyncio.Context, *args, **kwargs) -> AsyncBinder:
@@ -39,10 +33,6 @@ def create_async_binder(ctx: zmq.asyncio.Context, *args, **kwargs) -> AsyncBinde
         from scaler.io.async_binder import ZMQAsyncBinder
 
         return ZMQAsyncBinder(context=ctx, *args, **kwargs)  # type: ignore[misc]
-    else:
-        raise ValueError(
-            f"Invalid SCALER_NETWORK_BACKEND value." f"Expected one of: {[e.name for e in NetworkBackend]}"
-        )
 
 
 def create_async_connector(ctx: zmq.asyncio.Context, *args, **kwargs) -> AsyncConnector:
@@ -57,10 +47,6 @@ def create_async_connector(ctx: zmq.asyncio.Context, *args, **kwargs) -> AsyncCo
         from scaler.io.async_connector import ZMQAsyncConnector
 
         return ZMQAsyncConnector(context=ctx, *args, **kwargs)  # type: ignore[misc]
-    else:
-        raise ValueError(
-            f"Invalid SCALER_NETWORK_BACKEND value." f"Expected one of: {[e.name for e in NetworkBackend]}"
-        )
 
 
 def create_async_object_storage_connector(*args, **kwargs) -> AsyncObjectStorageConnector:
@@ -73,11 +59,6 @@ def create_async_object_storage_connector(*args, **kwargs) -> AsyncObjectStorage
     elif connector_type == NetworkBackend.tcp_zmq:
         return PyAsyncObjectStorageConnector(*args, **kwargs)
 
-    else:
-        raise ValueError(
-            f"Invalid SCALER_NETWORK_BACKEND value." f"Expected one of: {[e.name for e in NetworkBackend]}"
-        )
-
 
 def create_sync_object_storage_connector(*args, **kwargs) -> SyncObjectStorageConnector:
     connector_type = get_scaler_network_backend_from_env()
@@ -88,10 +69,6 @@ def create_sync_object_storage_connector(*args, **kwargs) -> SyncObjectStorageCo
 
     elif connector_type == NetworkBackend.tcp_zmq:
         return PySyncObjectStorageConnector(*args, **kwargs)
-    else:
-        raise ValueError(
-            f"Invalid SCALER_NETWORK_BACKEND value." f"Expected one of: {[e.name for e in NetworkBackend]}"
-        )
 
 
 def deserialize(data: Buffer) -> Optional[Message]:
