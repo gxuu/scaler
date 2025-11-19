@@ -23,10 +23,7 @@ def get_scaler_network_backend_from_env():
     backend_str = os.environ.get("SCALER_NETWORK_BACKEND")  # Default to tcp_zmq
     if backend_str is None:
         return SCALER_NETWORK_BACKEND
-    try:
-        return NetworkBackend[backend_str]
-    except KeyError:
-        return None
+    return NetworkBackend[backend_str]
 
 
 def create_async_binder(ctx: zmq.asyncio.Context, *args, **kwargs) -> AsyncBinder:
