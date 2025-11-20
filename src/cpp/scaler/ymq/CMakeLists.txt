@@ -51,7 +51,6 @@ add_library(ymq_objs OBJECT
     internal/defs.h
 
     internal/raw_connection_tcp_fd.h
-    internal/raw_connection_tcp_fd.cpp
     internal/raw_connection_tcp_fd_windows.cpp
     internal/raw_connection_tcp_fd_linux.cpp
 

@@ -4,10 +4,31 @@
 
 #include "scaler/error/error.h"
 #include "scaler/ymq/internal/defs.h"
+#include "scaler/ymq/internal/network_utils.h"
 #include "scaler/ymq/internal/raw_connection_tcp_fd.h"
 
 namespace scaler {
 namespace ymq {
+
+std::pair<uint64_t, RawConnectionTCPFD::IOStatus> RawConnectionTCPFD::tryReadUntilComplete(void* dest, size_t size)
+{
+    return scaler::ymq::tryReadUntilComplete(
+        dest, size, [&](char* dest, size_t size) { return this->readBytes(dest, size); });
+}
+
+std::pair<uint64_t, RawConnectionTCPFD::IOStatus> RawConnectionTCPFD::tryWriteUntilComplete(
+    const std::vector<std::pair<void*, size_t>>& buffers)
+{
+    return scaler::ymq::tryWriteUntilComplete(buffers, [&](std::vector<std::pair<void*, size_t>> currentBuffers) {
+        return this->writeBytes(currentBuffers);
+    });
+}
+
+void RawConnectionTCPFD::shutdownBoth() noexcept
+{
+    shutdownWrite();
+    shutdownRead();
+}
 
 std::expected<uint64_t, RawConnectionTCPFD::IOStatus> RawConnectionTCPFD::readBytes(void* dest, size_t size)
 {
