@@ -4,6 +4,7 @@
 
 #include "scaler/error/error.h"
 #include "scaler/ymq/internal/defs.h"
+#include "scaler/ymq/internal/network_utils.h"
 #include "scaler/ymq/internal/raw_server_tcp_fd.h"
 
 namespace scaler {
@@ -24,6 +25,51 @@ RawServerTCPFD::RawServerTCPFD(sockaddr addr)
             strerror(errno),
             "_serverFD",
             _serverFD,
+        });
+
+        return;
+    }
+}
+
+bool RawServerTCPFD::setReuseAddress()
+{
+    if (::scaler::ymq::setReuseAddress(_serverFD)) {
+        return true;
+    } else {
+        CloseAndZeroSocket(_serverFD);
+        return false;
+    }
+}
+
+void RawServerTCPFD::bindAndListen()
+{
+    if (bind(_serverFD, &_addr, sizeof(_addr)) == -1) {
+        const auto serverFD = _serverFD;
+        CloseAndZeroSocket(_serverFD);
+        unrecoverableError({
+            Error::ErrorCode::ConfigurationError,
+            "Originated from",
+            "bind(2)",
+            "Errno is",
+            strerror(GetErrorCode()),
+            "_serverFD",
+            serverFD,
+        });
+
+        return;
+    }
+
+    if (listen(_serverFD, SOMAXCONN) == -1) {
+        const auto serverFD = _serverFD;
+        CloseAndZeroSocket(_serverFD);
+        unrecoverableError({
+            Error::ErrorCode::ConfigurationError,
+            "Originated from",
+            "listen(2)",
+            "Errno is",
+            strerror(GetErrorCode()),
+            "_serverFD",
+            serverFD,
         });
 
         return;
