@@ -20,6 +20,7 @@ bool RawServerTCPFD::setReuseAddress()
 void RawServerTCPFD::bindAndListen()
 {
     if (bind(_serverFD, &_addr, sizeof(_addr)) == -1) {
+        const auto serverFD = _serverFD;
         CloseAndZeroSocket(_serverFD);
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
@@ -28,13 +29,14 @@ void RawServerTCPFD::bindAndListen()
             "Errno is",
             strerror(GetErrorCode()),
             "_serverFD",
-            _serverFD,
+            serverFD,
         });
 
         return;
     }
 
     if (listen(_serverFD, SOMAXCONN) == -1) {
+        const auto serverFD = _serverFD;
         CloseAndZeroSocket(_serverFD);
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
@@ -43,7 +45,7 @@ void RawServerTCPFD::bindAndListen()
             "Errno is",
             strerror(GetErrorCode()),
             "_serverFD",
-            _serverFD,
+            serverFD,
         });
 
         return;
