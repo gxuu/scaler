@@ -61,7 +61,6 @@ add_library(ymq_objs OBJECT
     internal/raw_server_tcp_fd_linux.cpp
 
     internal/raw_client_tcp_fd.h
-    internal/raw_client_tcp_fd.cpp
     internal/raw_client_tcp_fd_windows.cpp
     internal/raw_client_tcp_fd_linux.cpp
 )

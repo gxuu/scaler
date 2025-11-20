@@ -117,6 +117,16 @@ void RawClientTCPFD::destroy()
     }
 }
 
+void RawClientTCPFD::zeroNativeHandle() noexcept
+{
+    _clientFD = 0;
+}
+
+RawClientTCPFD::~RawClientTCPFD()
+{
+    destroy();
+}
+
 }  // namespace ymq
 }  // namespace scaler
 #endif
