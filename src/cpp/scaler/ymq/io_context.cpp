@@ -64,7 +64,7 @@ void IOContext::removeIOSocket(std::shared_ptr<IOSocket>& socket) noexcept
         std::promise<void> promise;
         auto future = promise.get_future();
 
-        // NOTE: This `count` and `maxCount` is needed as a safety net so that
+        // TODO: This `count` and `maxCount` is needed as a safety net so that
         // we don't wait forever on querying numOfConnections.
         // If the remote end is using YMQ as internal communication tool, then
         // we don't need this safety net. This is because YMQ closes a connection
@@ -72,6 +72,8 @@ void IOContext::removeIOSocket(std::shared_ptr<IOSocket>& socket) noexcept
         // If the remote end does not close connection upon local end shutdown
         // write, the local end will never get any event for remote socket close,
         // and therefore the connection will stay alive in the system.
+        // This needs to be revisited, we have opened an issue, the issue link is:
+        // https://github.com/finos/opengris-scaler/issues/445
         int count                 = 0;
         auto waitToRemoveIOSocket = [&](const auto& self) -> void {
             constexpr static int maxCount = 8;
