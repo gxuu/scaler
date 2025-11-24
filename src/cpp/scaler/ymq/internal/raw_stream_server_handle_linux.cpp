@@ -10,16 +10,38 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamServerHandle::RawStreamServerHandle(sockaddr addr)
+RawStreamServerHandle::RawStreamServerHandle(sockaddr addr): _addrSize(sizeof(addr))
 {
-    _serverFD = {};
-    _addr     = std::move(addr);
+    _serverFD          = {};
+    _addr              = {};
+    *(sockaddr*)&_addr = addr;
 
     _serverFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
     if ((int)_serverFD == -1) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
             "Originated from",
+            "socket(2)",
+            "Errno is",
+            strerror(errno),
+            "_serverFD",
+            _serverFD,
+        });
+
+        return;
+    }
+}
+
+RawStreamServerHandle::RawStreamServerHandle(sockaddr_un addr): _addrSize(sizeof(addr))
+{
+    _serverFD = {};
+    _addr     = std::move(addr);
+
+    _serverFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if ((int)_serverFD == -1) {
+        unrecoverableError({
+            Error::ErrorCode::ConfigurationError,
+            "Originated from create UDS",
             "socket(2)",
             "Errno is",
             strerror(errno),
@@ -43,7 +65,11 @@ bool RawStreamServerHandle::setReuseAddress()
 
 void RawStreamServerHandle::bindAndListen()
 {
-    if (bind(_serverFD, &_addr, sizeof(_addr)) == -1) {
+    if (_addrSize == sizeof(sockaddr_un)) {
+        unlink(_addr.sun_path);
+    }
+
+    if (bind(_serverFD, (sockaddr*)&_addr, _addrSize) == -1) {
         const auto serverFD = _serverFD;
         CloseAndZeroSocket(_serverFD);
         unrecoverableError({
@@ -88,14 +114,14 @@ void RawStreamServerHandle::prepareAcceptSocket(void* notifyHandle)
     (void)notifyHandle;
 }
 
-std::vector<std::pair<uint64_t, sockaddr>> RawStreamServerHandle::getNewConns()
+std::vector<std::pair<uint64_t, sockaddr_un>> RawStreamServerHandle::getNewConns()
 {
-    std::vector<std::pair<uint64_t, sockaddr>> res;
+    std::vector<std::pair<uint64_t, sockaddr_un>> res;
     while (true) {
-        sockaddr remoteAddr {};
-        socklen_t remoteAddrLen = sizeof(remoteAddr);
+        sockaddr_un remoteAddr {};
+        socklen_t remoteAddrLen = this->addrSize();
 
-        int fd = accept4(_serverFD, &remoteAddr, &remoteAddrLen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+        int fd = accept4(_serverFD, (sockaddr*)&remoteAddr, &remoteAddrLen, SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (fd < 0) {
             const int myErrno = errno;
             switch (myErrno) {

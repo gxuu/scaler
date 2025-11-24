@@ -23,6 +23,12 @@ public:
         sockaddr remoteAddr,
         ConnectReturnCallback onConnectReturn,
         size_t maxRetryTimes) noexcept;
+    StreamClient(
+        EventLoopThread* eventLoopThread,
+        std::string localIOSocketIdentity,
+        sockaddr_un remoteAddr,
+        ConnectReturnCallback onConnectReturn,
+        size_t maxRetryTimes) noexcept;
     StreamClient(const StreamClient&)            = delete;
     StreamClient& operator=(const StreamClient&) = delete;
     ~StreamClient() noexcept;

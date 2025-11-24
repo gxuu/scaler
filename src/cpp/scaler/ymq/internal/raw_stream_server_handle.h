@@ -10,6 +10,7 @@ namespace ymq {
 class RawStreamServerHandle {
 public:
     RawStreamServerHandle(sockaddr addr);
+    RawStreamServerHandle(sockaddr_un addr);
 
     RawStreamServerHandle(const RawStreamServerHandle&)            = delete;
     RawStreamServerHandle(RawStreamServerHandle&&)                 = delete;
@@ -18,7 +19,7 @@ public:
 
     ~RawStreamServerHandle();
     void prepareAcceptSocket(void* notifyHandle);
-    std::vector<std::pair<uint64_t, sockaddr>> getNewConns();
+    std::vector<std::pair<uint64_t, sockaddr_un>> getNewConns();
 
     bool setReuseAddress();
     void bindAndListen();
@@ -26,9 +27,12 @@ public:
 
     void destroy();
 
+    socklen_t addrSize() const noexcept { return _addrSize; }
+
 private:
     uint64_t _serverFD;
-    sockaddr _addr;
+    sockaddr_un _addr;
+    const socklen_t _addrSize;
 #ifdef _WIN32
     uint64_t _newConn;
     LPFN_ACCEPTEX _acceptExFunc;

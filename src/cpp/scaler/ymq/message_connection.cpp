@@ -37,8 +37,9 @@ constexpr bool MessageConnection::isCompleteMessage(const TcpReadOperation& x)
 MessageConnection::MessageConnection(
     EventLoopThread* eventLoopThread,
     int connFd,
-    sockaddr localAddr,
-    sockaddr remoteAddr,
+    sockaddr_un localAddr,
+    sockaddr_un remoteAddr,
+    socklen_t addrLen,
     std::string localIOSocketIdentity,
     bool responsibleForRetry,
     std::queue<RecvMessageCallback>* pendingRecvMessageCallbacks,
@@ -55,6 +56,7 @@ MessageConnection::MessageConnection(
     , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _leftoverMessagesAfterConnectionDied(leftoverMessagesAfterConnectionDied)
     , _disconnect {false}
+    , _addrLen(addrLen)
 {
     _eventManager->onRead  = [this] { this->onRead(); };
     _eventManager->onWrite = [this] { this->onWrite(); };
@@ -80,6 +82,7 @@ MessageConnection::MessageConnection(
     , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _leftoverMessagesAfterConnectionDied(leftoverMessagesAfterConnectionDied)
     , _disconnect {false}
+    , _addrLen {}
     , _readSomeBytes {false}
 {
     _eventManager->onRead  = [this] { this->onRead(); };

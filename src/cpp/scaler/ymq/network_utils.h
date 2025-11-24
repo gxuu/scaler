@@ -10,6 +10,37 @@
 namespace scaler {
 namespace ymq {
 
+inline std::expected<sockaddr_un, int> stringToSockaddrUn(const std::string& address)
+{
+    static const std::string prefix = "ipc://";
+    if (address.substr(0, prefix.size()) != prefix) {
+        unrecoverableError({
+            Error::ErrorCode::InvalidAddressFormat,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Your input is",
+            address,
+        });
+    }
+    const std::string addrPart = address.substr(prefix.size());
+
+    sockaddr_un addr {};
+    addr.sun_family = AF_UNIX;
+    if (addrPart.size() > sizeof(addr.sun_path) - 1) {
+        unrecoverableError({
+            Error::ErrorCode::InvalidAddressFormat,
+            "Originated from",
+            __PRETTY_FUNCTION__,
+            "Your input is",
+            address,
+            "Failed due to name too long.",
+        });
+    }
+
+    strncpy(addr.sun_path, addrPart.c_str(), sizeof(addr.sun_path) - 1);
+    return addr;
+}
+
 inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
 {
     // Check and strip the "tcp://" prefix
@@ -87,7 +118,7 @@ inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
 inline int setNoDelay(int fd)
 {
     int optval = 1;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char*)&optval, sizeof(optval)) == -1) {
+    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char*)&optval, sizeof(optval)) == -1 && errno != EOPNOTSUPP) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
             "Originated from",
@@ -102,11 +133,10 @@ inline int setNoDelay(int fd)
     return fd;
 }
 
-inline sockaddr getLocalAddr(int fd)
+inline sockaddr_un getLocalAddr(int fd, socklen_t localAddrLen)
 {
-    sockaddr localAddr     = {};
-    socklen_t localAddrLen = sizeof(localAddr);
-    if (getsockname(fd, &localAddr, &localAddrLen) == -1) {
+    sockaddr_un localAddr = {};
+    if (getsockname(fd, (sockaddr*)&localAddr, &localAddrLen) == -1) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
             "Originated from",
@@ -120,12 +150,11 @@ inline sockaddr getLocalAddr(int fd)
     return localAddr;
 }
 
-inline sockaddr getRemoteAddr(int fd)
+inline sockaddr_un getRemoteAddr(int fd, socklen_t remoteAddrLen)
 {
-    sockaddr remoteAddr     = {};
-    socklen_t remoteAddrLen = sizeof(remoteAddr);
+    sockaddr_un remoteAddr = {};
 
-    if (getpeername(fd, &remoteAddr, &remoteAddrLen) == -1) {
+    if (getpeername(fd, (sockaddr*)&remoteAddr, &remoteAddrLen) == -1) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
             "Originated from",

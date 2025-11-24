@@ -10,6 +10,7 @@ namespace ymq {
 class RawStreamClientHandle {
 public:
     RawStreamClientHandle(sockaddr remoteAddr);
+    RawStreamClientHandle(sockaddr_un remoteAddr);
     ~RawStreamClientHandle();
 
     RawStreamClientHandle(RawStreamClientHandle&&)                  = delete;
@@ -26,9 +27,14 @@ public:
 
     auto nativeHandle() const noexcept { return (RawSocketType)_clientFD; }
 
+    bool isNetworkFD() const noexcept { return _addrSize == sizeof(sockaddr); }
+
+    socklen_t addrSize() const noexcept { return _addrSize; }
+
 private:
     uint64_t _clientFD;
-    sockaddr _remoteAddr;
+    sockaddr_un _remoteAddr;
+    const socklen_t _addrSize;
 #ifdef _WIN32
     LPFN_CONNECTEX _connectExFunc;
 #endif  // _WIN32

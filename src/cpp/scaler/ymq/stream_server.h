@@ -23,6 +23,11 @@ public:
         std::string localIOSocketIdentity,
         sockaddr addr,
         BindReturnCallback onBindReturn) noexcept;
+    StreamServer(
+        EventLoopThread* eventLoop,
+        std::string localIOSocketIdentity,
+        sockaddr_un addr,
+        BindReturnCallback onBindReturn) noexcept;
     StreamServer(const StreamServer&)            = delete;
     StreamServer& operator=(const StreamServer&) = delete;
     ~StreamServer() noexcept;
@@ -44,7 +49,6 @@ private:
     bool createAndBindSocket();
 
     BindReturnCallback _onBindReturn;
-    sockaddr _addr;
     std::string _localIOSocketIdentity;
 
     std::unique_ptr<EventManager> _eventManager;  // will copy the `onRead()` to itself

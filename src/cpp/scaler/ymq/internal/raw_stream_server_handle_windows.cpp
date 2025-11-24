@@ -11,10 +11,10 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamServerHandle::RawStreamServerHandle(sockaddr addr)
+RawStreamServerHandle::RawStreamServerHandle(sockaddr addr): _addrSize(sizeof(sockaddr))
 {
-    _serverFD = {};
-    _addr     = std::move(addr);
+    _serverFD          = {};
+    *(sockaddr*)&_addr = std::move(addr);
 
     _newConn      = {};
     _acceptExFunc = {};
@@ -77,6 +77,11 @@ RawStreamServerHandle::RawStreamServerHandle(sockaddr addr)
     }
 }
 
+RawStreamServerHandle::RawStreamServerHandle(sockaddr_un addr): _addrSize(sizeof(sockaddr_un))
+{
+    static_assert(false, "Hitting IPC Socket constructor, not supported on this system!");
+}
+
 bool RawStreamServerHandle::setReuseAddress()
 {
     if (::scaler::ymq::setReuseAddress(_serverFD)) {
@@ -89,7 +94,8 @@ bool RawStreamServerHandle::setReuseAddress()
 
 void RawStreamServerHandle::bindAndListen()
 {
-    if (bind(_serverFD, &_addr, sizeof(_addr)) == -1) {
+    // TODO: Should we support IPC on Windows, handle existed socket file here.
+    if (bind(_serverFD, (sockaddr*)&_addr, _addrSize) == -1) {
         const auto serverFD = _serverFD;
         CloseAndZeroSocket(_serverFD);
         unrecoverableError({
@@ -196,9 +202,9 @@ void RawStreamServerHandle::prepareAcceptSocket(void* notifyHandle)
     // acceptEx never succeed.
 }
 
-std::vector<std::pair<uint64_t, sockaddr>> RawStreamServerHandle::getNewConns()
+std::vector<std::pair<uint64_t, sockaddr_un>> RawStreamServerHandle::getNewConns()
 {
-    std::vector<std::pair<uint64_t, sockaddr>> res;
+    std::vector<std::pair<uint64_t, sockaddr_un>> res;
 
     if (setsockopt(
             _newConn, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast<char*>(&_serverFD), sizeof(_serverFD)) ==
@@ -248,7 +254,7 @@ std::vector<std::pair<uint64_t, sockaddr>> RawStreamServerHandle::getNewConns()
                 break;
         }
     }
-    res.push_back({_newConn, getRemoteAddr(_newConn)});
+    res.push_back({_newConn, getRemoteAddr(_newConn, this->addrSize())});
 
     _newConn = 0;  // This _newConn will be handled by connection class
 

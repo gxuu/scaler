@@ -40,7 +40,23 @@ StreamServer::StreamServer(
     BindReturnCallback onBindReturn) noexcept
     : _eventLoopThread(eventLoopThread)
     , _onBindReturn(std::move(onBindReturn))
-    , _addr(addr)
+    , _localIOSocketIdentity(std::move(localIOSocketIdentity))
+    , _eventManager(std::make_unique<EventManager>())
+    , _rawServer(std::move(addr))
+{
+    _eventManager->onRead  = [this] { this->onRead(); };
+    _eventManager->onWrite = [this] { this->onWrite(); };
+    _eventManager->onClose = [this] { this->onClose(); };
+    _eventManager->onError = [this] { this->onError(); };
+}
+
+StreamServer::StreamServer(
+    EventLoopThread* eventLoopThread,
+    std::string localIOSocketIdentity,
+    sockaddr_un addr,
+    BindReturnCallback onBindReturn) noexcept
+    : _eventLoopThread(eventLoopThread)
+    , _onBindReturn(std::move(onBindReturn))
     , _localIOSocketIdentity(std::move(localIOSocketIdentity))
     , _eventManager(std::make_unique<EventManager>())
     , _rawServer(std::move(addr))
@@ -85,7 +101,11 @@ void StreamServer::onRead()
 
     for (const auto& fdAndRemoteAddr: fdAndRemoteAddrs) {
         sock->onConnectionCreated(
-            setNoDelay(fdAndRemoteAddr.first), getLocalAddr(fdAndRemoteAddr.first), fdAndRemoteAddr.second, false);
+            setNoDelay(fdAndRemoteAddr.first),
+            getLocalAddr(fdAndRemoteAddr.first, _rawServer.addrSize()),
+            fdAndRemoteAddr.second,
+            _rawServer.addrSize(),
+            false);
     }
 
     _rawServer.prepareAcceptSocket((void*)_eventManager.get());

@@ -144,25 +144,69 @@ void IOSocket::connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn, s
 }
 
 void IOSocket::connectTo(
-    std::string networkAddress, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes) noexcept
+    std::string netOrDomainAddr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes) noexcept
 {
-    auto res = stringToSockaddr(std::move(networkAddress));
-    connectTo(std::move(res.value()), std::move(onConnectReturn), maxRetryTimes);
+    assert(netOrDomainAddr.size());
+    if (netOrDomainAddr[0] == 't') {  // tcp
+        auto res = stringToSockaddr(std::move(netOrDomainAddr));
+        connectTo(std::move(res.value()), std::move(onConnectReturn), maxRetryTimes);
+    } else if (netOrDomainAddr[0] == 'i') {  // icp
+        auto res = stringToSockaddrUn(std::move(netOrDomainAddr));
+        connectTo(std::move(res.value()), std::move(onConnectReturn), maxRetryTimes);
+    } else {
+        std::unreachable();  // current protocol supports only tcp and icp
+    }
 }
 
-void IOSocket::bindTo(std::string networkAddress, BindReturnCallback onBindReturn) noexcept
+void IOSocket::connectTo(sockaddr_un addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes) noexcept
 {
     _eventLoopThread->_eventLoop.executeNow(
-        [this, networkAddress = std::move(networkAddress), callback = std::move(onBindReturn)] mutable {
-            if (_tcpServer) {
-                callback(std::unexpected {Error::ErrorCode::MultipleBindToNotSupported});
-                return;
+        [this, addr = std::move(addr), callback = std::move(onConnectReturn), maxRetryTimes] mutable {
+            if (_domainClient) {
+                unrecoverableError({
+                    Error::ErrorCode::MultipleConnectToNotSupported,
+                    "Originated from",
+                    "IOSocket::connectTo",
+                });
             }
-            auto res = stringToSockaddr(std::move(networkAddress));
-            assert(res);
 
-            _tcpServer.emplace(_eventLoopThread.get(), this->identity(), std::move(res.value()), std::move(callback));
-            _tcpServer->onCreated();
+            _domainClient.emplace(
+                _eventLoopThread.get(), this->identity(), std::move(addr), std::move(callback), maxRetryTimes);
+            _domainClient->onCreated();
+        });
+}
+
+void IOSocket::bindTo(std::string netOrDomainAddr, BindReturnCallback onBindReturn) noexcept
+{
+    _eventLoopThread->_eventLoop.executeNow(
+        [this, netOrDomainAddr = std::move(netOrDomainAddr), callback = std::move(onBindReturn)] mutable {
+            assert(netOrDomainAddr.size());
+            if (netOrDomainAddr[0] == 't') {  // tcp
+                if (_tcpServer) {
+                    callback(std::unexpected {Error::ErrorCode::MultipleBindToNotSupported});
+                    return;
+                }
+                auto res = stringToSockaddr(std::move(netOrDomainAddr));
+                assert(res);
+
+                _tcpServer.emplace(
+                    _eventLoopThread.get(), this->identity(), std::move(res.value()), std::move(callback));
+                _tcpServer->onCreated();
+            } else if (netOrDomainAddr[0] == 'i') {  // icp
+                if (_domainServer) {
+                    callback(std::unexpected {Error::ErrorCode::MultipleBindToNotSupported});
+                    return;
+                }
+                auto res = stringToSockaddrUn(std::move(netOrDomainAddr));
+                assert(res);
+
+                _domainServer.emplace(
+                    _eventLoopThread.get(), this->identity(), std::move(res.value()), std::move(callback));
+                _domainServer->onCreated();
+
+            } else {
+                std::unreachable();  // current protocol supports only tcp and icp
+            }
         });
 }
 
@@ -213,7 +257,12 @@ void IOSocket::onConnectionDisconnected(MessageConnection* conn, bool keepInBook
     }
 
     if (connPtr->_responsibleForRetry) {
-        connectTo(connPtr->_remoteAddr, [](auto) {});  // as the user callback is one-shot
+        if (connPtr->_addrLen == sizeof(sockaddr)) {
+            connectTo(*(sockaddr*)&connPtr->_remoteAddr, [](auto) {});  // as the user callback is one-shot
+        }
+        if (connPtr->_addrLen == sizeof(sockaddr_un)) {
+            connectTo(*(sockaddr_un*)&connPtr->_remoteAddr, [](auto) {});  // as the user callback is one-shot
+        }
     }
 }
 
@@ -278,7 +327,8 @@ void IOSocket::onConnectionCreated(std::string remoteIOSocketIdentity) noexcept
     _unestablishedConnection.back()->onCreated();
 }
 
-void IOSocket::onConnectionCreated(int fd, sockaddr localAddr, sockaddr remoteAddr, bool responsibleForRetry) noexcept
+void IOSocket::onConnectionCreated(
+    int fd, sockaddr_un localAddr, sockaddr_un remoteAddr, socklen_t addrLen, bool responsibleForRetry) noexcept
 {
     _unestablishedConnection.push_back(
         std::make_unique<MessageConnection>(
@@ -286,6 +336,7 @@ void IOSocket::onConnectionCreated(int fd, sockaddr localAddr, sockaddr remoteAd
             fd,
             std::move(localAddr),
             std::move(remoteAddr),
+            addrLen,
             this->identity(),
             responsibleForRetry,
             &_pendingRecvMessages,
@@ -293,7 +344,7 @@ void IOSocket::onConnectionCreated(int fd, sockaddr localAddr, sockaddr remoteAd
     _unestablishedConnection.back()->onCreated();
 }
 
-void IOSocket::removeConnectedTCPClient() noexcept
+void IOSocket::removeConnectedStreamClient() noexcept
 {
     if (this->_tcpClient && this->_tcpClient->_connected) {
         this->_tcpClient.reset();
@@ -313,6 +364,13 @@ void IOSocket::requestStop() noexcept
     }
     if (_tcpClient) {
         _tcpClient->disconnect();
+    }
+
+    if (_domainClient) {
+        _domainClient->disconnect();
+    }
+    if (_domainServer) {
+        _domainServer->disconnect();
     }
 }
 

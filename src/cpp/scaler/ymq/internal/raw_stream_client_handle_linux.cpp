@@ -5,13 +5,26 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamClientHandle::RawStreamClientHandle(sockaddr remoteAddr): _clientFD {}, _remoteAddr(std::move(remoteAddr))
+RawStreamClientHandle::RawStreamClientHandle(sockaddr remoteAddr): _clientFD {}, _addrSize(sizeof(sockaddr))
 {
+    _remoteAddr              = {};
+    *(sockaddr*)&_remoteAddr = std::move(remoteAddr);
+}
+
+RawStreamClientHandle::RawStreamClientHandle(sockaddr_un remoteAddr): _clientFD {}, _addrSize(sizeof(sockaddr_un))
+{
+    _remoteAddr = std::move(remoteAddr);
 }
 
 void RawStreamClientHandle::create()
 {
-    _clientFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+    _clientFD = {};
+    if (_addrSize == sizeof(sockaddr)) {
+        _clientFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+    }
+    if (_addrSize == sizeof(sockaddr_un)) {
+        _clientFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    }
 
     if ((int)_clientFD == -1) {
         const int myErrno = errno;
@@ -47,7 +60,7 @@ void RawStreamClientHandle::create()
 
 bool RawStreamClientHandle::prepConnect(void* notifyHandle)
 {
-    const int ret = connect((int)_clientFD, (sockaddr*)&_remoteAddr, sizeof(_remoteAddr));
+    const int ret = connect((int)_clientFD, (sockaddr*)&_remoteAddr, _addrSize);
 
     if (ret >= 0) [[unlikely]] {
         return true;
@@ -55,6 +68,7 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
 
     const int myErrno = errno;
     switch (myErrno) {
+        case ENOENT:  // this happens with UDS and only UDS
         case EINPROGRESS: return false;
 
         case EACCES:

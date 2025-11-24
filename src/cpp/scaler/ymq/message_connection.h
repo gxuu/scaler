@@ -25,8 +25,9 @@ public:
     MessageConnection(
         EventLoopThread* eventLoopThread,
         int connFd,
-        sockaddr localAddr,
-        sockaddr remoteAddr,
+        sockaddr_un localAddr,
+        sockaddr_un remoteAddr,
+        socklen_t addrLen,
         std::string localIOSocketIdentity,
         bool responsibleForRetry,
         std::queue<RecvMessageCallback>* _pendingRecvMessageCallbacks,
@@ -48,7 +49,7 @@ public:
     void disconnect();
 
     EventLoopThread* _eventLoopThread;
-    const sockaddr _remoteAddr;
+    const sockaddr_un _remoteAddr;
     const bool _responsibleForRetry;
     std::optional<std::string> _remoteIOSocketIdentity;
 
@@ -83,7 +84,7 @@ private:
 
     std::unique_ptr<EventManager> _eventManager;
     RawStreamConnectionHandle _rawConn;
-    sockaddr _localAddr;
+    sockaddr_un _localAddr;
     std::string _localIOSocketIdentity;
 
     std::deque<TcpWriteOperation> _writeOperations;
@@ -96,6 +97,7 @@ private:
 
     bool _disconnect;  // Disconnect or Abort, use to feed to IOSocket
     Logger _logger;
+    socklen_t _addrLen;
 
     // TODO: This variable records whether we have read some bytes in the last read operation.
     // The semantic of readMessage is completely broken. But that will be fixed in the refactor.
