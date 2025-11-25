@@ -184,6 +184,9 @@ void RawStreamServerHandle::destroy()
     if (_serverFD) {
         CloseAndZeroSocket(_serverFD);
     }
+    if (_address._type == SocketAddress::Type::IPC) {
+        unlink(_address._addr.sun_path);
+    }
 }
 
 }  // namespace ymq
