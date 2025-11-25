@@ -10,7 +10,7 @@ namespace ymq {
 
 class RawStreamClientHandle {
 public:
-    RawStreamClientHandle(SocketAddress remoteAddr);
+    RawStreamClientHandle(SocketAddress remoteAddress);
     ~RawStreamClientHandle();
 
     RawStreamClientHandle(RawStreamClientHandle&&)                  = delete;
@@ -27,13 +27,13 @@ public:
 
     auto nativeHandle() const noexcept { return (RawSocketType)_clientFD; }
 
-    bool isNetworkFD() const noexcept { return _remoteAddr._type == SocketAddress::Type::TCP; }
+    bool isNetworkFD() const noexcept { return _remoteAddress._type == SocketAddress::Type::TCP; }
 
-    socklen_t addrSize() const noexcept { return _remoteAddr._addrLen; }
+    socklen_t addrSize() const noexcept { return _remoteAddress._addrLen; }
 
 private:
     uint64_t _clientFD;
-    SocketAddress _remoteAddr;
+    SocketAddress _remoteAddress;
 #ifdef _WIN32
     LPFN_CONNECTEX _connectExFunc;
 #endif  // _WIN32

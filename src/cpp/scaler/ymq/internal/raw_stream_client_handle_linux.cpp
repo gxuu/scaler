@@ -6,14 +6,15 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddr): _clientFD {}, _remoteAddr(std::move(remoteAddr))
+RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddress)
+    : _clientFD {}, _remoteAddress(std::move(remoteAddress))
 {
 }
 
 void RawStreamClientHandle::create()
 {
     _clientFD = {};
-    switch (_remoteAddr._type) {
+    switch (_remoteAddress._type) {
         case SocketAddress::Type::TCP: _clientFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP); break;
         case SocketAddress::Type::IPC: _clientFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0); break;
         default: std::unreachable();
@@ -53,7 +54,7 @@ void RawStreamClientHandle::create()
 
 bool RawStreamClientHandle::prepConnect(void* notifyHandle)
 {
-    const int ret = connect((int)_clientFD, (sockaddr*)&_remoteAddr._addr, _remoteAddr._addrLen);
+    const int ret = connect((int)_clientFD, (sockaddr*)&_remoteAddress._addr, _remoteAddress._addrLen);
 
     if (ret >= 0) [[unlikely]] {
         return true;
@@ -61,7 +62,8 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
 
     const int myErrno = errno;
     switch (myErrno) {
-        case ENOENT:  // this happens with UDS and only UDS
+        case ENOENT:        // this happens with UDS and only UDS
+        case ECONNREFUSED:  // this happens with UDS and only UDS in async mode
         case EINPROGRESS: return false;
 
         case EACCES:
@@ -99,7 +101,6 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
         case EBADF:
         case EISCONN:
         case ENOTSOCK:
-        case ECONNREFUSED:
         default:
             unrecoverableError({
                 Error::ErrorCode::CoreBug,
