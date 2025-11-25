@@ -79,7 +79,8 @@ RawStreamServerHandle::RawStreamServerHandle(sockaddr addr): _addrSize(sizeof(so
 
 RawStreamServerHandle::RawStreamServerHandle(sockaddr_un addr): _addrSize(sizeof(sockaddr_un))
 {
-    static_assert(false, "Hitting IPC Socket constructor, not supported on this system!");
+    printf("Hitting IPC Socket constructor, not supported on this system!\n");
+    assert(false);
 }
 
 bool RawStreamServerHandle::setReuseAddress()

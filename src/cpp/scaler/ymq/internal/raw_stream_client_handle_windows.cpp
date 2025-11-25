@@ -41,7 +41,8 @@ RawStreamClientHandle::RawStreamClientHandle(sockaddr remoteAddr)
 
 RawStreamClientHandle::RawStreamClientHandle(sockaddr_un remoteAddr): _clientFD {}, _addrSize(sizeof(sockaddr_un))
 {
-    static_assert(false, "Hitting IPC Socket constructor, not supported on this system!");
+    printf("Hitting IPC Socket constructor, not supported on this system!\n");
+    assert(false);
 }
 
 void RawStreamClientHandle::create()
