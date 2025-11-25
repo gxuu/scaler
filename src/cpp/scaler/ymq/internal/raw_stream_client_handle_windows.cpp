@@ -6,11 +6,14 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamClientHandle::RawStreamClientHandle(sockaddr remoteAddr)
-    : _clientFD {}, _remoteAddr {}, _addrSize(sizeof(sockaddr))
+RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddr): _clientFD {}, _remoteAddr(std::move(remoteAddr))
 {
-    *(sockaddr*)&_remoteAddr = std::move(remoteAddr);
-    _connectExFunc           = {};
+    if (remoteAddr._type == SocketAddress::Type::IPC) {
+        std::cerr << "Hitting IPC Socket address type, not supported on this system!\n";
+        assert(false);
+    }
+
+    _connectExFunc = {};
 
     auto tmp = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     DWORD res;
@@ -39,20 +42,13 @@ RawStreamClientHandle::RawStreamClientHandle(sockaddr remoteAddr)
     }
 }
 
-RawStreamClientHandle::RawStreamClientHandle(sockaddr_un remoteAddr): _clientFD {}, _addrSize(sizeof(sockaddr_un))
-{
-    printf("Hitting IPC Socket constructor, not supported on this system!\n");
-    assert(false);
-}
-
 void RawStreamClientHandle::create()
 {
     _clientFD = {};
-    if (_addrSize == sizeof(sockaddr)) {
-        _clientFD = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    }
-    if (_addrSize == sizeof(sockaddr_un)) {
-        _clientFD = socket(AF_UNIX, SOCK_STREAM, 0);
+    switch (_remoteAddr._type) {
+        case SocketAddress::Type::TCP: _clientFD = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); break;
+        case SocketAddress::Type::IPC: _clientFD = socket(AF_UNIX, SOCK_STREAM, 0); break;
+        default: std::unreachable();
     }
     if (_clientFD == -1) {
         unrecoverableError({
@@ -74,7 +70,7 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
     const char ip4[]           = {127, 0, 0, 1};
     *(int*)&localAddr.sin_addr = *(int*)ip4;
 
-    const int bindRes = bind(_clientFD, (struct sockaddr*)&localAddr, _addrSize);
+    const int bindRes = bind(_clientFD, (struct sockaddr*)&localAddr, _remoteAddr._addrLen);
     if (bindRes == -1) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
@@ -87,8 +83,8 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
         });
     }
 
-    const bool ok =
-        _connectExFunc(_clientFD, (sockaddr*)&_remoteAddr, _addrSize, NULL, 0, NULL, (LPOVERLAPPED)notifyHandle);
+    const bool ok = _connectExFunc(
+        _clientFD, (sockaddr*)&_remoteAddr, _remoteAddr._addrLen, NULL, 0, NULL, (LPOVERLAPPED)notifyHandle);
     if (ok) {
         unrecoverableError({
             Error::ErrorCode::CoreBug,

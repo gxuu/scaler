@@ -3,14 +3,14 @@
 #include <vector>
 
 #include "scaler/ymq/internal/defs.h"  // system compatible header
+#include "scaler/ymq/internal/socket_address.h"
 
 namespace scaler {
 namespace ymq {
 
 class RawStreamServerHandle {
 public:
-    RawStreamServerHandle(sockaddr addr);
-    RawStreamServerHandle(sockaddr_un addr);
+    RawStreamServerHandle(SocketAddress address);
 
     RawStreamServerHandle(const RawStreamServerHandle&)            = delete;
     RawStreamServerHandle(RawStreamServerHandle&&)                 = delete;
@@ -19,7 +19,7 @@ public:
 
     ~RawStreamServerHandle();
     void prepareAcceptSocket(void* notifyHandle);
-    std::vector<std::pair<uint64_t, sockaddr_un>> getNewConns();
+    std::vector<std::pair<uint64_t, SocketAddress>> getNewConns();
 
     bool setReuseAddress();
     void bindAndListen();
@@ -27,12 +27,11 @@ public:
 
     void destroy();
 
-    socklen_t addrSize() const noexcept { return _addrSize; }
+    socklen_t addrSize() const noexcept { return _address._addrLen; }
 
 private:
     uint64_t _serverFD;
-    sockaddr_un _addr;
-    const socklen_t _addrSize;
+    SocketAddress _address;
 #ifdef _WIN32
     uint64_t _newConn;
     LPFN_ACCEPTEX _acceptExFunc;

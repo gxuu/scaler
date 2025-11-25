@@ -8,6 +8,7 @@
 #include "scaler/logging/logging.h"
 #include "scaler/ymq/configuration.h"
 #include "scaler/ymq/internal/raw_stream_connection_handle.h"
+#include "scaler/ymq/internal/socket_address.h"
 #include "scaler/ymq/io_socket.h"
 #include "scaler/ymq/tcp_operations.h"
 
@@ -25,9 +26,8 @@ public:
     MessageConnection(
         EventLoopThread* eventLoopThread,
         int connFd,
-        sockaddr_un localAddr,
-        sockaddr_un remoteAddr,
-        socklen_t addrLen,
+        SocketAddress localAddr,
+        SocketAddress remoteAddr,
         std::string localIOSocketIdentity,
         bool responsibleForRetry,
         std::queue<RecvMessageCallback>* _pendingRecvMessageCallbacks,
@@ -49,7 +49,7 @@ public:
     void disconnect();
 
     EventLoopThread* _eventLoopThread;
-    const sockaddr_un _remoteAddr;
+    const SocketAddress _remoteAddr;
     const bool _responsibleForRetry;
     std::optional<std::string> _remoteIOSocketIdentity;
 
@@ -84,7 +84,7 @@ private:
 
     std::unique_ptr<EventManager> _eventManager;
     RawStreamConnectionHandle _rawConn;
-    sockaddr_un _localAddr;
+    SocketAddress _localAddr;
     std::string _localIOSocketIdentity;
 
     std::deque<TcpWriteOperation> _writeOperations;
@@ -97,7 +97,6 @@ private:
 
     bool _disconnect;  // Disconnect or Abort, use to feed to IOSocket
     Logger _logger;
-    socklen_t _addrLen;
 
     // TODO: This variable records whether we have read some bytes in the last read operation.
     // The semantic of readMessage is completely broken. But that will be fixed in the refactor.

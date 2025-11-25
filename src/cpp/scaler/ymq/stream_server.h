@@ -7,6 +7,7 @@
 // First-party
 #include "scaler/logging/logging.h"
 #include "scaler/ymq/configuration.h"
+#include "scaler/ymq/internal/socket_address.h"
 
 namespace scaler {
 namespace ymq {
@@ -21,12 +22,7 @@ public:
     StreamServer(
         EventLoopThread* eventLoop,
         std::string localIOSocketIdentity,
-        sockaddr addr,
-        BindReturnCallback onBindReturn) noexcept;
-    StreamServer(
-        EventLoopThread* eventLoop,
-        std::string localIOSocketIdentity,
-        sockaddr_un addr,
+        SocketAddress addr,
         BindReturnCallback onBindReturn) noexcept;
     StreamServer(const StreamServer&)            = delete;
     StreamServer& operator=(const StreamServer&) = delete;

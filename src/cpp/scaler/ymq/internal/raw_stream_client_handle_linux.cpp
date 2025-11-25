@@ -1,3 +1,4 @@
+#include <utility>
 #ifdef __linux__
 #include "scaler/error/error.h"
 #include "scaler/ymq/internal/raw_stream_client_handle.h"
@@ -5,25 +6,17 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamClientHandle::RawStreamClientHandle(sockaddr remoteAddr): _clientFD {}, _addrSize(sizeof(sockaddr))
+RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddr): _clientFD {}, _remoteAddr(std::move(remoteAddr))
 {
-    _remoteAddr              = {};
-    *(sockaddr*)&_remoteAddr = std::move(remoteAddr);
-}
-
-RawStreamClientHandle::RawStreamClientHandle(sockaddr_un remoteAddr): _clientFD {}, _addrSize(sizeof(sockaddr_un))
-{
-    _remoteAddr = std::move(remoteAddr);
 }
 
 void RawStreamClientHandle::create()
 {
     _clientFD = {};
-    if (_addrSize == sizeof(sockaddr)) {
-        _clientFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
-    }
-    if (_addrSize == sizeof(sockaddr_un)) {
-        _clientFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    switch (_remoteAddr._type) {
+        case SocketAddress::Type::TCP: _clientFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP); break;
+        case SocketAddress::Type::IPC: _clientFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0); break;
+        default: std::unreachable();
     }
 
     if ((int)_clientFD == -1) {
@@ -60,7 +53,7 @@ void RawStreamClientHandle::create()
 
 bool RawStreamClientHandle::prepConnect(void* notifyHandle)
 {
-    const int ret = connect((int)_clientFD, (sockaddr*)&_remoteAddr, _addrSize);
+    const int ret = connect((int)_clientFD, (sockaddr*)&_remoteAddr._addr, _remoteAddr._addrLen);
 
     if (ret >= 0) [[unlikely]] {
         return true;

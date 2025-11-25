@@ -11,10 +11,14 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamServerHandle::RawStreamServerHandle(sockaddr addr): _addrSize(sizeof(sockaddr))
+RawStreamServerHandle::RawStreamServerHandle(SocketAddress address): _address(std::move(address))
 {
-    _serverFD          = {};
-    *(sockaddr*)&_addr = std::move(addr);
+    if (_address._type == SocketAddress::Type::IPC) {
+        std::cerr << "Hitting IPC Socket address type, not supported on this system!\n";
+        assert(false);
+    }
+
+    _serverFD = {};
 
     _newConn      = {};
     _acceptExFunc = {};
@@ -77,12 +81,6 @@ RawStreamServerHandle::RawStreamServerHandle(sockaddr addr): _addrSize(sizeof(so
     }
 }
 
-RawStreamServerHandle::RawStreamServerHandle(sockaddr_un addr): _addrSize(sizeof(sockaddr_un))
-{
-    printf("Hitting IPC Socket constructor, not supported on this system!\n");
-    assert(false);
-}
-
 bool RawStreamServerHandle::setReuseAddress()
 {
     if (::scaler::ymq::setReuseAddress(_serverFD)) {
@@ -96,7 +94,7 @@ bool RawStreamServerHandle::setReuseAddress()
 void RawStreamServerHandle::bindAndListen()
 {
     // TODO: Should we support IPC on Windows, handle existed socket file here.
-    if (bind(_serverFD, (sockaddr*)&_addr, _addrSize) == -1) {
+    if (bind(_serverFD, (sockaddr*)&_address._addr, _address._addrLen) == -1) {
         const auto serverFD = _serverFD;
         CloseAndZeroSocket(_serverFD);
         unrecoverableError({
@@ -203,7 +201,7 @@ void RawStreamServerHandle::prepareAcceptSocket(void* notifyHandle)
     // acceptEx never succeed.
 }
 
-std::vector<std::pair<uint64_t, sockaddr_un>> RawStreamServerHandle::getNewConns()
+std::vector<std::pair<uint64_t, SocketAddress>> RawStreamServerHandle::getNewConns()
 {
     std::vector<std::pair<uint64_t, sockaddr_un>> res;
 

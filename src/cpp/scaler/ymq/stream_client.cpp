@@ -29,7 +29,6 @@ void StreamClient::onCreated()
             setNoDelay(_rawClient.nativeHandle()),
             getLocalAddr(_rawClient.nativeHandle(), _rawClient.addrSize()),
             getRemoteAddr(_rawClient.nativeHandle(), _rawClient.addrSize()),
-            _rawClient.addrSize(),
             responsibleForRetry);
 
         _rawClient.zeroNativeHandle();
@@ -59,29 +58,7 @@ void StreamClient::onCreated()
 StreamClient::StreamClient(
     EventLoopThread* eventLoopThread,
     std::string localIOSocketIdentity,
-    sockaddr remoteAddr,
-    ConnectReturnCallback onConnectReturn,
-    size_t maxRetryTimes) noexcept
-    : _eventLoopThread(eventLoopThread)
-    , _connected(false)
-    , _onConnectReturn(std::move(onConnectReturn))
-    , _localIOSocketIdentity(std::move(localIOSocketIdentity))
-    , _retryIdentifier {}
-    , _eventManager(std::make_unique<EventManager>())
-    , _retryTimes {}
-    , _maxRetryTimes(maxRetryTimes)
-    , _rawClient(std::move(remoteAddr))
-{
-    _eventManager->onRead  = [this] { this->onRead(); };
-    _eventManager->onWrite = [this] { this->onWrite(); };
-    _eventManager->onClose = [this] { this->onClose(); };
-    _eventManager->onError = [this] { this->onError(); };
-}
-
-StreamClient::StreamClient(
-    EventLoopThread* eventLoopThread,
-    std::string localIOSocketIdentity,
-    sockaddr_un remoteAddr,
+    SocketAddress remoteAddr,
     ConnectReturnCallback onConnectReturn,
     size_t maxRetryTimes) noexcept
     : _eventLoopThread(eventLoopThread)
@@ -123,7 +100,6 @@ void StreamClient::onWrite()
         setNoDelay(_rawClient.nativeHandle()),
         getLocalAddr(_rawClient.nativeHandle(), _rawClient.addrSize()),
         getRemoteAddr(_rawClient.nativeHandle(), _rawClient.addrSize()),
-        _rawClient.addrSize(),
         responsibleForRetry);
 
     _rawClient.zeroNativeHandle();

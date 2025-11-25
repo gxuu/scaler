@@ -16,6 +16,7 @@
 #include "scaler/ymq/configuration.h"
 #include "scaler/ymq/event_loop_thread.h"
 #include "scaler/ymq/event_manager.h"
+#include "scaler/ymq/internal/socket_address.h"
 #include "scaler/ymq/io_socket.h"
 
 namespace scaler {
@@ -37,9 +38,8 @@ constexpr bool MessageConnection::isCompleteMessage(const TcpReadOperation& x)
 MessageConnection::MessageConnection(
     EventLoopThread* eventLoopThread,
     int connFd,
-    sockaddr_un localAddr,
-    sockaddr_un remoteAddr,
-    socklen_t addrLen,
+    SocketAddress localAddr,
+    SocketAddress remoteAddr,
     std::string localIOSocketIdentity,
     bool responsibleForRetry,
     std::queue<RecvMessageCallback>* pendingRecvMessageCallbacks,
@@ -56,7 +56,6 @@ MessageConnection::MessageConnection(
     , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _leftoverMessagesAfterConnectionDied(leftoverMessagesAfterConnectionDied)
     , _disconnect {false}
-    , _addrLen(addrLen)
 {
     _eventManager->onRead  = [this] { this->onRead(); };
     _eventManager->onWrite = [this] { this->onWrite(); };
@@ -82,7 +81,6 @@ MessageConnection::MessageConnection(
     , _pendingRecvMessageCallbacks(pendingRecvMessageCallbacks)
     , _leftoverMessagesAfterConnectionDied(leftoverMessagesAfterConnectionDied)
     , _disconnect {false}
-    , _addrLen {}
     , _readSomeBytes {false}
 {
     _eventManager->onRead  = [this] { this->onRead(); };

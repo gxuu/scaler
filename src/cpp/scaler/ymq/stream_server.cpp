@@ -36,24 +36,7 @@ bool StreamServer::createAndBindSocket()
 StreamServer::StreamServer(
     EventLoopThread* eventLoopThread,
     std::string localIOSocketIdentity,
-    sockaddr addr,
-    BindReturnCallback onBindReturn) noexcept
-    : _eventLoopThread(eventLoopThread)
-    , _onBindReturn(std::move(onBindReturn))
-    , _localIOSocketIdentity(std::move(localIOSocketIdentity))
-    , _eventManager(std::make_unique<EventManager>())
-    , _rawServer(std::move(addr))
-{
-    _eventManager->onRead  = [this] { this->onRead(); };
-    _eventManager->onWrite = [this] { this->onWrite(); };
-    _eventManager->onClose = [this] { this->onClose(); };
-    _eventManager->onError = [this] { this->onError(); };
-}
-
-StreamServer::StreamServer(
-    EventLoopThread* eventLoopThread,
-    std::string localIOSocketIdentity,
-    sockaddr_un addr,
+    SocketAddress addr,
     BindReturnCallback onBindReturn) noexcept
     : _eventLoopThread(eventLoopThread)
     , _onBindReturn(std::move(onBindReturn))
@@ -104,7 +87,6 @@ void StreamServer::onRead()
             setNoDelay(fdAndRemoteAddr.first),
             getLocalAddr(fdAndRemoteAddr.first, _rawServer.addrSize()),
             fdAndRemoteAddr.second,
-            _rawServer.addrSize(),
             false);
     }
 

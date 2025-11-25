@@ -4,8 +4,10 @@
 
 #include <cassert>
 #include <expected>
+#include <utility>
 
 #include "scaler/error/error.h"
+#include "scaler/ymq/internal/socket_address.h"
 
 namespace scaler {
 namespace ymq {
@@ -115,6 +117,30 @@ inline std::expected<sockaddr, int> stringToSockaddr(const std::string& address)
     return *(sockaddr*)&outAddr;
 }
 
+inline SocketAddress stringToSocketAddress(const std::string& address)
+{
+    assert(address.size());
+    SocketAddress res {};
+
+    if (address[0] == 'i') {  // ipc
+        const auto tmp = stringToSockaddrUn(address);
+        assert(tmp);
+        res._type    = SocketAddress::Type::IPC;
+        res._addr    = std::move(tmp.value());
+        res._addrLen = sizeof(sockaddr_un);
+    } else if (address[0] == 't') {  // tcp
+        const auto tmp = stringToSockaddr(address);
+        assert(tmp);
+        res._type              = SocketAddress::Type::TCP;
+        *(sockaddr*)&res._addr = std::move(tmp.value());
+        res._addrLen           = sizeof(sockaddr);
+    } else {
+        // Unreachable as we currently don't support other types of system socket
+        std::unreachable();
+    }
+    return res;
+}
+
 inline int setNoDelay(int fd)
 {
     int optval = 1;
@@ -133,7 +159,7 @@ inline int setNoDelay(int fd)
     return fd;
 }
 
-inline sockaddr_un getLocalAddr(int fd, socklen_t localAddrLen)
+inline SocketAddress getLocalAddr(int fd, socklen_t localAddrLen)
 {
     sockaddr_un localAddr = {};
     if (getsockname(fd, (sockaddr*)&localAddr, &localAddrLen) == -1) {
@@ -147,10 +173,17 @@ inline sockaddr_un getLocalAddr(int fd, socklen_t localAddrLen)
             fd,
         });
     }
-    return localAddr;
+
+    SocketAddress res {};
+
+    res._type    = localAddrLen == sizeof(sockaddr) ? SocketAddress::Type::TCP : SocketAddress::Type::IPC;
+    res._addrLen = localAddrLen;
+    memcpy(&res._addr, &localAddr, res._addrLen);
+
+    return res;
 }
 
-inline sockaddr_un getRemoteAddr(int fd, socklen_t remoteAddrLen)
+inline SocketAddress getRemoteAddr(int fd, socklen_t remoteAddrLen)
 {
     sockaddr_un remoteAddr = {};
 
@@ -166,7 +199,13 @@ inline sockaddr_un getRemoteAddr(int fd, socklen_t remoteAddrLen)
         });
     }
 
-    return remoteAddr;
+    SocketAddress res {};
+
+    res._type    = remoteAddrLen == sizeof(sockaddr) ? SocketAddress::Type::TCP : SocketAddress::Type::IPC;
+    res._addrLen = remoteAddrLen;
+    memcpy(&res._addr, &remoteAddr, res._addrLen);
+
+    return res;
 }
 
 }  // namespace ymq

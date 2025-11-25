@@ -53,9 +53,8 @@ public:
     void connectTo(
         std::string netOrDomainAddr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
 
-    // NOTE: BELOW TWO ARE NOT OFFICIAL USERSPACE API. USE WITH CAUTION.
-    void connectTo(sockaddr addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
-    void connectTo(sockaddr_un addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
+    // NOTE: BELOW ONE ARE NOT OFFICIAL USERSPACE API. USE WITH CAUTION.
+    void connectTo(SocketAddress socketAddr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
 
     void closeConnection(Identity remoteSocketIdentity) noexcept;
 
@@ -77,7 +76,7 @@ public:
     // mutual exclusive. Perhaps we need better name, but I failed to come up with one. - gxu
     void onConnectionCreated(std::string remoteIOSocketIdentity) noexcept;
     void onConnectionCreated(
-        int fd, sockaddr_un localAddr, sockaddr_un remoteAddr, socklen_t addrLen, bool responsibleForRetry) noexcept;
+        int fd, SocketAddress localAddr, SocketAddress remoteAddrbool, bool responsibleForRetry) noexcept;
 
     // From TCPClient class only
     void removeConnectedStreamClient() noexcept;

@@ -1,3 +1,4 @@
+#include "scaler/ymq/internal/socket_address.h"
 #ifdef __linux__
 
 #include <utility>  // std::move
@@ -10,38 +11,19 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamServerHandle::RawStreamServerHandle(sockaddr addr): _addrSize(sizeof(addr))
+RawStreamServerHandle::RawStreamServerHandle(SocketAddress address): _address(std::move(address))
 {
-    _serverFD          = {};
-    _addr              = {};
-    *(sockaddr*)&_addr = addr;
+    _serverFD = {};
+    switch (_address._type) {
+        case SocketAddress::Type::TCP: _serverFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP); break;
+        case SocketAddress::Type::IPC: _serverFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0); break;
+        default: std::unreachable();
+    }
 
-    _serverFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
     if ((int)_serverFD == -1) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
             "Originated from",
-            "socket(2)",
-            "Errno is",
-            strerror(errno),
-            "_serverFD",
-            _serverFD,
-        });
-
-        return;
-    }
-}
-
-RawStreamServerHandle::RawStreamServerHandle(sockaddr_un addr): _addrSize(sizeof(addr))
-{
-    _serverFD = {};
-    _addr     = std::move(addr);
-
-    _serverFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
-    if ((int)_serverFD == -1) {
-        unrecoverableError({
-            Error::ErrorCode::ConfigurationError,
-            "Originated from create UDS",
             "socket(2)",
             "Errno is",
             strerror(errno),
@@ -65,11 +47,11 @@ bool RawStreamServerHandle::setReuseAddress()
 
 void RawStreamServerHandle::bindAndListen()
 {
-    if (_addrSize == sizeof(sockaddr_un)) {
-        unlink(_addr.sun_path);
+    if (_address._type == SocketAddress::Type::IPC) {
+        unlink(_address._addr.sun_path);
     }
 
-    if (bind(_serverFD, (sockaddr*)&_addr, _addrSize) == -1) {
+    if (bind(_serverFD, (sockaddr*)&_address._addr, _address._addrLen) == -1) {
         const auto serverFD = _serverFD;
         CloseAndZeroSocket(_serverFD);
         unrecoverableError({
@@ -114,12 +96,12 @@ void RawStreamServerHandle::prepareAcceptSocket(void* notifyHandle)
     (void)notifyHandle;
 }
 
-std::vector<std::pair<uint64_t, sockaddr_un>> RawStreamServerHandle::getNewConns()
+std::vector<std::pair<uint64_t, SocketAddress>> RawStreamServerHandle::getNewConns()
 {
-    std::vector<std::pair<uint64_t, sockaddr_un>> res;
+    std::vector<std::pair<uint64_t, SocketAddress>> res;
     while (true) {
         sockaddr_un remoteAddr {};
-        socklen_t remoteAddrLen = this->addrSize();
+        socklen_t remoteAddrLen = _address._addrLen;
 
         int fd = accept4(_serverFD, (sockaddr*)&remoteAddr, &remoteAddrLen, SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (fd < 0) {
@@ -187,7 +169,13 @@ std::vector<std::pair<uint64_t, sockaddr_un>> RawStreamServerHandle::getNewConns
                 sizeof(remoteAddr),
             });
         }
-        res.push_back({fd, remoteAddr});
+        SocketAddress socketAddress {};
+        socketAddress._addrLen = sizeof(remoteAddr);
+        socketAddress._type =
+            sizeof(remoteAddr) == sizeof(sockaddr) ? SocketAddress::Type::TCP : SocketAddress::Type::IPC;
+        memcpy(&socketAddress._addr, &remoteAddr, socketAddress._addrLen);
+
+        res.push_back({fd, std::move(socketAddress)});
     }
 }
 
