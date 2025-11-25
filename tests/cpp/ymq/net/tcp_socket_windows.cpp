@@ -11,7 +11,7 @@
 #include "tests/cpp/ymq/common/utils.h"
 #include "tests/cpp/ymq/net/tcp_socket.h"
 
-TcpSocket::TcpSocket(bool nodelay): _fd(-1), _nodelay(nodelay)
+TCPSocket::TCPSocket(bool nodelay): _fd(-1), _nodelay(nodelay)
 {
     this->_fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (this->_fd == SOCKET_ERROR)
@@ -23,7 +23,7 @@ TcpSocket::TcpSocket(bool nodelay): _fd(-1), _nodelay(nodelay)
             raise_socket_error("failed to set nodelay");
 }
 
-TcpSocket::TcpSocket(bool nodelay, long long fd): _fd(fd), _nodelay(nodelay)
+TCPSocket::TCPSocket(bool nodelay, long long fd): _fd(fd), _nodelay(nodelay)
 {
     char on = 1;
     if (this->_nodelay)
@@ -31,19 +31,19 @@ TcpSocket::TcpSocket(bool nodelay, long long fd): _fd(fd), _nodelay(nodelay)
             raise_socket_error("failed to set nodelay");
 }
 
-TcpSocket::~TcpSocket()
+TCPSocket::~TCPSocket()
 {
     ::closesocket((SOCKET)this->_fd);
 }
 
-TcpSocket::TcpSocket(TcpSocket&& other) noexcept
+TCPSocket::TCPSocket(TCPSocket&& other) noexcept
 {
     this->_nodelay = other._nodelay;
     this->_fd      = other._fd;
     other._fd      = -1;
 }
 
-TcpSocket& TcpSocket::operator=(TcpSocket&& other) noexcept
+TCPSocket& TCPSocket::operator=(TCPSocket&& other) noexcept
 {
     this->_nodelay = other._nodelay;
     this->_fd      = other._fd;
@@ -51,11 +51,11 @@ TcpSocket& TcpSocket::operator=(TcpSocket&& other) noexcept
     return *this;
 }
 
-void TcpSocket::try_connect(const std::string& address_str, int tries) const
+void TCPSocket::try_connect(const std::string& address_str, int tries) const
 {
     auto address = parse_address(address_str);
     if (address.protocol != "tcp") {
-        throw std::runtime_error("Unsupported protocol for TcpSocket: " + address.protocol);
+        throw std::runtime_error("Unsupported protocol for TCPSocket: " + address.protocol);
     }
 
     sockaddr_in addr {};
@@ -81,11 +81,11 @@ void TcpSocket::try_connect(const std::string& address_str, int tries) const
     }
 }
 
-void TcpSocket::bind(const std::string& address_str) const
+void TCPSocket::bind(const std::string& address_str) const
 {
     auto address = parse_address(address_str);
     if (address.protocol != "tcp") {
-        throw std::runtime_error("Unsupported protocol for TcpSocket: " + address.protocol);
+        throw std::runtime_error("Unsupported protocol for TCPSocket: " + address.protocol);
     }
 
     sockaddr_in addr {};
@@ -96,22 +96,22 @@ void TcpSocket::bind(const std::string& address_str) const
         raise_socket_error("failed to bind");
 }
 
-void TcpSocket::listen(int backlog) const
+void TCPSocket::listen(int backlog) const
 {
     if (::listen((SOCKET)this->_fd, backlog) == SOCKET_ERROR)
         raise_socket_error("failed to listen");
 }
 
-std::unique_ptr<ISocket> TcpSocket::accept() const
+std::unique_ptr<ISocket> TCPSocket::accept() const
 {
     long long fd = ::accept((SOCKET)this->_fd, nullptr, nullptr);
     if (fd == SOCKET_ERROR)
         raise_socket_error("failed to accept");
 
-    return std::make_unique<TcpSocket>(this->_nodelay, fd);
+    return std::make_unique<TCPSocket>(this->_nodelay, fd);
 }
 
-int TcpSocket::write(const void* buffer, size_t size) const
+int TCPSocket::write(const void* buffer, size_t size) const
 {
     auto n = ::send((SOCKET)this->_fd, static_cast<const char*>(buffer), (int)size, 0);
     if (n == SOCKET_ERROR)
@@ -119,26 +119,26 @@ int TcpSocket::write(const void* buffer, size_t size) const
     return n;
 }
 
-void TcpSocket::write_all(const void* buffer, size_t size) const
+void TCPSocket::write_all(const void* buffer, size_t size) const
 {
     size_t cursor = 0;
     while (cursor < size)
         cursor += (size_t)this->write((char*)buffer + cursor, size - cursor);
 }
 
-void TcpSocket::write_all(std::string msg) const
+void TCPSocket::write_all(std::string msg) const
 {
     this->write_all(msg.data(), msg.size());
 }
 
-void TcpSocket::write_message(std::string msg) const
+void TCPSocket::write_message(std::string msg) const
 {
     uint64_t header = msg.length();
     this->write_all(&header, 8);
     this->write_all(msg.data(), msg.length());
 }
 
-int TcpSocket::read(void* buffer, size_t size) const
+int TCPSocket::read(void* buffer, size_t size) const
 {
     auto n = ::recv((SOCKET)this->_fd, static_cast<char*>(buffer), (int)size, 0);
     if (n == SOCKET_ERROR)
@@ -146,14 +146,14 @@ int TcpSocket::read(void* buffer, size_t size) const
     return n;
 }
 
-void TcpSocket::read_exact(void* buffer, size_t size) const
+void TCPSocket::read_exact(void* buffer, size_t size) const
 {
     size_t cursor = 0;
     while (cursor < size)
         cursor += (size_t)this->read((char*)buffer + cursor, size - cursor);
 }
 
-std::string TcpSocket::read_message() const
+std::string TCPSocket::read_message() const
 {
     uint64_t header = 0;
     this->read_exact(&header, 8);

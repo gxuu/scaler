@@ -7,17 +7,17 @@
 #include "address.h"
 #include "i_socket.h"
 
-class UdsSocket: public ISocket {
+class UDSSocket: public ISocket {
 public:
-    UdsSocket();
-    UdsSocket(long long fd);
-    ~UdsSocket();
+    UDSSocket();
+    UDSSocket(long long fd);
+    ~UDSSocket();
 
     // move-only
-    UdsSocket(UdsSocket&&) noexcept;
-    UdsSocket& operator=(UdsSocket&&) noexcept;
-    UdsSocket(const UdsSocket&)            = delete;
-    UdsSocket& operator=(const UdsSocket&) = delete;
+    UDSSocket(UDSSocket&&) noexcept;
+    UDSSocket& operator=(UDSSocket&&) noexcept;
+    UDSSocket(const UDSSocket&)            = delete;
+    UDSSocket& operator=(const UDSSocket&) = delete;
 
     void try_connect(const std::string& address, int tries = 10) const override;
     void bind(const std::string& address) const override;

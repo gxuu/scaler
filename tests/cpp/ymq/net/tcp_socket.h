@@ -7,17 +7,17 @@
 #include "address.h"
 #include "i_socket.h"
 
-class TcpSocket: public ISocket {
+class TCPSocket: public ISocket {
 public:
-    TcpSocket(bool nodelay = false);
-    TcpSocket(bool nodelay, long long fd);
-    ~TcpSocket();
+    TCPSocket(bool nodelay = false);
+    TCPSocket(bool nodelay, long long fd);
+    ~TCPSocket();
 
     // move-only
-    TcpSocket(TcpSocket&&) noexcept;
-    TcpSocket& operator=(TcpSocket&&) noexcept;
-    TcpSocket(const TcpSocket&)            = delete;
-    TcpSocket& operator=(const TcpSocket&) = delete;
+    TCPSocket(TCPSocket&&) noexcept;
+    TCPSocket& operator=(TCPSocket&&) noexcept;
+    TCPSocket(const TCPSocket&)            = delete;
+    TCPSocket& operator=(const TCPSocket&) = delete;
 
     void try_connect(const std::string& address, int tries = 10) const override;
     void bind(const std::string& address) const override;

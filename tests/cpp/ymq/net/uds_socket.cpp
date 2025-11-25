@@ -11,40 +11,40 @@
 
 #include "tests/cpp/ymq/common/utils.h"
 
-UdsSocket::UdsSocket(): _fd(-1)
+UDSSocket::UDSSocket(): _fd(-1)
 {
     this->_fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
     if (this->_fd < 0)
         raise_socket_error("failed to create socket");
 }
 
-UdsSocket::UdsSocket(long long fd): _fd(fd)
+UDSSocket::UDSSocket(long long fd): _fd(fd)
 {
 }
 
-UdsSocket::~UdsSocket()
+UDSSocket::~UDSSocket()
 {
     close(this->_fd);
 }
 
-UdsSocket::UdsSocket(UdsSocket&& other) noexcept
+UDSSocket::UDSSocket(UDSSocket&& other) noexcept
 {
     this->_fd = other._fd;
     other._fd = -1;
 }
 
-UdsSocket& UdsSocket::operator=(UdsSocket&& other) noexcept
+UDSSocket& UDSSocket::operator=(UDSSocket&& other) noexcept
 {
     this->_fd = other._fd;
     other._fd = -1;
     return *this;
 }
 
-void UdsSocket::try_connect(const std::string& address_str, int tries) const
+void UDSSocket::try_connect(const std::string& address_str, int tries) const
 {
     auto address = parse_address(address_str);
     if (address.protocol != "ipc") {
-        throw std::runtime_error("Unsupported protocol for UdsSocket: " + address.protocol);
+        throw std::runtime_error("Unsupported protocol for UDSSocket: " + address.protocol);
     }
 
     sockaddr_un addr {};
@@ -67,11 +67,11 @@ void UdsSocket::try_connect(const std::string& address_str, int tries) const
     }
 }
 
-void UdsSocket::bind(const std::string& address_str) const
+void UDSSocket::bind(const std::string& address_str) const
 {
     auto address = parse_address(address_str);
     if (address.protocol != "ipc") {
-        throw std::runtime_error("Unsupported protocol for UdsSocket: " + address.protocol);
+        throw std::runtime_error("Unsupported protocol for UDSSocket: " + address.protocol);
     }
 
     sockaddr_un addr {};
@@ -82,22 +82,22 @@ void UdsSocket::bind(const std::string& address_str) const
         raise_socket_error("failed to bind");
 }
 
-void UdsSocket::listen(int backlog) const
+void UDSSocket::listen(int backlog) const
 {
     if (::listen(this->_fd, backlog) < 0)
         raise_socket_error("failed to listen");
 }
 
-std::unique_ptr<ISocket> UdsSocket::accept() const
+std::unique_ptr<ISocket> UDSSocket::accept() const
 {
     long long fd = ::accept(this->_fd, nullptr, nullptr);
     if (fd < 0)
         raise_socket_error("failed to accept");
 
-    return std::make_unique<UdsSocket>(fd);
+    return std::make_unique<UDSSocket>(fd);
 }
 
-int UdsSocket::write(const void* buffer, size_t size) const
+int UDSSocket::write(const void* buffer, size_t size) const
 {
     int n = ::write(this->_fd, buffer, size);
     if (n < 0)
@@ -105,26 +105,26 @@ int UdsSocket::write(const void* buffer, size_t size) const
     return n;
 }
 
-void UdsSocket::write_all(const void* buffer, size_t size) const
+void UDSSocket::write_all(const void* buffer, size_t size) const
 {
     size_t cursor = 0;
     while (cursor < size)
         cursor += (size_t)this->write((char*)buffer + cursor, size - cursor);
 }
 
-void UdsSocket::write_all(std::string msg) const
+void UDSSocket::write_all(std::string msg) const
 {
     this->write_all(msg.data(), msg.size());
 }
 
-void UdsSocket::write_message(std::string msg) const
+void UDSSocket::write_message(std::string msg) const
 {
     uint64_t header = msg.length();
     this->write_all(&header, 8);
     this->write_all(msg.data(), msg.length());
 }
 
-int UdsSocket::read(void* buffer, size_t size) const
+int UDSSocket::read(void* buffer, size_t size) const
 {
     int n = ::read(this->_fd, buffer, size);
     if (n < 0)
@@ -132,14 +132,14 @@ int UdsSocket::read(void* buffer, size_t size) const
     return n;
 }
 
-void UdsSocket::read_exact(void* buffer, size_t size) const
+void UDSSocket::read_exact(void* buffer, size_t size) const
 {
     size_t cursor = 0;
     while (cursor < size)
         cursor += (size_t)this->read((char*)buffer + cursor, size - cursor);
 }
 
-std::string UdsSocket::read_message() const
+std::string UDSSocket::read_message() const
 {
     uint64_t header = 0;
     this->read_exact(&header, 8);
