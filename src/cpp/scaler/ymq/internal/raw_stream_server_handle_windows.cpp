@@ -203,7 +203,7 @@ void RawStreamServerHandle::prepareAcceptSocket(void* notifyHandle)
 
 std::vector<std::pair<uint64_t, SocketAddress>> RawStreamServerHandle::getNewConns()
 {
-    std::vector<std::pair<uint64_t, sockaddr_un>> res;
+    std::vector<std::pair<uint64_t, SocketAddress>> res;
 
     if (setsockopt(
             _newConn, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast<char*>(&_serverFD), sizeof(_serverFD)) ==
