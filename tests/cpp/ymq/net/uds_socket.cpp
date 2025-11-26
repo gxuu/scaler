@@ -42,7 +42,7 @@ UDSSocket& UDSSocket::operator=(UDSSocket&& other) noexcept
 
 void UDSSocket::try_connect(const std::string& address_str, int tries) const
 {
-    auto address = parse_address(address_str);
+    auto address = parseAddress(address_str);
     if (address.protocol != "ipc") {
         throw std::runtime_error("Unsupported protocol for UDSSocket: " + address.protocol);
     }
@@ -69,7 +69,7 @@ void UDSSocket::try_connect(const std::string& address_str, int tries) const
 
 void UDSSocket::bind(const std::string& address_str) const
 {
-    auto address = parse_address(address_str);
+    auto address = parseAddress(address_str);
     if (address.protocol != "ipc") {
         throw std::runtime_error("Unsupported protocol for UDSSocket: " + address.protocol);
     }

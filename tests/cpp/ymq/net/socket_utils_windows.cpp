@@ -7,7 +7,7 @@
 
 std::unique_ptr<ISocket> connect_socket(std::string& address_str)
 {
-    auto address = parse_address(address_str);
+    auto address = parseAddress(address_str);
 
     if (address.protocol == "tcp") {
         auto socket = std::make_unique<TCPSocket>();
@@ -20,7 +20,7 @@ std::unique_ptr<ISocket> connect_socket(std::string& address_str)
 
 std::unique_ptr<ISocket> bind_socket(std::string& address_str)
 {
-    auto address = parse_address(address_str);
+    auto address = parseAddress(address_str);
 
     if (address.protocol == "tcp") {
         auto socket = std::make_unique<TCPSocket>();

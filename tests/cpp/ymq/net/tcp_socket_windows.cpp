@@ -53,7 +53,7 @@ TCPSocket& TCPSocket::operator=(TCPSocket&& other) noexcept
 
 void TCPSocket::try_connect(const std::string& address_str, int tries) const
 {
-    auto address = parse_address(address_str);
+    auto address = parseAddress(address_str);
     if (address.protocol != "tcp") {
         throw std::runtime_error("Unsupported protocol for TCPSocket: " + address.protocol);
     }
@@ -83,7 +83,7 @@ void TCPSocket::try_connect(const std::string& address_str, int tries) const
 
 void TCPSocket::bind(const std::string& address_str) const
 {
-    auto address = parse_address(address_str);
+    auto address = parseAddress(address_str);
     if (address.protocol != "tcp") {
         throw std::runtime_error("Unsupported protocol for TCPSocket: " + address.protocol);
     }

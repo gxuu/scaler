@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-Address parse_address(const std::string& address_str)
+Address parseAddress(const std::string& address_str)
 {
     if (address_str.rfind("tcp://", 0) == 0) {  // Check if string starts with "tcp://"
         std::string_view remaining = address_str;

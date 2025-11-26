@@ -10,4 +10,4 @@ struct Address {
     std::string path;
 };
 
-Address parse_address(const std::string& address_str);
+Address parseAddress(const std::string& address_str);
