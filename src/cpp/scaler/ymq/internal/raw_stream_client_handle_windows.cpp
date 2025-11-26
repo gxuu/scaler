@@ -6,9 +6,10 @@
 namespace scaler {
 namespace ymq {
 
-RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddr): _clientFD {}, _remoteAddr(std::move(remoteAddr))
+RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddress)
+    : _clientFD {}, _remoteAddress(std::move(remoteAddress))
 {
-    if (remoteAddr._type == SocketAddress::Type::IPC) {
+    if (remoteAddress._type == SocketAddress::Type::IPC) {
         std::cerr << "Hitting IPC Socket address type, not supported on this system!\n";
         assert(false);
     }
@@ -45,7 +46,7 @@ RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddr): _clientF
 void RawStreamClientHandle::create()
 {
     _clientFD = {};
-    switch (_remoteAddr._type) {
+    switch (_remoteAddress._type) {
         case SocketAddress::Type::TCP: _clientFD = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); break;
         case SocketAddress::Type::IPC: _clientFD = socket(AF_UNIX, SOCK_STREAM, 0); break;
         default: std::unreachable();
@@ -70,7 +71,7 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
     const char ip4[]           = {127, 0, 0, 1};
     *(int*)&localAddr.sin_addr = *(int*)ip4;
 
-    const int bindRes = bind(_clientFD, (struct sockaddr*)&localAddr, _remoteAddr._addrLen);
+    const int bindRes = bind(_clientFD, (struct sockaddr*)&localAddr, _remoteAddress._addrLen);
     if (bindRes == -1) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
@@ -84,7 +85,13 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
     }
 
     const bool ok = _connectExFunc(
-        _clientFD, (sockaddr*)&_remoteAddr, _remoteAddr._addrLen, NULL, 0, NULL, (LPOVERLAPPED)notifyHandle);
+        _clientFD,
+        (sockaddr*)&_remoteAddress._addr,
+        _remoteAddress._addrLen,
+        NULL,
+        0,
+        NULL,
+        (LPOVERLAPPED)notifyHandle);
     if (ok) {
         unrecoverableError({
             Error::ErrorCode::CoreBug,

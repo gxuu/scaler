@@ -55,7 +55,7 @@ void UDSSocket::try_connect(const std::string& address_str, int tries) const
         auto code = ::connect(this->_fd, (sockaddr*)&addr, sizeof(addr));
 
         if (code < 0) {
-            if (errno == ENOENT) {
+            if (errno == ENOENT || errno == ECONNREFUSED) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 continue;
             }
