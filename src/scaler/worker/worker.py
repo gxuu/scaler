@@ -11,7 +11,7 @@ import zmq.asyncio
 
 from scaler.config.defaults import PROFILING_INTERVAL_SECONDS
 from scaler.config.types.network_backend import NetworkBackend
-from scaler.config.types.object_storage_server import ObjectStorageConfig
+from scaler.config.types.object_storage_server import ObjectStorageAddressConfig
 from scaler.config.types.zmq import ZMQConfig, ZMQType
 from scaler.io.async_binder import ZMQAsyncBinder
 from scaler.io.mixins import AsyncBinder, AsyncConnector, AsyncObjectStorageConnector
@@ -51,7 +51,7 @@ class Worker(multiprocessing.get_context("spawn").Process):  # type: ignore
         event_loop: str,
         name: str,
         address: ZMQConfig,
-        object_storage_address: Optional[ObjectStorageConfig],
+        object_storage_address: Optional[ObjectStorageAddressConfig],
         preload: Optional[str],
         capabilities: Dict[str, int],
         io_threads: int,
