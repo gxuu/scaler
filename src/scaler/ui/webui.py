@@ -1,6 +1,4 @@
 import logging
-from typing import Optional, Tuple
-
 
 from scaler.config.section.webui import WebUIConfig
 from scaler.ui.util import NICEGUI_MAJOR_VERSION
