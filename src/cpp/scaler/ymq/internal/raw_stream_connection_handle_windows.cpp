@@ -14,12 +14,6 @@
 #include <ws2tcpip.h> // inet_pton
 // clang-format on
 
-#undef SendMessageCallback
-#define __PRETTY_FUNCTION__ __FUNCSIG__
-#define EPOLLIN             (0)
-#define EPOLLOUT            (0)
-#define EPOLLET             (0)
-
 namespace scaler {
 namespace ymq {
 
