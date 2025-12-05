@@ -26,7 +26,7 @@ namespace scaler {
 namespace ymq {
 
 struct RawStreamServerHandle::Impl {
-    uint64_t _serverFD;
+    int _serverFD;
     SocketAddress _addr;
 };
 
@@ -41,7 +41,7 @@ RawStreamServerHandle::RawStreamServerHandle(SocketAddress addr): _impl(std::mak
     _impl->_addr     = std::move(addr);
 
     _impl->_serverFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
-    if ((int)_impl->_serverFD == -1) {
+    if (_impl->_serverFD == -1) {
         unrecoverableError({
             Error::ErrorCode::ConfigurationError,
             "Originated from",

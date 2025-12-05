@@ -13,7 +13,7 @@ namespace scaler {
 namespace ymq {
 
 struct RawStreamClientHandle::Impl {
-    uint64_t _clientFD;
+    int _clientFD;
     SocketAddress _remoteAddr;
 };
 
@@ -33,7 +33,7 @@ void RawStreamClientHandle::create()
 {
     _impl->_clientFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 
-    if ((int)_impl->_clientFD == -1) {
+    if (_impl->_clientFD == -1) {
         const int myErrno = errno;
         switch (myErrno) {
             case EACCES:
@@ -67,8 +67,7 @@ void RawStreamClientHandle::create()
 
 bool RawStreamClientHandle::prepConnect(void* notifyHandle)
 {
-    const int ret =
-        connect((int)_impl->_clientFD, _impl->_remoteAddr.nativeHandle(), _impl->_remoteAddr.nativeHandleLen());
+    const int ret = connect(_impl->_clientFD, _impl->_remoteAddr.nativeHandle(), _impl->_remoteAddr.nativeHandleLen());
 
     if (ret >= 0) [[unlikely]] {
         return true;
@@ -131,7 +130,7 @@ bool RawStreamClientHandle::needRetry()
 {
     int err {};
     socklen_t errLen {sizeof(err)};
-    if (getsockopt((int)_impl->_clientFD, SOL_SOCKET, SO_ERROR, &err, &errLen) < 0) {
+    if (getsockopt(_impl->_clientFD, SOL_SOCKET, SO_ERROR, &err, &errLen) < 0) {
         const int myErrno = errno;
         switch (myErrno) {
             case ENOPROTOOPT:
