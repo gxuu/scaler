@@ -33,7 +33,7 @@ void StreamClient::onCreated()
 
         _rawClient.zeroNativeHandle();
         _connected = true;
-        _eventLoopThread->_eventLoop.executeLater([sock] { sock->removeConnectedStreamClient(); });
+        _eventLoopThread->_eventLoop.executeLater([sock, this] { sock->removeConnectedStreamClient(this); });
 
         if (_retryTimes == 0) {
             _onConnectReturn({});
@@ -105,7 +105,7 @@ void StreamClient::onWrite()
     _rawClient.zeroNativeHandle();
     _connected = true;
 
-    _eventLoopThread->_eventLoop.executeLater([sock] { sock->removeConnectedStreamClient(); });
+    _eventLoopThread->_eventLoop.executeLater([sock, this] { sock->removeConnectedStreamClient(this); });
 }
 
 void StreamClient::retry()
@@ -117,7 +117,7 @@ void StreamClient::retry()
         const std::string id = this->_localIOSocketIdentity;
         auto sock            = this->_eventLoopThread->_identityToIOSocket.at(id);
         sock->onConnectorMaxedOutRetry();
-        _eventLoopThread->_eventLoop.executeLater([sock] { sock->removeTcpClient(); });
+        _eventLoopThread->_eventLoop.executeLater([sock, this] { sock->removeConnectedStreamClient(this); });
         return;
     }
 
