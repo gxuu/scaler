@@ -38,8 +38,9 @@ RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddr)
 
     _impl->_connectExFunc = {};
     if (_impl->_remoteAddr.nativeHandleType() == SocketAddress::Type::IPC) {
-        std::cerr << "Hitting IPC Socket address type, not supported on this system!\n";
-        assert(false);
+        unrecoverableError({
+            Error::ErrorCode::IPCOnWinNotSupported,
+        });
     }
 
     auto tmp = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

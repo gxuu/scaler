@@ -39,8 +39,9 @@ RawStreamServerHandle::RawStreamServerHandle(SocketAddress addr): _impl(std::mak
     _impl->_acceptExFunc = {};
     memset(_impl->_buffer, 0, sizeof(_impl->_buffer));
     if (_impl->_addr.nativeHandleType() == SocketAddress::Type::IPC) {
-        std::cerr << "Hitting IPC Socket address type, not supported on this system!\n";
-        assert(false);
+        unrecoverableError({
+            Error::ErrorCode::IPCOnWinNotSupported,
+        });
     }
 
     _impl->_serverFD = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
