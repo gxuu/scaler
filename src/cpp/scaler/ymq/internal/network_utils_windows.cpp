@@ -97,7 +97,7 @@ SocketAddress stringToSockaddr(const std::string& address)
         });
     }
 
-	return SocketAddress((const sockaddr*)&outAddr);
+    return SocketAddress((const sockaddr*)&outAddr);
 }
 
 SocketAddress stringToSocketAddress(const std::string& address)
@@ -105,8 +105,24 @@ SocketAddress stringToSocketAddress(const std::string& address)
     assert(address.size());
     switch (address[0]) {
         case 't': return stringToSockaddr(address);  // TCP
-        case 'i':                                    // IPC currently not supported on Windows
-        default: std::unreachable();
+        case 'i':                                    // IPC
+            unrecoverableError({
+                Error::ErrorCode::IPCOnWinNotSupported,
+                "Originated from",
+                __PRETTY_FUNCTION__,
+                "Your input is",
+                address,
+            });
+            break;
+        default:
+            unrecoverableError({
+                Error::ErrorCode::InvalidAddressFormat,
+                "Originated from",
+                __PRETTY_FUNCTION__,
+                "Your input is",
+                address,
+            });
+            break;
     }
 }
 

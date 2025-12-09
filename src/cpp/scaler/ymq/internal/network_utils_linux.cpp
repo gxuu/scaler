@@ -136,7 +136,15 @@ SocketAddress stringToSocketAddress(const std::string& address)
     switch (address[0]) {
         case 'i': return stringToSockaddrUn(address);  // IPC
         case 't': return stringToSockaddr(address);    // TCP
-        default: std::unreachable();
+        default:
+            unrecoverableError({
+                Error::ErrorCode::InvalidAddressFormat,
+                "Originated from",
+                __PRETTY_FUNCTION__,
+                "Your input is",
+                address,
+            });
+            break;
     }
 }
 

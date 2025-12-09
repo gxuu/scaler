@@ -33,6 +33,7 @@ struct Error: public std::exception {
         ConnectorSocketClosedByRemoteEnd,
         IOSocketStopRequested,
         BinderSendMessageWithNoAddress,
+        IPCOnWinNotSupported,
     };
 
     // NOTE:
@@ -87,6 +88,8 @@ struct Error: public std::exception {
             case ErrorCode::IOSocketStopRequested: return "Current IOSocket is requested to stop by another thread";
             case ErrorCode::BinderSendMessageWithNoAddress:
                 return "You call sendMessage with a Binder IOSocket but failed to provide an address";
+            case ErrorCode::IPCOnWinNotSupported:
+                return "You called `bindTo` or `connectTo` with an IPC address on Windows, which is not supported yet";
         }
         std::cerr << "Unrecognized ErrorCode value, program exits\n";
         std::exit(1);
