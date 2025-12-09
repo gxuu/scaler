@@ -6,9 +6,9 @@
 #include "scaler/error/error.h"
 #include "scaler/ymq/event_loop_thread.h"
 #include "scaler/ymq/event_manager.h"
+#include "scaler/ymq/internal/network_utils.h"
 #include "scaler/ymq/io_socket.h"
 #include "scaler/ymq/message_connection.h"
-#include "scaler/ymq/network_utils.h"
 #include "scaler/ymq/timestamp.h"
 
 namespace scaler {
@@ -30,6 +30,11 @@ void StreamClient::onCreated()
             getLocalAddr(_rawClient.nativeHandle()),
             getRemoteAddr(_rawClient.nativeHandle()),
             responsibleForRetry);
+
+        _rawClient.zeroNativeHandle();
+        _connected = true;
+        _eventLoopThread->_eventLoop.executeLater([sock] { sock->removeConnectedStreamClient(); });
+
         if (_retryTimes == 0) {
             _onConnectReturn({});
             _onConnectReturn = {};
@@ -40,6 +45,12 @@ void StreamClient::onCreated()
             _onConnectReturn(std::unexpected {Error::ErrorCode::InitialConnectFailedWithInProgress});
             _onConnectReturn = {};
         }
+
+        if (!_rawClient.isNetworkFD()) {
+            _rawClient.destroy();
+            retry();
+        }
+
         return;
     }
 }
@@ -47,7 +58,7 @@ void StreamClient::onCreated()
 StreamClient::StreamClient(
     EventLoopThread* eventLoopThread,
     std::string localIOSocketIdentity,
-    sockaddr remoteAddr,
+    SocketAddress remoteAddr,
     ConnectReturnCallback onConnectReturn,
     size_t maxRetryTimes) noexcept
     : _eventLoopThread(eventLoopThread)
@@ -94,7 +105,7 @@ void StreamClient::onWrite()
     _rawClient.zeroNativeHandle();
     _connected = true;
 
-    _eventLoopThread->_eventLoop.executeLater([sock] { sock->removeTcpClient(); });
+    _eventLoopThread->_eventLoop.executeLater([sock] { sock->removeConnectedStreamClient(); });
 }
 
 void StreamClient::retry()

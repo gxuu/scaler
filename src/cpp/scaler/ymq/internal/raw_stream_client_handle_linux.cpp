@@ -1,19 +1,53 @@
 #ifdef __linux__
+#include <arpa/inet.h>  // inet_pton
+#include <errno.h>      // EAGAIN etc.
+#include <limits.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <utility>
+
 #include "scaler/error/error.h"
+#include "scaler/ymq/internal/network_utils.h"
 #include "scaler/ymq/internal/raw_stream_client_handle.h"
 
 namespace scaler {
 namespace ymq {
 
-RawStreamClientHandle::RawStreamClientHandle(sockaddr remoteAddr): _clientFD {}, _remoteAddr(std::move(remoteAddr))
+struct RawStreamClientHandle::Impl {
+    int _clientFD;
+    SocketAddress _remoteAddr;
+};
+
+bool RawStreamClientHandle::isNetworkFD() const noexcept
 {
+    return _impl->_remoteAddr.nativeHandleType() == SocketAddress::Type::TCP;
+}
+
+uint64_t RawStreamClientHandle::nativeHandle()
+{
+    return _impl->_clientFD;
+};
+
+RawStreamClientHandle::RawStreamClientHandle(SocketAddress remoteAddr)
+    : _impl(std::make_unique<RawStreamClientHandle::Impl>())
+{
+    _impl->_clientFD   = {};
+    _impl->_remoteAddr = std::move(remoteAddr);
 }
 
 void RawStreamClientHandle::create()
 {
-    _clientFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+    _impl->_clientFD = {};
+    switch (_impl->_remoteAddr.nativeHandleType()) {
+        case SocketAddress::Type::TCP:
+            _impl->_clientFD = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+            break;
+        case SocketAddress::Type::IPC: _impl->_clientFD = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0); break;
+        default: std::unreachable();
+    }
 
-    if ((int)_clientFD == -1) {
+    if (_impl->_clientFD == -1) {
         const int myErrno = errno;
         switch (myErrno) {
             case EACCES:
@@ -47,7 +81,7 @@ void RawStreamClientHandle::create()
 
 bool RawStreamClientHandle::prepConnect(void* notifyHandle)
 {
-    const int ret = connect((int)_clientFD, (sockaddr*)&_remoteAddr, sizeof(_remoteAddr));
+    const int ret = connect(_impl->_clientFD, _impl->_remoteAddr.nativeHandle(), _impl->_remoteAddr.nativeHandleLen());
 
     if (ret >= 0) [[unlikely]] {
         return true;
@@ -55,6 +89,8 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
 
     const int myErrno = errno;
     switch (myErrno) {
+        case ENOENT:        // this happens with UDS and only UDS
+        case ECONNREFUSED:  // this happens with UDS and only UDS in async mode
         case EINPROGRESS: return false;
 
         case EACCES:
@@ -69,8 +105,8 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
                 "connect(2)",
                 "Errno is",
                 strerror(myErrno),
-                "_clientFD",
-                _clientFD,
+                "_impl->_clientFD",
+                _impl->_clientFD,
             });
 
         case EINTR:
@@ -80,8 +116,8 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
                 "connect(2)",
                 "Errno is",
                 strerror(myErrno),
-                "_clientFD",
-                _clientFD,
+                "_impl->_clientFD",
+                _impl->_clientFD,
             });
 
         case EPERM:
@@ -92,7 +128,6 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
         case EBADF:
         case EISCONN:
         case ENOTSOCK:
-        case ECONNREFUSED:
         default:
             unrecoverableError({
                 Error::ErrorCode::CoreBug,
@@ -100,8 +135,8 @@ bool RawStreamClientHandle::prepConnect(void* notifyHandle)
                 "connect(2)",
                 "Errno is",
                 strerror(myErrno),
-                "_clientFD",
-                _clientFD,
+                "_impl->_clientFD",
+                _impl->_clientFD,
             });
     }
 }
@@ -110,7 +145,7 @@ bool RawStreamClientHandle::needRetry()
 {
     int err {};
     socklen_t errLen {sizeof(err)};
-    if (getsockopt((int)_clientFD, SOL_SOCKET, SO_ERROR, &err, &errLen) < 0) {
+    if (getsockopt(_impl->_clientFD, SOL_SOCKET, SO_ERROR, &err, &errLen) < 0) {
         const int myErrno = errno;
         switch (myErrno) {
             case ENOPROTOOPT:
@@ -122,8 +157,8 @@ bool RawStreamClientHandle::needRetry()
                     "getsockopt(3)",
                     "Errno is",
                     strerror(myErrno),
-                    "_clientFD",
-                    _clientFD,
+                    "_impl->_clientFD",
+                    _impl->_clientFD,
                 });
 
             case ENOTSOCK:
@@ -136,8 +171,8 @@ bool RawStreamClientHandle::needRetry()
                     "getsockopt(3)",
                     "Errno is",
                     strerror(myErrno),
-                    "_clientFD",
-                    _clientFD,
+                    "_impl->_clientFD",
+                    _impl->_clientFD,
                 });
         }
     }
@@ -153,8 +188,8 @@ bool RawStreamClientHandle::needRetry()
             "connect(2)",
             "Errno is",
             strerror(errno),
-            "_clientFD",
-            _clientFD,
+            "_impl->_clientFD",
+            _impl->_clientFD,
         });
     }
     return false;
@@ -162,14 +197,14 @@ bool RawStreamClientHandle::needRetry()
 
 void RawStreamClientHandle::destroy()
 {
-    if (_clientFD) {
-        CloseAndZeroSocket(_clientFD);
+    if (_impl->_clientFD) {
+        closeAndZeroSocket(&_impl->_clientFD);
     }
 }
 
 void RawStreamClientHandle::zeroNativeHandle() noexcept
 {
-    _clientFD = 0;
+    _impl->_clientFD = 0;
 }
 
 RawStreamClientHandle::~RawStreamClientHandle()
