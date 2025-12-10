@@ -27,55 +27,49 @@ struct OneToManyDict {
     bool hasKey(const K& key) { return _keyToValues.contains(key); }
     bool hasValue(const V& value) { return _valueToKey.contains(value); }
 
-    std::pair<K, bool> getKey(const V& value)
+    const K* getKey(const V& value)
     {
-        auto k = _valueToKey.find(value);
-        if (k == _valueToKey.end()) {
-            return {{}, false};
-        }
-        return {k->second, true};
+        auto it = _valueToKey.find(value);
+        return it == _valueToKey.end() ? nullptr : &it->second;
     }
 
     const std::set<V>* getValues(const K& key)
     {
-        auto v = _keyToValues.find(key);
-        if (v == _keyToValues.end()) {
-            return nullptr;
-        }
-        return &v->second;
+        auto it = _keyToValues.find(key);
+        return it == _keyToValues.end() ? nullptr : &it->second;
     }
 
     std::pair<std::set<V>, bool> removeKey(const K& key)
     {
-        auto v = _keyToValues.find(key);
-        if (v == _keyToValues.end()) {
+        auto it = _keyToValues.find(key);
+        if (it == _keyToValues.end()) {
             return {{}, false};
         }
 
-        for (const auto& value: v->second) {
+        for (const auto& value: it->second) {
             _valueToKey.erase(value);
         }
 
-        auto res = v->second;
-        _keyToValues.erase(v);
+        auto res = std::move(it->second);
+        _keyToValues.erase(it);
         return {res, true};
     }
 
     std::pair<K, bool> removeValue(const V& value)
     {
-        auto k = _valueToKey.find(value);
-        if (k == _valueToKey.end()) {
+        auto it = _valueToKey.find(value);
+        if (it == _valueToKey.end()) {
             return {{}, false};
         }
 
-        auto res = k->second;
-        _valueToKey.erase(k);
+        auto key = std::move(it->second);
+        _valueToKey.erase(it);
 
-        auto vit = _keyToValues.find(res);
-        if (vit->second.size() == 0) {
-            _keyToValues.erase(vit);
+        auto val = _keyToValues.find(key);
+        if (val->second.size() == 0) {
+            _keyToValues.erase(val);
         }
 
-        return {res, true};
+        return {key, true};
     }
 };
