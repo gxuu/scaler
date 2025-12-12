@@ -1,17 +1,20 @@
 #pragma once
 
-#include <map>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
+
+namespace scaler {
+namespace utility {
 
 template <typename K, typename V>
 struct OneToManyDict {
-    std::map<K, std::set<V>> _keyToValues;
-    std::map<V, K> _valueToKey;
+    std::unordered_map<K, std::unordered_set<V>> _keyToValues;
+    std::unordered_map<V, K> _valueToKey;
 
     bool contains(const K& key) { return _keyToValues.contains(key); }
 
-    const std::map<K, std::set<V>>& keys() { return _keyToValues; }
-    const std::map<V, K>& values() { return _valueToKey; }
+    const std::unordered_map<K, std::unordered_set<V>>& keys() { return _keyToValues; }
+    const std::unordered_map<V, K>& values() { return _valueToKey; }
 
     bool add(const K& key, const V& value)
     {
@@ -33,13 +36,13 @@ struct OneToManyDict {
         return it == _valueToKey.end() ? nullptr : &it->second;
     }
 
-    const std::set<V>* getValues(const K& key)
+    const std::unordered_set<V>* getValues(const K& key)
     {
         auto it = _keyToValues.find(key);
         return it == _keyToValues.end() ? nullptr : &it->second;
     }
 
-    std::pair<std::set<V>, bool> removeKey(const K& key)
+    std::pair<std::unordered_set<V>, bool> removeKey(const K& key)
     {
         auto it = _keyToValues.find(key);
         if (it == _keyToValues.end()) {
@@ -73,3 +76,6 @@ struct OneToManyDict {
         return {key, true};
     }
 };
+
+}  // namespace utility
+}  // namespace scaler
