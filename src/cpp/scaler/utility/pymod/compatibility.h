@@ -1,7 +1,6 @@
 #pragma once
 // NOTE: This file is needed because of we support backward compatibility to
 // Python 3.8. This file will be removed once we drop the support to Python 3.8.
-
 #define PY_SSIZE_T_CLEAN
 
 // if on Windows and in debug mode, undefine _DEBUG before including Python.h
@@ -17,7 +16,7 @@
 #include <structmember.h>
 
 #include "scaler/error/error.h"
-#include "scaler/ymq/pymod_ymq/gil.h"
+#include "scaler/utility/pymod/gil.h"
 
 namespace scaler {
 namespace ymq {
@@ -147,6 +146,8 @@ public:
     T* operator->() const { return _ptr; }
     T* operator*() const { return _ptr; }
 
+    Py_hash_t hash() const { return PyObject_Hash(_ptr); }
+
 private:
     T* _ptr;
 
@@ -161,6 +162,11 @@ private:
 
         Py_CLEAR(_ptr);
     }
+};
+
+template <>
+struct std::hash<OwnedPyObject<PyObject>> {
+    std::size_t operator()(const OwnedPyObject<PyObject>& obj) const noexcept { return obj.hash(); }
 };
 
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION == 8
