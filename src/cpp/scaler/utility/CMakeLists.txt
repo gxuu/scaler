@@ -29,7 +29,6 @@ elseif(WIN32)
     )
 endif()
 
-
 install(
     TARGETS py_one_to_many_dict
     LIBRARY DESTINATION scaler/utility
