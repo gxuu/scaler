@@ -3,7 +3,6 @@ add_library(py_one_to_many_dict SHARED
     pymod/one_to_many_dict.cpp
 )
 
-
 target_include_directories(py_one_to_many_dict PRIVATE
     ${PROJECT_SOURCE_DIR}/src/cpp
 )
