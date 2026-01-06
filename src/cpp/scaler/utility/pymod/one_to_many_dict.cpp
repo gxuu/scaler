@@ -11,14 +11,12 @@
 extern "C" {
 struct PyOneToManyDict {
     PyObject_HEAD;
-    scaler::utility::OneToManyDict<OwnedPyObject<PyObject>, OwnedPyObject<PyObject>> dict;
+    scaler::utility::OneToManyDict<OwnedPyObject<>, OwnedPyObject<>> dict;
 };
 
 static PyObject* PyOneToManyDictNew(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
-    PyOneToManyDict* self {};
-    self = (PyOneToManyDict*)type->tp_alloc(type, 0);
-    return (PyObject*)self;
+    return type->tp_alloc(type, 0);
 }
 
 static int PyOneToManyDictInit(PyOneToManyDict* self, PyObject* args, PyObject* kwds)
