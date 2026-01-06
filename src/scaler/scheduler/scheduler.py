@@ -248,12 +248,7 @@ class Scheduler:
 
         self._binder.destroy()
         self._binder_monitor.destroy()
-        # TODO: If we have this statement, then when SCALER_NETWORK_BACKEND is tcp_zmq, it would sometimes block on
-        # closing. However, if we don't have this statement, sometimes there are log output
-        # "terminate called without an active exception" without a reason (no usual coredump or abort message). It
-        # doesn't look like a bug, perhaps pytest cleanup has gone wrong. This might need investigation.
-        # - 20251114, gxu
-        # await self._connector_storage.destroy()
+        self._connector_storage.destroy()
 
 
 @functools.wraps(Scheduler)

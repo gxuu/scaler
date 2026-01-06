@@ -266,12 +266,7 @@ class Worker(multiprocessing.get_context("spawn").Process):  # type: ignore
         self._connector_external.destroy()
         self._processor_manager.destroy("quit")
         self._binder_internal.destroy()
-        # TODO: If we have this statement, then when SCALER_NETWORK_BACKEND is tcp_zmq, it would sometimes block on
-        # closing. However, if we don't have this statement, sometimes there are log output
-        # "terminate called without an active exception" without a reason (no usual coredump or abort message). It
-        # doesn't look like a bug, perhaps pytest cleanup has gone wrong. This might need investigation.
-        # - 20251114, gxu
-        # await self._connector_storage.destroy()
+        self._connector_storage.destroy()
         os.remove(self._address_path_internal)
 
         logging.info(f"{self.identity!r}: quit")
