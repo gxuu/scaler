@@ -26,11 +26,18 @@ elseif(WIN32)
         OUTPUT_NAME "one_to_many_dict"
         SUFFIX ".pyd"
         LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/src/scaler/utility
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/src/scaler/utility
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/src/scaler/utility
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/src/scaler/utility
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/src/scaler/utility
     )
-endif()
 
+endif()
 
 install(
     TARGETS py_one_to_many_dict
+    RUNTIME DESTINATION scaler/utility
     LIBRARY DESTINATION scaler/utility
+    ARCHIVE DESTINATION scaler/utility
 )
