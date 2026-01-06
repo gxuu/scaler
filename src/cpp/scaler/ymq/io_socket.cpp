@@ -223,12 +223,9 @@ void IOSocket::onConnectorMaxedOutRetry() noexcept
     _unestablishedConnection.pop_back();
 }
 
-// TODO: The function should be separated into onConnectionAborted, onConnectionDisconnected,
-// and probably onConnectionAbortedBeforeEstablished(?)
 void IOSocket::onConnectionDisconnected(MessageConnection* conn, bool keepInBook) noexcept
 {
     if (!conn->_remoteIOSocketIdentity) {
-        // TODO: This should perhaps do retry?
         if (IOSocketType::Connector == this->_socketType) {
             _connectorDisconnected = true;
             fillPendingRecvMessagesWithErr(Error::ErrorCode::ConnectorSocketClosedByRemoteEnd);
