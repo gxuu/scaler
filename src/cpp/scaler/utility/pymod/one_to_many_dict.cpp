@@ -37,7 +37,6 @@ static void PyOneToManyDictDealloc(PyObject* self)
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-
 static PyObject* PyOneToManyDictAdd(PyOneToManyDict* self, PyObject* args)
 {
     PyObject* key {};
@@ -287,18 +286,15 @@ static PyMethodDef PyOneToManyDictMethods[] = {
 
 static PyObject* PyOneToManyDictIteratorIter(PyObject* self);
 static PyObject* PyOneToManyDictIteratorIterNext(PyObject* self);
+static PyObject* PyOneToManyDictIteratorIterSelf(PyObject* self);
 
 static void PyOneToManyDictIteratorDealloc(PyObject* self) noexcept
 {
     auto* it = (PyOneToManyDictIterator*)self;
 
-    using IterType = decltype(it->iter);
-    (it->iter).IterType::~IterType();
-
     Py_XDECREF(it->dict);
     Py_TYPE(self)->tp_free(self);
 }
-
 
 static PyType_Slot PyOneToManyDictSlots[] = {
     {Py_tp_dealloc, (void*)PyOneToManyDictDealloc},
@@ -328,6 +324,7 @@ static PyType_Spec PyOneToManyDictSpec = {
 static PyType_Slot PyOneToManyDictIteratorSlots[] = {
     {Py_tp_dealloc, (void*)PyOneToManyDictIteratorDealloc},
     {Py_tp_iternext, (void*)PyOneToManyDictIteratorIterNext},
+    {Py_tp_iter, (void*)PyOneToManyDictIteratorIterSelf},
     {0, nullptr},
 };
 
@@ -340,7 +337,7 @@ static PyType_Spec PyOneToManyDictIteratorSpec = {
 
 static PyObject* PyOneToManyDictIteratorIter(PyObject* self)
 {
-    PyObject* iterType = nullptr;
+    static PyObject* iterType = nullptr;
 
     if (!iterType) {
         iterType = PyType_FromSpec(&PyOneToManyDictIteratorSpec);
@@ -366,12 +363,18 @@ static PyObject* PyOneToManyDictIteratorIterNext(PyObject* self)
 {
     PyOneToManyDictIterator* obj = (PyOneToManyDictIterator*)self;
     if (obj->iter == obj->dict->dict._keyToValues.end()) {
+        PyErr_SetNone(PyExc_StopIteration);
         return nullptr;
     }
 
     auto key = (obj->iter)->first;
     ++obj->iter;
     return key.take();
+}
+
+static PyObject* PyOneToManyDictIteratorIterSelf(PyObject* self)
+{
+    return OwnedPyObject<>::fromBorrowed(self).take();
 }
 
 PyMODINIT_FUNC PyInit_one_to_many_dict(void)
