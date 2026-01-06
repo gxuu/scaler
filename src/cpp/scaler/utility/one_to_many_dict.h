@@ -10,7 +10,7 @@ template <typename K, typename V>
 struct OneToManyDict {
     std::unordered_map<K, std::unordered_set<V>> _keyToValues;
     std::unordered_map<V, K> _valueToKey;
-    decltype(_keyToValues)::iterator _iter;
+    using IterType = decltype(_keyToValues)::iterator;
 
     bool contains(const K& key) { return _keyToValues.contains(key); }
 
