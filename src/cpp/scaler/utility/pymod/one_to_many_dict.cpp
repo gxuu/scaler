@@ -14,6 +14,12 @@ struct PyOneToManyDict {
     scaler::utility::OneToManyDict<OwnedPyObject<>, OwnedPyObject<>> dict;
 };
 
+struct PyOneToManyDictIterator {
+    PyObject_HEAD;
+    PyOneToManyDict* dict;  // keep container alive
+    scaler::utility::OneToManyDict<OwnedPyObject<>, OwnedPyObject<>>::IterType iter;
+};
+
 static PyObject* PyOneToManyDictNew(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     return type->tp_alloc(type, 0);
@@ -21,16 +27,16 @@ static PyObject* PyOneToManyDictNew(PyTypeObject* type, PyObject* args, PyObject
 
 static int PyOneToManyDictInit(PyOneToManyDict* self, PyObject* args, PyObject* kwds)
 {
-    new (&((PyOneToManyDict*)self)->dict)
-        scaler::utility::OneToManyDict<OwnedPyObject<PyObject>, OwnedPyObject<PyObject>>();
+    new (&((PyOneToManyDict*)self)->dict) scaler::utility::OneToManyDict<OwnedPyObject<>, OwnedPyObject<>>();
     return 0;
 }
 
 static void PyOneToManyDictDealloc(PyObject* self)
 {
-    ((PyOneToManyDict*)self)->dict.~OneToManyDict<OwnedPyObject<PyObject>, OwnedPyObject<PyObject>>();
+    ((PyOneToManyDict*)self)->dict.~OneToManyDict<OwnedPyObject<>, OwnedPyObject<>>();
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
+
 
 static PyObject* PyOneToManyDictAdd(PyOneToManyDict* self, PyObject* args)
 {
@@ -257,27 +263,6 @@ static PyObject* PyOneToManyDictContains(PyOneToManyDict* self, PyObject* args)
     }
 }
 
-static PyObject* PyOneToManyDictIter(PyObject* self)
-{
-    PyOneToManyDict* obj = (PyOneToManyDict*)self;
-    obj->dict._iter      = obj->dict._keyToValues.begin();
-
-    Py_INCREF(self);
-    return self;
-}
-
-static PyObject* PyOneToManyDictIterNext(PyObject* self)
-{
-    PyOneToManyDict* obj = (PyOneToManyDict*)self;
-    if (obj->dict._iter == obj->dict._keyToValues.end()) {
-        return nullptr;  // Stop iteration (signals the end)
-    }
-
-    auto key = (obj->dict._iter)->first;
-    ++obj->dict._iter;
-    return key.take();
-}
-
 // Define the methods for the OneToManyDict Python class
 static PyMethodDef PyOneToManyDictMethods[] = {
     {"__contains__", (PyCFunction)PyOneToManyDictContains, METH_VARARGS, "__contains__ method"},
@@ -300,18 +285,28 @@ static PyMethodDef PyOneToManyDictMethods[] = {
     {nullptr},
 };
 
-// Define the Python Object Type for OneToManyDict
-static PyTypeObject PyOneToManyDictType = {
-    .tp_name      = "one_to_many_dict.OneToManyDict",
-    .tp_basicsize = sizeof(PyOneToManyDict),
-    .tp_dealloc   = (destructor)PyOneToManyDictDealloc,
-    .tp_flags     = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
-    .tp_doc       = "OneToManyDict",
-    .tp_iter      = (getiterfunc)PyOneToManyDictIter,
-    .tp_iternext  = (iternextfunc)PyOneToManyDictIterNext,
-    .tp_methods   = PyOneToManyDictMethods,
-    .tp_init      = (initproc)PyOneToManyDictInit,
-    .tp_new       = PyOneToManyDictNew,
+static PyObject* PyOneToManyDictIteratorIter(PyObject* self);
+static PyObject* PyOneToManyDictIteratorIterNext(PyObject* self);
+
+static void PyOneToManyDictIteratorDealloc(PyObject* self) noexcept
+{
+    auto* it = (PyOneToManyDictIterator*)self;
+
+    using IterType = decltype(it->iter);
+    (it->iter).IterType::~IterType();
+
+    Py_XDECREF(it->dict);
+    Py_TYPE(self)->tp_free(self);
+}
+
+
+static PyType_Slot PyOneToManyDictSlots[] = {
+    {Py_tp_dealloc, (void*)PyOneToManyDictDealloc},
+    {Py_tp_init, (void*)PyOneToManyDictInit},
+    {Py_tp_new, (void*)PyOneToManyDictNew},
+    {Py_tp_methods, PyOneToManyDictMethods},
+    {Py_tp_iter, (void*)PyOneToManyDictIteratorIter},
+    {0, nullptr},
 };
 
 static PyModuleDef one_to_many_dict_module = {
@@ -323,22 +318,80 @@ static PyModuleDef one_to_many_dict_module = {
     .m_free  = nullptr,
 };
 
-// Module initialization function
-PyMODINIT_FUNC PyInit_one_to_many_dict(void)
-{
-    PyObject* m {};
+static PyType_Spec PyOneToManyDictSpec = {
+    .name      = "one_to_many_dict.OneToManyDict",
+    .basicsize = sizeof(PyOneToManyDict),
+    .flags     = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .slots     = PyOneToManyDictSlots,
+};
 
-    if (PyType_Ready(&PyOneToManyDictType) < 0) {
+static PyType_Slot PyOneToManyDictIteratorSlots[] = {
+    {Py_tp_dealloc, (void*)PyOneToManyDictIteratorDealloc},
+    {Py_tp_iternext, (void*)PyOneToManyDictIteratorIterNext},
+    {0, nullptr},
+};
+
+static PyType_Spec PyOneToManyDictIteratorSpec = {
+    .name      = "one_to_many_dict._OneToManyDictIterator",
+    .basicsize = sizeof(PyOneToManyDictIterator),
+    .flags     = Py_TPFLAGS_DEFAULT,
+    .slots     = PyOneToManyDictIteratorSlots,
+};
+
+static PyObject* PyOneToManyDictIteratorIter(PyObject* self)
+{
+    PyObject* iterType = nullptr;
+
+    if (!iterType) {
+        iterType = PyType_FromSpec(&PyOneToManyDictIteratorSpec);
+        if (!iterType) {
+            return nullptr;
+        }
+    }
+
+    auto* it = (PyOneToManyDictIterator*)((PyTypeObject*)iterType)->tp_alloc((PyTypeObject*)iterType, 0);
+
+    if (!it) {
         return nullptr;
     }
 
-    m = PyModule_Create(&one_to_many_dict_module);
+    Py_INCREF(self);
+    it->dict = (PyOneToManyDict*)self;
+    it->iter = it->dict->dict._keyToValues.begin();
+
+    return (PyObject*)it;
+}
+
+static PyObject* PyOneToManyDictIteratorIterNext(PyObject* self)
+{
+    PyOneToManyDictIterator* obj = (PyOneToManyDictIterator*)self;
+    if (obj->iter == obj->dict->dict._keyToValues.end()) {
+        return nullptr;
+    }
+
+    auto key = (obj->iter)->first;
+    ++obj->iter;
+    return key.take();
+}
+
+PyMODINIT_FUNC PyInit_one_to_many_dict(void)
+{
+    PyObject* m = PyModule_Create(&one_to_many_dict_module);
     if (!m) {
         return nullptr;
     }
 
-    Py_INCREF(&PyOneToManyDictType);
-    PyModule_AddObject(m, "OneToManyDict", (PyObject*)&PyOneToManyDictType);
+    PyObject* type = PyType_FromSpec(&PyOneToManyDictSpec);
+    if (!type) {
+        Py_DECREF(m);
+        return nullptr;
+    }
+
+    if (PyModule_AddObject(m, "OneToManyDict", type) < 0) {
+        Py_DECREF(type);
+        Py_DECREF(m);
+        return nullptr;
+    }
 
     return m;
 }
