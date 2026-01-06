@@ -50,10 +50,10 @@ public:
     void recvMessage(RecvMessageCallback onRecvMessage) noexcept;
     void bindTo(std::string netOrDomainAddr, BindReturnCallback onBindReturn) noexcept;
     void connectTo(
-        std::string netOrDomainAddr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
+        std::string netOrDomainAddr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 4) noexcept;
 
     // NOTE: BELOW ONE ARE NOT OFFICIAL USERSPACE API. USE WITH CAUTION.
-    void connectTo(SocketAddress addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 8) noexcept;
+    void connectTo(SocketAddress addr, ConnectReturnCallback onConnectReturn, size_t maxRetryTimes = 4) noexcept;
 
     void closeConnection(Identity remoteSocketIdentity) noexcept;
 
