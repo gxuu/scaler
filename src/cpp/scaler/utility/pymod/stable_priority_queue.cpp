@@ -125,21 +125,22 @@ static Py_ssize_t PyStablePriorityQueueSize(PyObject* self)
     return ((PyStablePriorityQueue*)self)->queue.size();
 }
 
-static PySequenceMethods PyStablePriorityQueueSequenceMethods = {
-    .sq_length = PyStablePriorityQueueSize,
+static PyType_Slot PyStablePriorityQueueSlots[] = {
+    {Py_tp_new, (void*)PyStablePriorityQueueNew},
+    {Py_tp_init, (void*)PyStablePriorityQueueInit},
+    {Py_tp_dealloc, (void*)PyStablePriorityQueueDealloc},
+    {Py_tp_methods, (void*)PyStablePriorityQueueMethods},
+    {Py_sq_length, (void*)PyStablePriorityQueueSize},
+    {Py_tp_doc, (void*)"StablePriorityQueue"},
+    {0, nullptr},
 };
 
-// Define the Python Object Type for StablePriorityQueue
-static PyTypeObject PyStablePriorityQueueType = {
-    .tp_name        = "stable_priority_queue.StablePriorityQueue",
-    .tp_basicsize   = sizeof(PyStablePriorityQueue),
-    .tp_dealloc     = (destructor)PyStablePriorityQueueDealloc,
-    .tp_as_sequence = &PyStablePriorityQueueSequenceMethods,
-    .tp_flags       = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
-    .tp_doc         = "StablePriorityQueue",
-    .tp_methods     = PyStablePriorityQueueMethods,
-    .tp_init        = (initproc)PyStablePriorityQueueInit,
-    .tp_new         = PyStablePriorityQueueNew,
+static PyType_Spec PyStablePriorityQueueSpec = {
+    .name      = "stable_priority_queue.StablePriorityQueue",
+    .basicsize = sizeof(PyStablePriorityQueue),
+    .itemsize  = 0,
+    .flags     = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .slots     = PyStablePriorityQueueSlots,
 };
 
 static PyModuleDef stable_priority_queue_module = {
@@ -151,22 +152,24 @@ static PyModuleDef stable_priority_queue_module = {
     .m_free  = nullptr,
 };
 
-// Module initialization function
 PyMODINIT_FUNC PyInit_stable_priority_queue(void)
 {
-    PyObject* m {};
-
-    if (PyType_Ready(&PyStablePriorityQueueType) < 0) {
-        return nullptr;
-    }
-
-    m = PyModule_Create(&stable_priority_queue_module);
+    PyObject* m = PyModule_Create(&stable_priority_queue_module);
     if (!m) {
         return nullptr;
     }
 
-    Py_INCREF(&PyStablePriorityQueueType);
-    PyModule_AddObject(m, "StablePriorityQueue", (PyObject*)&PyStablePriorityQueueType);
+    PyObject* type = PyType_FromSpec(&PyStablePriorityQueueSpec);
+    if (!type) {
+        Py_DECREF(m);
+        return nullptr;
+    }
+
+    if (PyModule_AddObject(m, "StablePriorityQueue", type) < 0) {
+        Py_DECREF(type);
+        Py_DECREF(m);
+        return nullptr;
+    }
 
     return m;
 }
