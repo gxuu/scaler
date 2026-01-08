@@ -331,6 +331,7 @@ static PyType_Slot PyOneToManyDictIteratorSlots[] = {
 static PyType_Spec PyOneToManyDictIteratorSpec = {
     .name      = "one_to_many_dict._OneToManyDictIterator",
     .basicsize = sizeof(PyOneToManyDictIterator),
+    .itemsize  = 0,
     .flags     = Py_TPFLAGS_DEFAULT,
     .slots     = PyOneToManyDictIteratorSlots,
 };
