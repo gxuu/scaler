@@ -2,6 +2,10 @@
 
 #include "scaler/utility/pymod/compatibility.h"
 
+namespace scaler {
+namespace utility {
+namespace stable_priority_queue {
+namespace pymod {
 extern "C" {
 struct PyStablePriorityQueue {
     PyObject_HEAD;
@@ -151,9 +155,15 @@ static PyModuleDef stable_priority_queue_module = {
     .m_slots = nullptr,
     .m_free  = nullptr,
 };
+}
+}  // namespace pymod
+}  // namespace stable_priority_queue
+}  // namespace utility
+}  // namespace scaler
 
 PyMODINIT_FUNC PyInit_stable_priority_queue(void)
 {
+    using namespace scaler::utility::stable_priority_queue::pymod;
     PyObject* m = PyModule_Create(&stable_priority_queue_module);
     if (!m) {
         return nullptr;
@@ -172,5 +182,4 @@ PyMODINIT_FUNC PyInit_stable_priority_queue(void)
     }
 
     return m;
-}
 }
