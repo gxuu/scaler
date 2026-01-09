@@ -8,6 +8,11 @@
 // to run test pipeline for Windows. - gxu
 #include "scaler/utility/pymod/compatibility.h"
 
+namespace scaler {
+namespace utility {
+namespace one_to_many_dict {
+namespace pymod {
+
 extern "C" {
 struct PyOneToManyDict {
     PyObject_HEAD;
@@ -377,9 +382,14 @@ static PyObject* PyOneToManyDictIteratorIterSelf(PyObject* self)
 {
     return OwnedPyObject<>::fromBorrowed(self).take();
 }
+}
+}  // namespace pymod
+}  // namespace one_to_many_dict
+}  // namespace utility
 
 PyMODINIT_FUNC PyInit_one_to_many_dict(void)
 {
+    using namespace scaler::utility::one_to_many_dict::pymod;
     PyObject* m = PyModule_Create(&one_to_many_dict_module);
     if (!m) {
         return nullptr;
@@ -399,4 +409,4 @@ PyMODINIT_FUNC PyInit_one_to_many_dict(void)
 
     return m;
 }
-}
+}  // namespace scaler
