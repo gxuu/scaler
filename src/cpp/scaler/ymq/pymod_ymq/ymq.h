@@ -21,6 +21,8 @@ namespace scaler {
 namespace ymq {
 namespace pymod {
 
+using namespace scaler::utility::pymod;
+
 struct YMQState {
     OwnedPyObject<> enumModule;     // Reference to the enum module
     OwnedPyObject<> asyncioModule;  // Reference to the asyncio module

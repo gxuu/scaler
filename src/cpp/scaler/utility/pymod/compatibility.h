@@ -19,7 +19,7 @@
 #include "scaler/utility/pymod/gil.h"
 
 namespace scaler {
-namespace ymq {
+namespace utility {
 namespace pymod {
 
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 10
@@ -47,7 +47,7 @@ static inline int PyModule_AddObjectRef(PyObject* mod, const char* name, PyObjec
 
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 9
 // This is a very dirty hack, we basically place the raw pointer to this dict when init,
-// see scaler/ymq/pymod_ymq/ymq.h for more detail
+// see scaler/utility/pymod_ymq/ymq.h for more detail
 PyObject* PyType_GetModule(PyTypeObject* type)
 {
     return PyObject_GetAttrString((PyObject*)(type), "__module_object__");
@@ -169,11 +169,6 @@ private:
     }
 };
 
-template <>
-struct std::hash<OwnedPyObject<PyObject>> {
-    std::size_t operator()(const OwnedPyObject<PyObject>& obj) const noexcept { return obj.hash(); }
-};
-
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION == 8
 static inline PyObject* PyObject_CallOneArg(PyObject* callable, PyObject* arg)
 {
@@ -186,5 +181,13 @@ static inline PyObject* PyObject_CallOneArg(PyObject* callable, PyObject* arg)
 #endif
 
 }  // namespace pymod
-}  // namespace ymq
+}  // namespace utility
 }  // namespace scaler
+
+template <>
+struct std::hash<scaler::utility::pymod::OwnedPyObject<PyObject>> {
+    std::size_t operator()(const scaler::utility::pymod::OwnedPyObject<PyObject>& obj) const noexcept
+    {
+        return obj.hash();
+    }
+};
