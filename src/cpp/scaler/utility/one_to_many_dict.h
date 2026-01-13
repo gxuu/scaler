@@ -10,7 +10,8 @@ template <typename K, typename V>
 struct OneToManyDict {
     std::unordered_map<K, std::unordered_set<V>> _keyToValues;
     std::unordered_map<V, K> _valueToKey;
-    using IterType = decltype(_keyToValues)::iterator;
+    using IterType        = decltype(_keyToValues)::iterator;
+    using BucketCountType = decltype(_keyToValues)::size_type;
 
     bool contains(const K& key) { return _keyToValues.contains(key); }
 
@@ -81,6 +82,21 @@ struct OneToManyDict {
         }
 
         return {std::move(key), true};
+    }
+
+    std::pair<IterType, BucketCountType> safeKeyToValueBegin() noexcept
+    {
+        return {_keyToValues.begin(), _keyToValues.bucket_count()};
+    }
+
+    std::pair<IterType, bool> safeKeyToValueNext(IterType iter, BucketCountType bucketCount) const noexcept
+    {
+        return {++iter, _keyToValues.bucket_count() == bucketCount};
+    }
+
+    bool keyToValueIteratorValid(BucketCountType bucketCount) const noexcept
+    {
+        return bucketCount == _keyToValues.bucket_count();
     }
 };
 

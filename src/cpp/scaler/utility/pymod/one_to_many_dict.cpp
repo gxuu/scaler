@@ -17,13 +17,13 @@ extern "C" {
 struct PyOneToManyDict {
     PyObject_HEAD;
     scaler::utility::OneToManyDict<OwnedPyObject<>, OwnedPyObject<>> dict;
-    int iterAlive;
 };
 
 struct PyOneToManyDictIterator {
     PyObject_HEAD;
     PyOneToManyDict* dict;  // keep container alive
     scaler::utility::OneToManyDict<OwnedPyObject<>, OwnedPyObject<>>::IterType iter;
+    scaler::utility::OneToManyDict<OwnedPyObject<>, OwnedPyObject<>>::BucketCountType bucketCount;
 };
 
 static PyObject* PyOneToManyDictNew(PyTypeObject* type, PyObject* args, PyObject* kwds)
@@ -34,7 +34,6 @@ static PyObject* PyOneToManyDictNew(PyTypeObject* type, PyObject* args, PyObject
 static int PyOneToManyDictInit(PyOneToManyDict* self, PyObject* args, PyObject* kwds)
 {
     new (&(self->dict)) scaler::utility::OneToManyDict<OwnedPyObject<>, OwnedPyObject<>>();
-    self->iterAlive = 0;
     return 0;
 }
 
@@ -46,11 +45,6 @@ static void PyOneToManyDictDealloc(PyObject* self)
 
 static PyObject* PyOneToManyDictAdd(PyOneToManyDict* self, PyObject* args)
 {
-    if (self->iterAlive != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
-        return nullptr;
-    }
-
     PyObject* key {};
     PyObject* value {};
 
@@ -139,11 +133,6 @@ static PyObject* PyOneToManyDictGetValues(PyOneToManyDict* self, PyObject* args)
 
 static PyObject* PyOneToManyDictRemoveKey(PyOneToManyDict* self, PyObject* args)
 {
-    if (self->iterAlive != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
-        return nullptr;
-    }
-
     PyObject* key {};
     if (!PyArg_ParseTuple(args, "O", &key)) {
         return nullptr;
@@ -171,11 +160,6 @@ static PyObject* PyOneToManyDictRemoveKey(PyOneToManyDict* self, PyObject* args)
 
 static PyObject* PyOneToManyDictRemoveValue(PyOneToManyDict* self, PyObject* args)
 {
-    if (self->iterAlive != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
-        return nullptr;
-    }
-
     PyObject* value {};
     if (!PyArg_ParseTuple(args, "O", &value)) {
         return nullptr;
@@ -313,7 +297,6 @@ static PyObject* PyOneToManyDictIteratorIterSelf(PyObject* self);
 static void PyOneToManyDictIteratorDealloc(PyObject* self) noexcept
 {
     auto* it = (PyOneToManyDictIterator*)self;
-    --it->dict->iterAlive;
 
     Py_XDECREF(it->dict);
     Py_TYPE(self)->tp_free(self);
@@ -378,8 +361,10 @@ static PyObject* PyOneToManyDictIteratorIter(PyObject* self)
 
     Py_INCREF(self);
     it->dict = (PyOneToManyDict*)self;
-    ++it->dict->iterAlive;
-    it->iter = it->dict->dict._keyToValues.begin();
+
+    const auto safeIter = it->dict->dict.safeKeyToValueBegin();
+    it->iter            = std::move(safeIter.first);
+    it->bucketCount     = std::move(safeIter.second);
 
     return (PyObject*)it;
 }
@@ -387,19 +372,25 @@ static PyObject* PyOneToManyDictIteratorIter(PyObject* self)
 static PyObject* PyOneToManyDictIteratorIterNext(PyObject* self)
 {
     PyOneToManyDictIterator* obj = (PyOneToManyDictIterator*)self;
+
+    if (!obj->dict->dict.keyToValueIteratorValid(obj->bucketCount)) {
+        PyErr_SetString(PyExc_RuntimeError, "Iterator invalidated during iteration");
+        return nullptr;
+    }
+
     if (obj->iter == obj->dict->dict._keyToValues.end()) {
         PyErr_SetNone(PyExc_StopIteration);
         return nullptr;
     }
 
     auto key = (obj->iter)->first;
-    ++obj->iter;
+    // Validity is guaranteed to be true as previously checked
+    obj->iter = obj->dict->dict.safeKeyToValueNext(obj->iter, obj->bucketCount).first;
     return key.take();
 }
 
 static PyObject* PyOneToManyDictIteratorIterSelf(PyObject* self)
 {
-    ++((PyOneToManyDictIterator*)self)->dict->iterAlive;
     return OwnedPyObject<>::fromBorrowed(self).take();
 }
 }

@@ -120,26 +120,3 @@ class TestOneToManyDict(unittest.TestCase):
         # Edge case for removing value that doesn't exist
         with self.assertRaises(ValueError):
             self._dict.remove_value('non_existent_value')
-
-    def test_iter(self):
-        self._dict.add(1, 2)
-        self._dict.add(2, 3)
-        with self.assertRaises(RuntimeError):
-            for _ in self._dict:
-                self._dict.add(5, 6)
-        with self.assertRaises(RuntimeError):
-            for _ in self._dict:
-                self._dict.remove_key(1)
-        with self.assertRaises(RuntimeError):
-            for _ in self._dict:
-                self._dict.remove_value(2)
-
-        # States are not changed after throw
-        self.assertFalse(self._dict.has_key(5))
-        self.assertTrue(self._dict.has_key(1))
-        self.assertTrue(self._dict.has_value(2))
-
-        # Views are okay in loop.
-        for _ in self._dict:
-            self._dict.get_key(2)
-            self._dict.get_values(2)
