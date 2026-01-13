@@ -120,3 +120,25 @@ class TestOneToManyDict(unittest.TestCase):
         # Edge case for removing value that doesn't exist
         with self.assertRaises(ValueError):
             self._dict.remove_value('non_existent_value')
+
+    def test_iter_alive(self):
+        # Key type is different to trigger underlying map to rehash
+        self._dict.add('1', 0)
+        count = 0
+        for _ in self._dict:
+            count += 1
+            for i in range(1, 12):
+                self._dict.add(i, i)
+        self.assertTrue(count == 1)
+
+    def test_iter_invalidated(self):
+        # Key type is different to trigger underlying map to rehash
+        self._dict.add('1', 0)
+        count = 0
+        with self.assertRaises(RuntimeError):
+            for _ in self._dict:
+                count += 1
+                # Large number of keys to trigger rehash
+                for i in range(1, 200):
+                    self._dict.add(i, i)
+        self.assertTrue(count == 1)
