@@ -6,6 +6,9 @@ namespace scaler {
 namespace utility {
 namespace stable_priority_queue {
 namespace pymod {
+
+using namespace scaler::utility::pymod;
+
 extern "C" {
 struct PyStablePriorityQueue {
     PyObject_HEAD;
