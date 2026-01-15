@@ -7,7 +7,7 @@ namespace utility {
 namespace stable_priority_queue {
 namespace pymod {
 
-using namespace scaler::utility::pymod;
+using scaler::utility::pymod::OwnedPyObject;
 
 extern "C" {
 struct PyStablePriorityQueue {
@@ -166,7 +166,9 @@ static PyModuleDef stable_priority_queue_module = {
 
 PyMODINIT_FUNC PyInit_stable_priority_queue(void)
 {
-    using namespace scaler::utility::stable_priority_queue::pymod;
+    using scaler::utility::stable_priority_queue::pymod::PyStablePriorityQueueSpec;
+    using scaler::utility::stable_priority_queue::pymod::stable_priority_queue_module;
+
     PyObject* m = PyModule_Create(&stable_priority_queue_module);
     if (!m) {
         return nullptr;
