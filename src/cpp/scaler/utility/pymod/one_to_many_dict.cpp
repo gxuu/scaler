@@ -402,7 +402,9 @@ static PyObject* PyOneToManyDictIteratorIterSelf(PyObject* self)
 
 PyMODINIT_FUNC PyInit_one_to_many_dict(void)
 {
-    using namespace scaler::utility::one_to_many_dict::pymod;
+    using scaler::utility::one_to_many_dict::pymod::one_to_many_dict_module;
+    using scaler::utility::one_to_many_dict::pymod::PyOneToManyDictSpec;
+
     PyObject* m = PyModule_Create(&one_to_many_dict_module);
     if (!m) {
         return nullptr;
