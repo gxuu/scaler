@@ -13,7 +13,7 @@ namespace utility {
 namespace one_to_many_dict {
 namespace pymod {
 
-using namespace scaler::utility::pymod;
+using scaler::utility::pymod::OwnedPyObject;
 
 extern "C" {
 struct PyOneToManyDict {
