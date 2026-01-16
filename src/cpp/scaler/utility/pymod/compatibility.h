@@ -18,10 +18,6 @@
 #include "scaler/error/error.h"
 #include "scaler/utility/pymod/gil.h"
 
-namespace scaler {
-namespace utility {
-namespace pymod {
-
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 10
 #define Py_TPFLAGS_IMMUTABLETYPE          (0)
 #define Py_TPFLAGS_DISALLOW_INSTANTIATION (0)
@@ -85,6 +81,9 @@ static inline PyObject* PyType_FromModuleAndSpec(PyObject* pymodule, PyType_Spec
 }
 #endif  // <3.9
 
+namespace scaler {
+namespace utility {
+namespace pymod {
 // NOTE: We define this no matter what version of Python we use.
 // an owned handle to a PyObject with automatic reference counting via RAII
 template <typename T = PyObject>
@@ -168,6 +167,9 @@ private:
         Py_CLEAR(_ptr);
     }
 };
+}  // namespace pymod
+}  // namespace utility
+}  // namespace scaler
 
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION == 8
 static inline PyObject* PyObject_CallOneArg(PyObject* callable, PyObject* arg)
@@ -179,10 +181,6 @@ static inline PyObject* PyObject_CallOneArg(PyObject* callable, PyObject* arg)
     return result;
 }
 #endif
-
-}  // namespace pymod
-}  // namespace utility
-}  // namespace scaler
 
 template <>
 struct std::hash<scaler::utility::pymod::OwnedPyObject<PyObject>> {
