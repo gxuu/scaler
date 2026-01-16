@@ -53,7 +53,7 @@ static PyObject* PyManyToManyDictHasLeftKey(PyManyToManyDict* self, PyObject* ar
         return nullptr;
     }
 
-    if (self->dict.hasLeftKey(key)) {
+    if (self->dict.hasLeftKey(OwnedPyObject<>::fromBorrowed(key))) {
         Py_RETURN_TRUE;
     } else {
         Py_RETURN_FALSE;
@@ -67,7 +67,7 @@ static PyObject* PyManyToManyDictHasRightKey(PyManyToManyDict* self, PyObject* a
         return nullptr;
     }
 
-    if (self->dict.hasRightKey(key)) {
+    if (self->dict.hasRightKey(OwnedPyObject<>::fromBorrowed(key))) {
         Py_RETURN_TRUE;
     } else {
         Py_RETURN_FALSE;
@@ -78,11 +78,11 @@ static PyObject* PyManyToManyDictHasKeyPair(PyManyToManyDict* self, PyObject* ar
 {
     PyObject* leftKey {};
     PyObject* rightKey {};
-    if (!PyArg_ParseTuple(args, "O", &leftKey, &rightKey)) {
+    if (!PyArg_ParseTuple(args, "OO", &leftKey, &rightKey)) {
         return nullptr;
     }
 
-    if (self->dict.hasKeyPair(leftKey, rightKey)) {
+    if (self->dict.hasKeyPair(OwnedPyObject<>::fromBorrowed(leftKey), OwnedPyObject<>::fromBorrowed(rightKey))) {
         Py_RETURN_TRUE;
     } else {
         Py_RETURN_FALSE;
@@ -129,11 +129,11 @@ static PyObject* PyManyToManyDictRemove(PyManyToManyDict* self, PyObject* args)
 {
     PyObject* leftKey {};
     PyObject* rightKey {};
-    if (!PyArg_ParseTuple(args, "O", &leftKey, &rightKey)) {
+    if (!PyArg_ParseTuple(args, "OO", &leftKey, &rightKey)) {
         return nullptr;
     }
 
-    auto result = self->dict.remove(leftKey, rightKey);
+    auto result = self->dict.remove(OwnedPyObject<>::fromBorrowed(leftKey), OwnedPyObject<>::fromBorrowed(rightKey));
     if (!result) {
         PyErr_SetString(PyExc_KeyError, "cannot find key or value in dictionary");
         return nullptr;
@@ -212,7 +212,7 @@ static PyObject* PyManyToManyDictGetLeftItems(PyManyToManyDict* self, PyObject* 
         return nullptr;
     }
 
-    const auto& [leftKeys, valid] = self->dict.getLeftItems(rightKey);
+    const auto& [leftKeys, valid] = self->dict.getLeftItems(OwnedPyObject<>::fromBorrowed(rightKey));
 
     if (!valid) {
         PyErr_SetString(PyExc_ValueError, "cannot find leftKey in dictionary");
@@ -240,7 +240,7 @@ static PyObject* PyManyToManyDictGetRightItems(PyManyToManyDict* self, PyObject*
         return nullptr;
     }
 
-    const auto& [rightKeys, valid] = self->dict.getRightItems(leftKey);
+    const auto& [rightKeys, valid] = self->dict.getRightItems(OwnedPyObject<>::fromBorrowed(leftKey));
 
     if (!valid) {
         PyErr_SetString(PyExc_ValueError, "cannot find leftKey in dictionary");
@@ -268,10 +268,10 @@ static PyObject* PyManyToManyDictRemoveLeftKey(PyManyToManyDict* self, PyObject*
         return nullptr;
     }
 
-    auto [rightKeys, valid] = self->dict.removeLeftKey(leftKey);
+    auto [rightKeys, valid] = self->dict.removeLeftKey(OwnedPyObject<>::fromBorrowed(leftKey));
 
     if (!valid) {
-        PyErr_SetString(PyExc_ValueError, "cannot find leftKey in dictionary");
+        PyErr_SetString(PyExc_KeyError, "cannot find leftKey in dictionary");
         return nullptr;
     }
 
@@ -296,10 +296,10 @@ static PyObject* PyManyToManyDictRemoveRightKey(PyManyToManyDict* self, PyObject
         return nullptr;
     }
 
-    auto [leftKeys, valid] = self->dict.removeRightKey(rightKey);
+    auto [leftKeys, valid] = self->dict.removeRightKey(OwnedPyObject<>::fromBorrowed(rightKey));
 
     if (!valid) {
-        PyErr_SetString(PyExc_ValueError, "cannot find rightKey in dictionary");
+        PyErr_SetString(PyExc_KeyError, "cannot find rightKey in dictionary");
         return nullptr;
     }
 
@@ -315,6 +315,12 @@ static PyObject* PyManyToManyDictRemoveRightKey(PyManyToManyDict* self, PyObject
     }
 
     return leftKeysSet.take();
+}
+
+static PyObject* PyManyToManyDictClassGetItem(PyObject* cls, PyObject* args)
+{
+    Py_INCREF(cls);
+    return cls;
 }
 
 // Define the methods for the ManyToManyDict Python class
@@ -353,6 +359,7 @@ static PyMethodDef PyManyToManyDictMethods[] = {
      (PyCFunction)PyManyToManyDictRemoveRightKey,
      METH_VARARGS,
      "Remove a right key from the dictionary and return all associated left keys"},
+    {"__class_getitem__", (PyCFunction)PyManyToManyDictClassGetItem, METH_CLASS | METH_VARARGS, "__class_getitem__"},
     {nullptr},
 };
 
