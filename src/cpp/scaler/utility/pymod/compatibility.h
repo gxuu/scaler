@@ -174,7 +174,7 @@ private:
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION == 8
 static inline PyObject* PyObject_CallOneArg(PyObject* callable, PyObject* arg)
 {
-    OwnedPyObject<> args = PyTuple_Pack(1, arg);
+    scaler::utility::pymod::OwnedPyObject<> args = PyTuple_Pack(1, arg);
     if (!args)
         return nullptr;
     PyObject* result = PyObject_Call(callable, *args, nullptr);
