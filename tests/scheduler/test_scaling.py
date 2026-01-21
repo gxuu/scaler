@@ -38,7 +38,7 @@ from scaler.protocol.python.status import Resource
 from scaler.scheduler.controllers.policies.scaling_policies.capability_scaling import CapabilityScalingController
 from scaler.utility.identifiers import ClientID, ObjectID, TaskID, WorkerID
 from scaler.scheduler.controllers.policies.allocation.allocate_policy import AllocatePolicy
-from scaler.scheduler.controllers.policies.scaling_policies.types import ScalingControllerStrategy
+from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
 from scaler.utility.logging.utility import setup_logger
 from scaler.utility.network_util import get_available_tcp_port
 from scaler.worker_adapter.native import NativeWorkerAdapter
