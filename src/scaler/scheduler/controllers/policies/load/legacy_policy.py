@@ -1,16 +1,18 @@
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from scaler.protocol.python.message import InformationSnapshot, Task
-from scaler.scheduler.controllers.policies.allocation.mixins import TaskAllocatePolicy
-from scaler.scheduler.controllers.policies.load.mixins import LoadPolicy
-from scaler.scheduler.controllers.policies.scaling.mixins import ScalingController
+from scaler.scheduler.controllers.policies.load.mixins import ScalerPolicy
+from scaler.scheduler.controllers.policies.scaling.utility import create_scaling_controller
+from scaler.scheduler.controllers.policies.allocation.utility import create_allocate_policy
+from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
+from scaler.scheduler.controllers.policies.allocation.types import AllocatePolicyStrategy
 from scaler.utility.identifiers import TaskID, WorkerID
 
 
-class SimpleLoadPolicy(LoadPolicy):
-    def __init__(self, allocation_policy: TaskAllocatePolicy, scaling_policy: ScalingController):
-        self._allocation_policy = allocation_policy
-        self._scaling_policy = scaling_policy
+class LegacyPolicy(ScalerPolicy):
+    def __init__(self, allocation_policy: str, scaling_policy: str, adapter_webhook_urls: Tuple[str, ...]):
+        self._allocation_policy = create_allocate_policy(AllocatePolicyStrategy(allocation_policy))
+        self._scaling_policy = create_scaling_controller(ScalingControllerStrategy(scaling_policy), adapter_webhook_urls)
 
     def add_worker(self, worker: WorkerID, capabilities: Dict[str, int], queue_size: int) -> bool:
         return self._allocation_policy.add_worker(worker, capabilities, queue_size)

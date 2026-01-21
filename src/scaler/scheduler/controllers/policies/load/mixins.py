@@ -6,7 +6,7 @@ from scaler.utility.identifiers import TaskID, WorkerID
 from scaler.utility.mixins import Reporter
 
 
-class LoadPolicy(Reporter, metaclass=abc.ABCMeta):
+class ScalerPolicy(Reporter, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def add_worker(self, worker: WorkerID, capabilities: Dict[str, int], queue_size: int) -> bool:
         """add worker to worker collection"""
