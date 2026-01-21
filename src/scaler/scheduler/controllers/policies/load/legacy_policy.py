@@ -10,9 +10,13 @@ from scaler.utility.identifiers import TaskID, WorkerID
 
 
 class LegacyPolicy(ScalerPolicy):
-    def __init__(self, allocation_policy: str, scaling_policy: str, adapter_webhook_urls: Tuple[str, ...]):
-        self._allocation_policy = create_allocate_policy(AllocatePolicyStrategy(allocation_policy))
-        self._scaling_policy = create_scaling_controller(ScalingControllerStrategy(scaling_policy), adapter_webhook_urls)
+    def __init__(self, policy_kv: Dict[str, str], adapter_webhook_urls: Tuple[str, ...]):
+        allocate = "allocate"
+        scaling = "scaling"
+        if policy_kv.keys() != set([allocate, scaling]):
+            raise ValueError(f"LegacyPolicy only supports {allocate} and {scaling}, got {policy_kv.keys()}")
+        self._allocation_policy = create_allocate_policy(AllocatePolicyStrategy(policy_kv[allocate]))
+        self._scaling_policy = create_scaling_controller(ScalingControllerStrategy(policy_kv[scaling]), adapter_webhook_urls)
 
     def add_worker(self, worker: WorkerID, capabilities: Dict[str, int], queue_size: int) -> bool:
         return self._allocation_policy.add_worker(worker, capabilities, queue_size)
