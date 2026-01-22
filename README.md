@@ -264,9 +264,12 @@ Here is an example of a single `example_config.toml` file that configures multip
 [scheduler]
 object_storage_address = "tcp://127.0.0.1:6379"
 monitor_address = "tcp://127.0.0.1:6380"
-allocate_policy = "even"
 logging_level = "INFO"
 logging_paths = ["/dev/stdout", "/var/log/scaler/scheduler.log"]
+
+[scheduler.config]
+type = "legacy"
+policy_strategy = "allocate=even_load; scaling=null"
 
 [cluster]
 num_of_workers = 8
