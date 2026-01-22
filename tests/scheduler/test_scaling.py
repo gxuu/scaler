@@ -36,7 +36,7 @@ from scaler.config.types.worker import WorkerCapabilities
 from scaler.config.types.zmq import ZMQConfig
 from scaler.protocol.python.message import InformationSnapshot, Task, WorkerHeartbeat
 from scaler.protocol.python.status import Resource
-from scaler.scheduler.controllers.policies.scaling_policies.capability_scaling import CapabilityScalingController
+from scaler.scheduler.controllers.policies.scaling.capability_scaling import CapabilityScalingController
 from scaler.utility.identifiers import ClientID, ObjectID, TaskID, WorkerID
 from scaler.scheduler.controllers.policies.allocation.allocate_policy import AllocatePolicy
 from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
@@ -97,7 +97,10 @@ class TestScaling(unittest.TestCase):
             address=ZMQConfig.from_string(self.scheduler_address),
             object_storage_address=self.object_storage_config,
             monitor_address=None,
-            policy=PolicyConfig(policy_strategy="allocate=even_load; scaling=vanilla", adapter_webhook_urls=(f"http://127.0.0.1:{self.webhook_port}",)),
+            policy=PolicyConfig(
+                policy_strategy="allocate=even_load; scaling=vanilla",
+                adapter_webhook_urls=(f"http://127.0.0.1:{self.webhook_port}",),
+            ),
             io_threads=DEFAULT_IO_THREADS,
             max_number_of_tasks_waiting=DEFAULT_MAX_NUMBER_OF_TASKS_WAITING,
             client_timeout_seconds=DEFAULT_CLIENT_TIMEOUT_SECONDS,

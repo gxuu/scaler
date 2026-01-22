@@ -7,27 +7,18 @@ from scaler.config.common.logging import LoggingConfig
 from scaler.config.config_class import ConfigClass
 from scaler.config.types.object_storage_server import ObjectStorageAddressConfig
 from scaler.config.types.zmq import ZMQConfig
-from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
-from scaler.scheduler.controllers.policies.allocation.types import AllocatePolicyStrategy
 from scaler.utility.event_loop import EventLoopType
 
 
 @dataclasses.dataclass
 class PolicyConfig(ConfigClass):
     type: str = dataclasses.field(
-        default="legacy",
-        metadata=dict(
-            short="-t",
-            help="Specify the policy config type, default to legacy",
-        ),
+        default="legacy", metadata=dict(short="-t", help="Specify the policy config type, default to legacy")
     )
 
     policy_strategy: str = dataclasses.field(
         default="allocate=even_load; scaling=null",
-        metadata=dict(
-            short="-ps",
-            help="Policy string: 'allocate=VAL; scaling=VAL'",
-        ),
+        metadata=dict(short="-ps", help="Policy string: 'allocate=VAL; scaling=VAL'"),
     )
 
     adapter_webhook_urls: Tuple[str, ...] = dataclasses.field(
@@ -39,6 +30,7 @@ class PolicyConfig(ConfigClass):
             help="specify the adapter webhook urls for the scaling controller to send scaling events to",
         ),
     )
+
 
 @dataclasses.dataclass
 class SchedulerConfig(ConfigClass):

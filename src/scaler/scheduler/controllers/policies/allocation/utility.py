@@ -1,7 +1,7 @@
 from scaler.scheduler.controllers.policies.allocation.capability_allocate_policy import CapabilityAllocatePolicy
 from scaler.scheduler.controllers.policies.allocation.even_load_allocate_policy import EvenLoadAllocatePolicy
-from scaler.scheduler.controllers.policies.allocation.types import AllocatePolicyStrategy
 from scaler.scheduler.controllers.policies.allocation.mixins import TaskAllocatePolicy
+from scaler.scheduler.controllers.policies.allocation.types import AllocatePolicyStrategy
 
 
 def create_allocate_policy(allocate_policy_strategy: AllocatePolicyStrategy) -> TaskAllocatePolicy:

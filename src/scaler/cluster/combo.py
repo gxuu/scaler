@@ -26,14 +26,10 @@ from scaler.config.defaults import (
     DEFAULT_WORKER_TIMEOUT_SECONDS,
 )
 from scaler.config.section.cluster import ClusterConfig
+from scaler.config.section.scheduler import PolicyConfig
 from scaler.config.types.object_storage_server import ObjectStorageAddressConfig
 from scaler.config.types.worker import WorkerCapabilities, WorkerNames
 from scaler.config.types.zmq import ZMQConfig
-from scaler.scheduler.controllers.policies.allocation.allocate_policy import AllocatePolicy
-from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
-from scaler.config.section.scheduler import PolicyConfig
-from scaler.scheduler.controllers.policies.load.mixins import ScalerPolicy
-from scaler.scheduler.controllers.policies.load.utility import create_scaler_policy
 from scaler.utility.network_util import get_available_tcp_port
 
 

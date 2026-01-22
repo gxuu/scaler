@@ -1,11 +1,11 @@
 from typing import Dict, List, Optional, Set, Tuple
 
 from scaler.protocol.python.message import InformationSnapshot, Task
-from scaler.scheduler.controllers.policies.load.mixins import ScalerPolicy
-from scaler.scheduler.controllers.policies.scaling.utility import create_scaling_controller
-from scaler.scheduler.controllers.policies.allocation.utility import create_allocate_policy
-from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
 from scaler.scheduler.controllers.policies.allocation.types import AllocatePolicyStrategy
+from scaler.scheduler.controllers.policies.allocation.utility import create_allocate_policy
+from scaler.scheduler.controllers.policies.load.mixins import ScalerPolicy
+from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
+from scaler.scheduler.controllers.policies.scaling.utility import create_scaling_controller
 from scaler.utility.identifiers import TaskID, WorkerID
 
 
@@ -16,7 +16,9 @@ class LegacyPolicy(ScalerPolicy):
         if policy_kv.keys() != set([allocate, scaling]):
             raise ValueError(f"LegacyPolicy only supports {allocate} and {scaling}, got {policy_kv.keys()}")
         self._allocation_policy = create_allocate_policy(AllocatePolicyStrategy(policy_kv[allocate]))
-        self._scaling_policy = create_scaling_controller(ScalingControllerStrategy(policy_kv[scaling]), adapter_webhook_urls)
+        self._scaling_policy = create_scaling_controller(
+            ScalingControllerStrategy(policy_kv[scaling]), adapter_webhook_urls
+        )
 
     def add_worker(self, worker: WorkerID, capabilities: Dict[str, int], queue_size: int) -> bool:
         return self._allocation_policy.add_worker(worker, capabilities, queue_size)
