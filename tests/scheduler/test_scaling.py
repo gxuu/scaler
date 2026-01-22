@@ -30,6 +30,7 @@ from scaler.config.defaults import (
     DEFAULT_WORKER_TIMEOUT_SECONDS,
 )
 from scaler.config.section.native_worker_adapter import NativeWorkerAdapterConfig
+from scaler.config.section.scheduler import PolicyConfig
 from scaler.config.types.object_storage_server import ObjectStorageAddressConfig
 from scaler.config.types.worker import WorkerCapabilities
 from scaler.config.types.zmq import ZMQConfig
@@ -96,8 +97,7 @@ class TestScaling(unittest.TestCase):
             address=ZMQConfig.from_string(self.scheduler_address),
             object_storage_address=self.object_storage_config,
             monitor_address=None,
-            scaling_controller_strategy=ScalingControllerStrategy.VANILLA,
-            adapter_webhook_urls=(f"http://127.0.0.1:{self.webhook_port}",),
+            policy=PolicyConfig(policy_strategy="allocate=even_load; scaling=vanilla", adapter_webhook_urls=(f"http://127.0.0.1:{self.webhook_port}",)),
             io_threads=DEFAULT_IO_THREADS,
             max_number_of_tasks_waiting=DEFAULT_MAX_NUMBER_OF_TASKS_WAITING,
             client_timeout_seconds=DEFAULT_CLIENT_TIMEOUT_SECONDS,
@@ -106,7 +106,6 @@ class TestScaling(unittest.TestCase):
             load_balance_seconds=DEFAULT_LOAD_BALANCE_SECONDS,
             load_balance_trigger_times=DEFAULT_LOAD_BALANCE_TRIGGER_TIMES,
             protected=False,
-            allocate_policy=AllocatePolicy.even,
             event_loop="builtin",
             logging_paths=("/dev/stdout",),
             logging_config_file=None,

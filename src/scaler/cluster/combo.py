@@ -31,6 +31,9 @@ from scaler.config.types.worker import WorkerCapabilities, WorkerNames
 from scaler.config.types.zmq import ZMQConfig
 from scaler.scheduler.controllers.policies.allocation.allocate_policy import AllocatePolicy
 from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
+from scaler.config.section.scheduler import PolicyConfig
+from scaler.scheduler.controllers.policies.load.mixins import ScalerPolicy
+from scaler.scheduler.controllers.policies.load.utility import create_scaler_policy
 from scaler.utility.network_util import get_available_tcp_port
 
 
@@ -58,7 +61,7 @@ class SchedulerClusterCombo:
         per_worker_task_queue_size: int = DEFAULT_PER_WORKER_QUEUE_SIZE,
         hard_processor_suspend: bool = DEFAULT_HARD_PROCESSOR_SUSPEND,
         protected: bool = True,
-        allocate_policy: AllocatePolicy = AllocatePolicy.even,
+        scaler_policy: PolicyConfig = PolicyConfig(),
         event_loop: str = "builtin",
         logging_paths: Tuple[str, ...] = DEFAULT_LOGGING_PATHS,
         logging_level: str = DEFAULT_LOGGING_LEVEL,
@@ -118,18 +121,16 @@ class SchedulerClusterCombo:
             io_threads=scheduler_io_threads,
             max_number_of_tasks_waiting=max_number_of_tasks_waiting,
             client_timeout_seconds=client_timeout_seconds,
-            scaling_controller_strategy=ScalingControllerStrategy.NULL,
-            adapter_webhook_urls=(),
             worker_timeout_seconds=worker_timeout_seconds,
             object_retention_seconds=object_retention_seconds,
             load_balance_seconds=load_balance_seconds,
             load_balance_trigger_times=load_balance_trigger_times,
             protected=protected,
-            allocate_policy=allocate_policy,
             event_loop=event_loop,
             logging_paths=logging_paths,
             logging_config_file=logging_config_file,
             logging_level=logging_level,
+            policy=scaler_policy,
         )
 
         self._cluster.start()
