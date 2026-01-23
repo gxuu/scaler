@@ -267,7 +267,7 @@ monitor_address = "tcp://127.0.0.1:6380"
 logging_level = "INFO"
 logging_paths = ["/dev/stdout", "/var/log/scaler/scheduler.log"]
 
-[scheduler.config]
+[scheduler.policy]
 type = "legacy"
 policy_strategy = "allocate=even_load; scaling=null"
 
