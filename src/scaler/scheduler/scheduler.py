@@ -92,8 +92,6 @@ class Scheduler:
         )
         logging.info(f"{self.__class__.__name__}: listen to scheduler monitor address {monitor_address.to_address()}")
 
-        print(config.policy.type, config.policy.policy_strategy, config.policy.adapter_webhook_urls)
-
         self._scaler_policy: ScalerPolicy = create_scaler_policy(
             config.policy.type, config.policy.policy_strategy, config.policy.adapter_webhook_urls
         )
