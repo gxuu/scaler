@@ -17,7 +17,7 @@ from scaler.protocol.python.message import (
 from scaler.protocol.python.status import ProcessorStatus, Resource, WorkerManagerStatus, WorkerStatus
 from scaler.scheduler.controllers.config_controller import VanillaConfigController
 from scaler.scheduler.controllers.mixins import TaskController, WorkerController
-from scaler.scheduler.controllers.policies.load.mixins import ScalerPolicy
+from scaler.scheduler.controllers.policies.mixins import ScalerPolicy
 from scaler.utility.identifiers import ClientID, TaskID, WorkerID
 from scaler.utility.mixins import Looper, Reporter
 

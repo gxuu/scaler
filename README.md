@@ -269,7 +269,7 @@ logging_paths = ["/dev/stdout", "/var/log/scaler/scheduler.log"]
 
 [scheduler.policy]
 type = "legacy"
-policy_strategy = "allocate=even_load; scaling=null"
+policy_content = "allocate=even_load; scaling=null"
 
 [cluster]
 num_of_workers = 8

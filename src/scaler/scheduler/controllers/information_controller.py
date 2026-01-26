@@ -13,7 +13,7 @@ from scaler.scheduler.controllers.mixins import (
     TaskController,
     WorkerController,
 )
-from scaler.scheduler.controllers.policies.load.mixins import ScalerPolicy
+from scaler.scheduler.controllers.policies.mixins import ScalerPolicy
 from scaler.utility.mixins import Looper
 
 

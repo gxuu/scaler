@@ -1,11 +1,11 @@
 from typing import Tuple
 
-from scaler.scheduler.controllers.policies.scaling.capability_scaling import CapabilityScalingController
-from scaler.scheduler.controllers.policies.scaling.fixed_elastic import FixedElasticScalingController
-from scaler.scheduler.controllers.policies.scaling.mixins import ScalingController
-from scaler.scheduler.controllers.policies.scaling.null import NullScalingController
-from scaler.scheduler.controllers.policies.scaling.types import ScalingControllerStrategy
-from scaler.scheduler.controllers.policies.scaling.vanilla import VanillaScalingController
+from scaler.scheduler.controllers.policies.simple_policy.scaling.capability_scaling import CapabilityScalingController
+from scaler.scheduler.controllers.policies.simple_policy.scaling.fixed_elastic import FixedElasticScalingController
+from scaler.scheduler.controllers.policies.simple_policy.scaling.mixins import ScalingController
+from scaler.scheduler.controllers.policies.simple_policy.scaling.null import NullScalingController
+from scaler.scheduler.controllers.policies.simple_policy.scaling.types import ScalingControllerStrategy
+from scaler.scheduler.controllers.policies.simple_policy.scaling.vanilla import VanillaScalingController
 
 
 def create_scaling_controller(

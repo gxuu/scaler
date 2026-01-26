@@ -12,13 +12,13 @@ from scaler.utility.event_loop import EventLoopType
 
 @dataclasses.dataclass
 class PolicyConfig(ConfigClass):
-    type: str = dataclasses.field(
-        default="legacy", metadata=dict(short="-t", help="Specify the policy config type, default to legacy")
+    policy_engine_type: str = dataclasses.field(
+        default="legacy", metadata=dict(short="-et", help="Specify the policy config type, default to legacy")
     )
 
-    policy_strategy: str = dataclasses.field(
+    policy_content: str = dataclasses.field(
         default="allocate=even_load; scaling=null",
-        metadata=dict(short="-ps", help="Policy string: 'allocate=VAL; scaling=VAL'"),
+        metadata=dict(short="-pc", help="Policy string: 'allocate=VAL; scaling=VAL'"),
     )
 
     adapter_webhook_urls: Tuple[str, ...] = dataclasses.field(

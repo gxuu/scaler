@@ -32,7 +32,7 @@ def cpu_task(x: float) -> float:
 def main():
     # Start a scheduler with the capabilities allocation policy, and a pair of regular workers.
     cluster = SchedulerClusterCombo(
-        n_workers=2, scaler_policy=PolicyConfig(policy_strategy="allocate=capability; scaling=null")
+        n_workers=2, scaler_policy=PolicyConfig(policy_content="allocate=capability; scaling=null")
     )
 
     # Adds an additional worker with GPU support

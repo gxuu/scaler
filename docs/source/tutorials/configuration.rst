@@ -225,7 +225,7 @@ Here is an example of a single ``example_config.toml`` file that configures mult
 
     [scheduler.policy]
     type = "legacy"
-    policy_strategy = "allocate=even_load; scaling=null"
+    policy_content = "allocate=even_load; scaling=null"
 
 
 With this single file, starting your entire stack is simple and consistent:

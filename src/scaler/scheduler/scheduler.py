@@ -33,8 +33,8 @@ from scaler.scheduler.controllers.config_controller import VanillaConfigControll
 from scaler.scheduler.controllers.graph_controller import VanillaGraphTaskController
 from scaler.scheduler.controllers.information_controller import VanillaInformationController
 from scaler.scheduler.controllers.object_controller import VanillaObjectController
-from scaler.scheduler.controllers.policies.load.mixins import ScalerPolicy
-from scaler.scheduler.controllers.policies.load.utility import create_scaler_policy
+from scaler.scheduler.controllers.policies.mixins import ScalerPolicy
+from scaler.scheduler.controllers.policies.utility import create_scaler_policy
 from scaler.scheduler.controllers.task_controller import VanillaTaskController
 from scaler.scheduler.controllers.worker_controller import VanillaWorkerController
 from scaler.utility.event_loop import create_async_loop_routine
@@ -93,7 +93,7 @@ class Scheduler:
         logging.info(f"{self.__class__.__name__}: listen to scheduler monitor address {monitor_address.to_address()}")
 
         self._scaler_policy: ScalerPolicy = create_scaler_policy(
-            config.policy.type, config.policy.policy_strategy, config.policy.adapter_webhook_urls
+            config.policy.policy_engine_type, config.policy.policy_content, config.policy.adapter_webhook_urls
         )
 
         self._client_manager = VanillaClientController(config_controller=self._config_controller)
