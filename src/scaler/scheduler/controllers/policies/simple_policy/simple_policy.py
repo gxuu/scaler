@@ -14,7 +14,7 @@ class SimplePolicy(ScalerPolicy):
         allocate = "allocate"
         scaling = "scaling"
         if policy_kv.keys() != set([allocate, scaling]):
-            raise ValueError(f"LegacyPolicy only supports {allocate} and {scaling}, got {policy_kv.keys()}")
+            raise ValueError(f"SimplePolicy only supports {allocate} and {scaling}, got {policy_kv.keys()}")
         self._allocation_policy = create_allocate_policy(AllocatePolicyStrategy(policy_kv[allocate]))
         self._scaling_policy = create_scaling_controller(
             ScalingControllerStrategy(policy_kv[scaling]), adapter_webhook_urls

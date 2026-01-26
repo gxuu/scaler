@@ -13,7 +13,7 @@ from scaler.utility.event_loop import EventLoopType
 @dataclasses.dataclass
 class PolicyConfig(ConfigClass):
     policy_engine_type: str = dataclasses.field(
-        default="legacy", metadata=dict(short="-et", help="Specify the policy config type, default to legacy")
+        default="simple", metadata=dict(short="-et", help="Specify the policy config type, default to legacy")
     )
 
     policy_content: str = dataclasses.field(

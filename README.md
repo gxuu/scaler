@@ -268,7 +268,7 @@ logging_level = "INFO"
 logging_paths = ["/dev/stdout", "/var/log/scaler/scheduler.log"]
 
 [scheduler.policy]
-policy_engine_type = "legacy"
+policy_engine_type = "simple"
 policy_content = "allocate=even_load; scaling=null"
 
 [cluster]
