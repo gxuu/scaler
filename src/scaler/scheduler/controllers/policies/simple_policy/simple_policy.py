@@ -1,9 +1,9 @@
 from typing import Dict, List, Optional, Set, Tuple
 
 from scaler.protocol.python.message import InformationSnapshot, Task
+from scaler.scheduler.controllers.policies.mixins import ScalerPolicy
 from scaler.scheduler.controllers.policies.simple_policy.allocation.types import AllocatePolicyStrategy
 from scaler.scheduler.controllers.policies.simple_policy.allocation.utility import create_allocate_policy
-from scaler.scheduler.controllers.policies.mixins import ScalerPolicy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.types import ScalingControllerStrategy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.utility import create_scaling_controller
 from scaler.utility.identifiers import TaskID, WorkerID

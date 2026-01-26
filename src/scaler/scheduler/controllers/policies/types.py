@@ -6,4 +6,3 @@ class PolicyEngineType(enum.Enum):
 
     def __str__(self):
         return self.name
-
