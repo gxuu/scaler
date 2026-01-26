@@ -224,7 +224,7 @@ Here is an example of a single ``example_config.toml`` file that configures mult
     web_port = 8081
 
     [scheduler.policy]
-    type = "legacy"
+    policy_engine_type = "legacy"
     policy_content = "allocate=even_load; scaling=null"
 
 
