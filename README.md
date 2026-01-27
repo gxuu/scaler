@@ -266,8 +266,8 @@ object_storage_address = "tcp://127.0.0.1:6379"
 monitor_address = "tcp://127.0.0.1:6380"
 logging_level = "INFO"
 logging_paths = ["/dev/stdout", "/var/log/scaler/scheduler.log"]
-policy-engine-type = "simple"
-policy-content = "allocate=even_load; scaling=null"
+policy_engine_type = "simple"
+policy_content = "allocate=even_load; scaling=null"
 
 [cluster]
 num_of_workers = 8
