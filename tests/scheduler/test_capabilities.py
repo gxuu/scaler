@@ -19,7 +19,7 @@ class TestCapabilities(unittest.TestCase):
         self.combo = SchedulerClusterCombo(
             n_workers=self._workers,
             event_loop="builtin",
-            scaler_policy=PolicyConfig(policy_content="allocate=capability; scaling=null"),
+            scaler_policy=PolicyConfig(policy_content="allocate=capability; scaling=no"),
         )
         self.address = self.combo.get_address()
 

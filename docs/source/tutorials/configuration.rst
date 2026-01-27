@@ -213,7 +213,7 @@ Here is an example of a single ``example_config.toml`` file that configures mult
     logging_level = "INFO"
     logging_paths = ["/dev/stdout", "/var/log/scaler/scheduler.log"]
     policy_engine_type = "simple"
-    policy_content = "allocate=even_load; scaling=null"
+    policy_content = "allocate=even_load; scaling=no"
 
     [cluster]
     num_of_workers = 8

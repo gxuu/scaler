@@ -3,7 +3,7 @@ from scaler.protocol.python.status import ScalingManagerStatus
 from scaler.scheduler.controllers.policies.simple_policy.scaling.mixins import ScalingController
 
 
-class NullScalingController(ScalingController):
+class NoScalingController(ScalingController):
     def __init__(self):
         pass
 
