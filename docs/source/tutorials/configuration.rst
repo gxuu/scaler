@@ -226,7 +226,6 @@ Here is an example of a single ``example_config.toml`` file that configures mult
     web_port = 8081
 
 
-
 With this single file, starting your entire stack is simple and consistent:
 
 .. code-block:: bash
