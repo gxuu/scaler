@@ -31,7 +31,6 @@ add_library(py_many_to_many_dict SHARED
     pymod/many_to_many_dict.cpp
 )
 
-
 target_include_directories(py_many_to_many_dict PRIVATE
     ${PROJECT_SOURCE_DIR}/src/cpp
 )
