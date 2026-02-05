@@ -195,7 +195,13 @@ class CapabilityScalingController(ScalingController):
         tasks_by_capability: Dict[FrozenSet[str], List[Dict[str, int]]],
         workers_by_capability: Dict[FrozenSet[str], List[Tuple[WorkerID, int]]],
     ) -> List[WorkerAdapterCommand]:
-        """Collect all shutdown commands for idle worker groups."""
+        """Check for and shut down idle worker groups."""
+
+        # Complexity: O(C^2 * (T + W)) where C is the number of distinct capability sets,
+        # T is the total number of tasks, and W is the total number of workers.
+        # For each tracked capability set, we iterate over all task capability sets to count
+        # matching tasks, and call _find_capable_workers which iterates over worker capability sets.
+        # This could be optimized if it becomes a performance bottleneck.
         commands: List[WorkerAdapterCommand] = []
 
         for capability_keys, worker_group_dict in list(self._worker_groups_by_capability.items()):
