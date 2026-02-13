@@ -255,13 +255,8 @@ static PyObject* PyOneToManyDictItems(PyOneToManyDict* self, PyObject* args)
     return itemList.take();
 }
 
-static int PyOneToManyDictContains(PyObject* self, PyObject* args)
+static int PyOneToManyDictContains(PyObject* self, PyObject* key)
 {
-    PyObject* key {};
-    if (!PyArg_Parse(args, "O", &key)) {
-        return -1;
-    }
-
     return ((PyOneToManyDict*)self)->dict.hasKey(OwnedPyObject<>::fromBorrowed(key));
 }
 

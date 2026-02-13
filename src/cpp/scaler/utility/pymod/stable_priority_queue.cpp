@@ -132,13 +132,8 @@ static Py_ssize_t PyStablePriorityQueueSize(PyObject* self)
     return ((PyStablePriorityQueue*)self)->queue.size();
 }
 
-static int PyStablePriorityQueueContains(PyObject* self, PyObject* args)
+static int PyStablePriorityQueueContains(PyObject* self, PyObject* item)
 {
-    PyObject* item {};
-    if (!PyArg_Parse(args, "O", &item)) {
-        return -1;
-    }
-
     return ((PyStablePriorityQueue*)self)->queue._locator.count(OwnedPyObject<>::fromBorrowed(item)) > 0;
 }
 
