@@ -19,7 +19,11 @@ from scaler.protocol.python.message import (
     WorkerHeartbeat,
 )
 from scaler.protocol.python.status import ScalingManagerStatus
-from scaler.scheduler.controllers.policies.simple_policy.scaling.types import WorkerGroupCapabilities, WorkerGroupState
+from scaler.scheduler.controllers.policies.library.types import (
+    WorkerAdapterSnapshot,
+    WorkerGroupCapabilities,
+    WorkerGroupState,
+)
 from scaler.utility.identifiers import ClientID, ObjectID, TaskID, WorkerID
 from scaler.utility.mixins import Reporter
 
@@ -255,6 +259,7 @@ class PolicyController(metaclass=abc.ABCMeta):
         adapter_heartbeat: WorkerAdapterHeartbeat,
         worker_groups: WorkerGroupState,
         worker_group_capabilities: WorkerGroupCapabilities,
+        worker_adapter_snapshots: Dict[bytes, WorkerAdapterSnapshot],
     ) -> List[WorkerAdapterCommand]:
         """Pure function: state in, commands out. Commands are either all start or all shutdown, never mixed."""
         raise NotImplementedError()

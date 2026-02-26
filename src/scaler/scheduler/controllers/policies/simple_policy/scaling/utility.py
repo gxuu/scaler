@@ -1,6 +1,6 @@
+from scaler.scheduler.controllers.policies.library.mixins import ScalingPolicy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.capability_scaling import CapabilityScalingPolicy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.fixed_elastic import FixedElasticScalingPolicy
-from scaler.scheduler.controllers.policies.simple_policy.scaling.mixins import ScalingPolicy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.no import NoScalingPolicy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.types import ScalingPolicyStrategy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.vanilla import VanillaScalingPolicy

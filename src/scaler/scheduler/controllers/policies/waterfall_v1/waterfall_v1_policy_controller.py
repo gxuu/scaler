@@ -10,27 +10,25 @@ from scaler.scheduler.controllers.policies.library.types import (
 )
 from scaler.scheduler.controllers.policies.simple_policy.allocation.types import AllocatePolicyStrategy
 from scaler.scheduler.controllers.policies.simple_policy.allocation.utility import create_allocate_policy
-from scaler.scheduler.controllers.policies.simple_policy.scaling.types import ScalingPolicyStrategy
-from scaler.scheduler.controllers.policies.simple_policy.scaling.utility import create_scaling_policy
+from scaler.scheduler.controllers.policies.waterfall_v1.scaling.utility import parse_waterfall_rules
+from scaler.scheduler.controllers.policies.waterfall_v1.scaling.waterfall import WaterfallScalingPolicy
 from scaler.utility.identifiers import TaskID, WorkerID
 
+_DEFAULT_ALLOCATE_POLICY = AllocatePolicyStrategy.EVEN_LOAD
 
-class VanillaPolicyController(PolicyController):
+
+class WaterfallV1PolicyController(PolicyController):
+    """
+    Policy controller for waterfall scaling across prioritized adapters.
+
+    Uses even_load allocation by default. Cross-adapter state (worker_adapter_snapshots)
+    is built by WorkerAdapterController and passed through the call chain.
+    """
+
     def __init__(self, policy_content: str):
-        policy_kv = {
-            k.strip(): v.strip()
-            for item in policy_content.split(";")
-            if "=" in item
-            for k, v in [item.split("=", 1)]
-        }
-
-        allocate = "allocate"
-        scaling = "scaling"
-        if policy_kv.keys() != {allocate, scaling}:
-            raise ValueError(f"VanillaPolicyController only supports {allocate} and {scaling}, got {policy_kv.keys()}")
-
-        self._allocation_policy = create_allocate_policy(AllocatePolicyStrategy(policy_kv[allocate]))
-        self._scaling_policy = create_scaling_policy(ScalingPolicyStrategy(policy_kv[scaling]))
+        self._allocation_policy = create_allocate_policy(_DEFAULT_ALLOCATE_POLICY)
+        rules = parse_waterfall_rules(policy_content)
+        self._scaling_policy = WaterfallScalingPolicy(rules)
 
     def add_worker(self, worker: WorkerID, capabilities: Dict[str, int], queue_size: int) -> bool:
         return self._allocation_policy.add_worker(worker, capabilities, queue_size)
