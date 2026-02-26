@@ -37,8 +37,8 @@ from scaler.scheduler.controllers.graph_controller import VanillaGraphTaskContro
 from scaler.scheduler.controllers.information_controller import VanillaInformationController
 from scaler.scheduler.controllers.mixins import PolicyController
 from scaler.scheduler.controllers.object_controller import VanillaObjectController
+from scaler.scheduler.controllers.policies.library.utility import create_policy_controller
 from scaler.scheduler.controllers.task_controller import VanillaTaskController
-from scaler.scheduler.controllers.vanilla_policy_controller import VanillaPolicyController
 from scaler.scheduler.controllers.worker_controller import VanillaWorkerController
 from scaler.scheduler.controllers.worker_manager_controller import WorkerManagerController
 from scaler.utility.event_loop import create_async_loop_routine
@@ -96,7 +96,7 @@ class Scheduler:
         )
         logging.info(f"{self.__class__.__name__}: listen to scheduler monitor address {monitor_address.to_address()}")
 
-        self._policy_controller: PolicyController = VanillaPolicyController(
+        self._policy_controller: PolicyController = create_policy_controller(
             config.policy.policy_engine_type, config.policy.policy_content
         )
 

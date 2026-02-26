@@ -203,9 +203,13 @@ def _create_mock_worker_heartbeat(capabilities: dict, queued_tasks: int = 0) -> 
     )
 
 
-def _create_worker_manager_heartbeat(max_worker_groups: int = 10) -> WorkerManagerHeartbeat:
+def _create_worker_manager_heartbeat(
+    max_worker_groups: int = 10, worker_manager_id: bytes = b""
+) -> WorkerManagerHeartbeat:
     """Helper to create a mock WorkerManagerHeartbeat."""
-    return WorkerManagerHeartbeat.new_msg(max_worker_groups=max_worker_groups, workers_per_group=1, capabilities={})
+    return WorkerManagerHeartbeat.new_msg(
+        max_worker_groups=max_worker_groups, workers_per_group=1, capabilities={}, worker_manager_id=worker_manager_id
+    )
 
 
 class TestCapabilityScalingPolicy(unittest.TestCase):
@@ -227,7 +231,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_manager_heartbeat = _create_worker_manager_heartbeat()
 
         commands = self.policy.get_scaling_commands(
-            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities
+            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities, {}
         )
 
         self.assertEqual(len(commands), 1)
@@ -245,7 +249,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_manager_heartbeat = _create_worker_manager_heartbeat()
 
         commands = self.policy.get_scaling_commands(
-            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities
+            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities, {}
         )
 
         # Should not return any start commands
@@ -267,7 +271,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_manager_heartbeat = _create_worker_manager_heartbeat()
 
         commands = self.policy.get_scaling_commands(
-            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities
+            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities, {}
         )
 
         self.assertEqual(len(commands), 1)
@@ -287,7 +291,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
 
         # Should return 2 start commands (one for each capability set)
         commands = self.policy.get_scaling_commands(
-            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities
+            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities, {}
         )
 
         start_commands = [c for c in commands if c.command == WorkerManagerCommandType.StartWorkerGroup]
@@ -310,7 +314,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_manager_heartbeat = _create_worker_manager_heartbeat()
 
         commands = self.policy.get_scaling_commands(
-            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities
+            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities, {}
         )
 
         # No StartWorkerGroup command should be returned
@@ -326,7 +330,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_manager_heartbeat = _create_worker_manager_heartbeat()
 
         commands = self.policy.get_scaling_commands(
-            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities
+            information_snapshot, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities, {}
         )
 
         # Should start a worker group with empty capabilities
@@ -353,7 +357,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_manager_heartbeat = _create_worker_manager_heartbeat()
 
         commands1 = self.policy.get_scaling_commands(
-            information_snapshot1, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities
+            information_snapshot1, worker_manager_heartbeat, self.worker_groups, self.worker_group_capabilities, {}
         )
 
         self.assertEqual(len(commands1), 1)
@@ -371,7 +375,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         information_snapshot2 = InformationSnapshot(tasks={task2_id: task2}, workers={})
 
         commands2 = self.policy.get_scaling_commands(
-            information_snapshot2, worker_manager_heartbeat, updated_groups, updated_caps
+            information_snapshot2, worker_manager_heartbeat, updated_groups, updated_caps, {}
         )
 
         # No StartWorkerGroup command should be returned
