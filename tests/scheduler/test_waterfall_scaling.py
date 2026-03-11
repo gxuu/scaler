@@ -24,64 +24,6 @@ from scaler.utility.identifiers import ClientID, ObjectID, TaskID, WorkerID
 from scaler.utility.logging.utility import setup_logger
 
 
-def _create_mock_task(task_id: TaskID, capabilities: Optional[Dict[str, int]] = None) -> Task:
-    client_id = ClientID.generate_client_id()
-    return Task.new_msg(
-        task_id=task_id,
-        source=client_id,
-        metadata=b"",
-        func_object_id=ObjectID.generate_object_id(client_id),
-        function_args=[],
-        capabilities=capabilities or {},
-    )
-
-
-def _create_mock_worker_heartbeat(queued_tasks: int = 0) -> WorkerHeartbeat:
-    return WorkerHeartbeat.new_msg(
-        agent=Resource.new_msg(cpu=1, rss=1000000),
-        rss_free=500000,
-        queue_size=10,
-        queued_tasks=queued_tasks,
-        latency_us=100,
-        task_lock=False,
-        processors=[],
-        capabilities={},
-    )
-
-
-def _create_worker_manager_heartbeat(worker_manager_id: bytes, max_worker_groups: int = 10) -> WorkerManagerHeartbeat:
-    return WorkerManagerHeartbeat.new_msg(
-        max_worker_groups=max_worker_groups, workers_per_group=1, capabilities={}, worker_manager_id=worker_manager_id
-    )
-
-
-def _create_manager_snapshot(
-    worker_manager_id: bytes, max_groups: int = 10, group_count: int = 0, last_seen: Optional[float] = None
-) -> WorkerManagerSnapshot:
-    return WorkerManagerSnapshot(
-        worker_manager_id=worker_manager_id,
-        max_worker_groups=max_groups,
-        worker_group_count=group_count,
-        last_seen_s=last_seen if last_seen is not None else time.time(),
-    )
-
-
-def _create_tasks(count: int) -> Dict[TaskID, Task]:
-    tasks = {}
-    for _ in range(count):
-        task_id = TaskID.generate_task_id()
-        tasks[task_id] = _create_mock_task(task_id)
-    return tasks
-
-
-def _create_workers(count: int, queued_tasks: int = 0) -> Dict[WorkerID, WorkerHeartbeat]:
-    workers = {}
-    for i in range(count):
-        worker_id = WorkerID(f"worker-{i}".encode())
-        workers[worker_id] = _create_mock_worker_heartbeat(queued_tasks)
-    return workers
-
-
 class TestWaterfallScalingPolicy(unittest.TestCase):
     """Unit tests for WaterfallScalingPolicy with stateless interface."""
 
@@ -545,3 +487,61 @@ class TestWaterfallV1Policy(unittest.TestCase):
         worker_groups: WorkerGroupState = {b"wg-1": [WorkerID(b"worker-1")]}
         status = policy.get_scaling_status(worker_groups)
         self.assertIsInstance(status, ScalingManagerStatus)
+
+
+def _create_mock_task(task_id: TaskID, capabilities: Optional[Dict[str, int]] = None) -> Task:
+    client_id = ClientID.generate_client_id()
+    return Task.new_msg(
+        task_id=task_id,
+        source=client_id,
+        metadata=b"",
+        func_object_id=ObjectID.generate_object_id(client_id),
+        function_args=[],
+        capabilities=capabilities or {},
+    )
+
+
+def _create_mock_worker_heartbeat(queued_tasks: int = 0) -> WorkerHeartbeat:
+    return WorkerHeartbeat.new_msg(
+        agent=Resource.new_msg(cpu=1, rss=1000000),
+        rss_free=500000,
+        queue_size=10,
+        queued_tasks=queued_tasks,
+        latency_us=100,
+        task_lock=False,
+        processors=[],
+        capabilities={},
+    )
+
+
+def _create_worker_manager_heartbeat(worker_manager_id: bytes, max_worker_groups: int = 10) -> WorkerManagerHeartbeat:
+    return WorkerManagerHeartbeat.new_msg(
+        max_worker_groups=max_worker_groups, workers_per_group=1, capabilities={}, worker_manager_id=worker_manager_id
+    )
+
+
+def _create_manager_snapshot(
+    worker_manager_id: bytes, max_groups: int = 10, group_count: int = 0, last_seen: Optional[float] = None
+) -> WorkerManagerSnapshot:
+    return WorkerManagerSnapshot(
+        worker_manager_id=worker_manager_id,
+        max_worker_groups=max_groups,
+        worker_group_count=group_count,
+        last_seen_s=last_seen if last_seen is not None else time.time(),
+    )
+
+
+def _create_tasks(count: int) -> Dict[TaskID, Task]:
+    tasks = {}
+    for _ in range(count):
+        task_id = TaskID.generate_task_id()
+        tasks[task_id] = _create_mock_task(task_id)
+    return tasks
+
+
+def _create_workers(count: int, queued_tasks: int = 0) -> Dict[WorkerID, WorkerHeartbeat]:
+    workers = {}
+    for i in range(count):
+        worker_id = WorkerID(f"worker-{i}".encode())
+        workers[worker_id] = _create_mock_worker_heartbeat(queued_tasks)
+    return workers
