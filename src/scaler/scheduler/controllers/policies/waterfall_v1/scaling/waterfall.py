@@ -61,9 +61,7 @@ class WaterfallScalingPolicy(ScalingPolicy):
         self, rule: WaterfallRule, snapshots: Dict[bytes, WorkerManagerSnapshot]
     ) -> List[WorkerManagerSnapshot]:
         """Return all manager snapshots whose runtime ID matches *rule*'s worker type."""
-        return [
-            s for s in snapshots.values() if self._manager_matches_rule(s.worker_manager_id, rule.worker_type)
-        ]
+        return [s for s in snapshots.values() if self._manager_matches_rule(s.worker_manager_id, rule.worker_type)]
 
     def get_scaling_commands(
         self,
