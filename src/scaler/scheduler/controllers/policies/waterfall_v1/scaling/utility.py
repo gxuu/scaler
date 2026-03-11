@@ -8,7 +8,7 @@ def parse_waterfall_rules(policy_content: str) -> List[WaterfallRule]:
 
     Expected format (one rule per line, ``#`` comments supported)::
 
-        #priority,manager_id,max_workers
+        #priority,adapter_id_prefix,max_workers
         1,adapter_a,10
         2,adapter_b,20
 
@@ -24,18 +24,20 @@ def parse_waterfall_rules(policy_content: str) -> List[WaterfallRule]:
         parts = [p.strip() for p in line.split(",")]
         if len(parts) != 3:
             raise ValueError(
-                f"waterfall_v1 policy_content line {line_number}: expected 'priority,manager_id,max_workers', "
-                f"got {raw_line.strip()!r}"
+                f"waterfall_v1 policy_content line {line_number}: "
+                f"expected 'priority,adapter_id_prefix,max_workers', got {raw_line.strip()!r}"
             )
 
-        raw_priority, manager_id, raw_max_workers = parts
+        raw_priority, adapter_id_prefix, raw_max_workers = parts
 
-        if not manager_id:
-            raise ValueError(f"waterfall_v1 policy_content line {line_number}: manager_id cannot be empty")
+        if not adapter_id_prefix:
+            raise ValueError(f"waterfall_v1 policy_content line {line_number}: adapter_id_prefix cannot be empty")
 
         rules.append(
             WaterfallRule(
-                priority=int(raw_priority), worker_manager_id=manager_id.encode(), max_workers=int(raw_max_workers)
+                priority=int(raw_priority),
+                adapter_id_prefix=adapter_id_prefix.encode(),
+                max_workers=int(raw_max_workers),
             )
         )
 

@@ -11,7 +11,7 @@ from scaler.protocol.python.message import (
     WorkerManagerHeartbeat,
 )
 from scaler.protocol.python.status import Resource
-from scaler.scheduler.controllers.policies.library.utility import create_policy_controller
+from scaler.scheduler.controllers.policies.library.utility import create_policy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.types import (
     WorkerGroupCapabilities,
     WorkerGroupState,
@@ -19,9 +19,7 @@ from scaler.scheduler.controllers.policies.simple_policy.scaling.types import (
 )
 from scaler.scheduler.controllers.policies.waterfall_v1.scaling.types import WaterfallRule
 from scaler.scheduler.controllers.policies.waterfall_v1.scaling.waterfall import WaterfallScalingPolicy
-from scaler.scheduler.controllers.policies.waterfall_v1.waterfall_v1_policy_controller import (
-    WaterfallV1PolicyController,
-)
+from scaler.scheduler.controllers.policies.waterfall_v1.waterfall_v1_policy import WaterfallV1Policy
 from scaler.utility.identifiers import ClientID, ObjectID, TaskID, WorkerID
 from scaler.utility.logging.utility import setup_logger
 
@@ -90,14 +88,14 @@ class TestWaterfallScalingPolicy(unittest.TestCase):
     def setUp(self):
         setup_logger()
         self.rules = [
-            WaterfallRule(priority=1, worker_manager_id=b"adapter_a", max_workers=10),
-            WaterfallRule(priority=2, worker_manager_id=b"adapter_b", max_workers=20),
+            WaterfallRule(priority=1, adapter_id_prefix=b"adapter_a", max_workers=10),
+            WaterfallRule(priority=2, adapter_id_prefix=b"adapter_b", max_workers=20),
         ]
         self.policy = WaterfallScalingPolicy(self.rules)
 
     def test_single_priority_scale_up(self):
         """Single adapter with tasks and no workers should scale up."""
-        rules = [WaterfallRule(priority=1, worker_manager_id=b"adapter_a", max_workers=10)]
+        rules = [WaterfallRule(priority=1, adapter_id_prefix=b"adapter_a", max_workers=10)]
         policy = WaterfallScalingPolicy(rules)
 
         tasks = _create_tasks(5)
@@ -230,7 +228,7 @@ class TestWaterfallScalingPolicy(unittest.TestCase):
     def test_effective_capacity_min_config_and_heartbeat(self):
         """Effective capacity should be min(config max_workers, heartbeat max_worker_groups)."""
         # Rule says max_workers=5, heartbeat says max_worker_groups=3
-        rules = [WaterfallRule(priority=1, worker_manager_id=b"adapter_a", max_workers=5)]
+        rules = [WaterfallRule(priority=1, adapter_id_prefix=b"adapter_a", max_workers=5)]
         policy = WaterfallScalingPolicy(rules)
 
         tasks = _create_tasks(5)
@@ -268,8 +266,8 @@ class TestWaterfallScalingPolicy(unittest.TestCase):
     def test_same_priority_concurrent_scaling(self):
         """Two adapters at same priority should both be able to scale up concurrently."""
         rules = [
-            WaterfallRule(priority=1, worker_manager_id=b"adapter_a", max_workers=10),
-            WaterfallRule(priority=1, worker_manager_id=b"adapter_b", max_workers=10),
+            WaterfallRule(priority=1, adapter_id_prefix=b"adapter_a", max_workers=10),
+            WaterfallRule(priority=1, adapter_id_prefix=b"adapter_b", max_workers=10),
         ]
         policy = WaterfallScalingPolicy(rules)
 
@@ -314,7 +312,7 @@ class TestWaterfallScalingPolicy(unittest.TestCase):
         # No lower-priority adapters with workers
         manager_snapshots = {b"adapter_a": _create_manager_snapshot(b"adapter_a", max_groups=10, group_count=2)}
 
-        rules = [WaterfallRule(priority=1, worker_manager_id=b"adapter_a", max_workers=10)]
+        rules = [WaterfallRule(priority=1, adapter_id_prefix=b"adapter_a", max_workers=10)]
         policy = WaterfallScalingPolicy(rules)
 
         heartbeat = _create_worker_manager_heartbeat(b"adapter_a", max_worker_groups=10)
@@ -368,8 +366,8 @@ class TestWaterfallScalingPolicy(unittest.TestCase):
     def test_prefix_matching_with_runtime_ids(self):
         """Adapter IDs like NAT|<pid> should match rules with prefix NAT."""
         rules = [
-            WaterfallRule(priority=1, worker_manager_id=b"NAT", max_workers=10),
-            WaterfallRule(priority=2, worker_manager_id=b"ECS", max_workers=20),
+            WaterfallRule(priority=1, adapter_id_prefix=b"NAT", max_workers=10),
+            WaterfallRule(priority=2, adapter_id_prefix=b"ECS", max_workers=20),
         ]
         policy = WaterfallScalingPolicy(rules)
 
@@ -401,8 +399,8 @@ class TestWaterfallScalingPolicy(unittest.TestCase):
     def test_prefix_matching_multiple_adapters_same_prefix(self):
         """Multiple runtime adapters sharing a prefix should all match the same rule."""
         rules = [
-            WaterfallRule(priority=1, worker_manager_id=b"NAT", max_workers=10),
-            WaterfallRule(priority=2, worker_manager_id=b"ECS", max_workers=20),
+            WaterfallRule(priority=1, adapter_id_prefix=b"NAT", max_workers=10),
+            WaterfallRule(priority=2, adapter_id_prefix=b"ECS", max_workers=20),
         ]
         policy = WaterfallScalingPolicy(rules)
 
@@ -429,8 +427,8 @@ class TestWaterfallScalingPolicy(unittest.TestCase):
     def test_prefix_matching_blocked_when_any_higher_priority_has_room(self):
         """Lower priority should not scale up if any adapter matching a higher-priority prefix has room."""
         rules = [
-            WaterfallRule(priority=1, worker_manager_id=b"NAT", max_workers=10),
-            WaterfallRule(priority=2, worker_manager_id=b"ECS", max_workers=20),
+            WaterfallRule(priority=1, adapter_id_prefix=b"NAT", max_workers=10),
+            WaterfallRule(priority=2, adapter_id_prefix=b"ECS", max_workers=20),
         ]
         policy = WaterfallScalingPolicy(rules)
 
@@ -454,8 +452,8 @@ class TestWaterfallScalingPolicy(unittest.TestCase):
         self.assertEqual(len(commands), 0)
 
 
-class TestWaterfallV1PolicyController(unittest.TestCase):
-    """Unit tests for WaterfallV1PolicyController config parsing and delegation."""
+class TestWaterfallV1Policy(unittest.TestCase):
+    """Unit tests for WaterfallV1Policy config parsing and scaling delegation."""
 
     def setUp(self):
         setup_logger()
@@ -468,50 +466,50 @@ class TestWaterfallV1PolicyController(unittest.TestCase):
 
     def test_config_parsing_via_factory(self):
         """Verify the factory parses waterfall_v1 policy config correctly."""
-        policy = create_policy_controller("waterfall_v1", "1,adapter_a,10\n2,adapter_b,20")
-        self.assertIsInstance(policy, WaterfallV1PolicyController)
+        policy = create_policy("waterfall_v1", "1,adapter_a,10\n2,adapter_b,20")
+        self.assertIsInstance(policy, WaterfallV1Policy)
 
     def test_config_parsing_with_comments(self):
         """Comments and blank lines should be ignored."""
         policy_content = "\n".join(
-            ["#priority,adapter_id,max_workers", "1,adapter_a,10", "", "2,adapter_b,20  # overflow tier"]
+            ["#priority,adapter_id_prefix,max_workers", "1,adapter_a,10", "", "2,adapter_b,20  # overflow tier"]
         )
-        policy = WaterfallV1PolicyController(policy_content)
-        self.assertIsInstance(policy, WaterfallV1PolicyController)
+        policy = WaterfallV1Policy(policy_content)
+        self.assertIsInstance(policy, WaterfallV1Policy)
 
     def test_invalid_config_empty(self):
         """Empty policy content should raise ValueError."""
         with self.assertRaises(ValueError):
-            WaterfallV1PolicyController("")
+            WaterfallV1Policy("")
 
     def test_invalid_config_comments_only(self):
         """Policy content with only comments should raise ValueError."""
         with self.assertRaises(ValueError):
-            WaterfallV1PolicyController("# just a comment\n# another comment")
+            WaterfallV1Policy("# just a comment\n# another comment")
 
     def test_invalid_config_wrong_field_count(self):
         """Lines with wrong number of fields should raise ValueError."""
         with self.assertRaises(ValueError):
-            WaterfallV1PolicyController("1,adapter_a")
+            WaterfallV1Policy("1,adapter_a")
 
     def test_invalid_config_non_integer_priority(self):
         """Non-integer priority should raise ValueError."""
         with self.assertRaises(ValueError):
-            WaterfallV1PolicyController("high,adapter_a,10")
+            WaterfallV1Policy("high,adapter_a,10")
 
     def test_invalid_config_non_integer_max_workers(self):
         """Non-integer max_workers should raise ValueError."""
         with self.assertRaises(ValueError):
-            WaterfallV1PolicyController("1,adapter_a,many")
+            WaterfallV1Policy("1,adapter_a,many")
 
-    def test_invalid_config_empty_adapter_id(self):
-        """Empty adapter_id should raise ValueError."""
+    def test_invalid_config_empty_adapter_id_prefix(self):
+        """Empty adapter_id_prefix should raise ValueError."""
         with self.assertRaises(ValueError):
-            WaterfallV1PolicyController("1,,10")
+            WaterfallV1Policy("1,,10")
 
     def test_policy_delegates_to_scaling_policy(self):
         """Policy controller should delegate scaling commands to its scaling policy."""
-        policy = WaterfallV1PolicyController("1,adapter_a,10\n2,adapter_b,20")
+        policy = WaterfallV1Policy("1,adapter_a,10\n2,adapter_b,20")
 
         tasks = _create_tasks(5)
         snapshot = InformationSnapshot(tasks=tasks, workers={})
@@ -540,7 +538,7 @@ class TestWaterfallV1PolicyController(unittest.TestCase):
 
     def test_scaling_status(self):
         """get_scaling_status should return a ScalingManagerStatus."""
-        policy = WaterfallV1PolicyController("1,adapter_a,10")
+        policy = WaterfallV1Policy("1,adapter_a,10")
 
         from scaler.protocol.python.status import ScalingManagerStatus
 

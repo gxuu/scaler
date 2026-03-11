@@ -371,7 +371,7 @@ class WorkerManagerHeartbeat(Message):
 
     @staticmethod
     def new_msg(
-        max_worker_groups: int, workers_per_group: int, capabilities: Dict[str, int], worker_manager_id: bytes = b""
+        max_worker_groups: int, workers_per_group: int, capabilities: Dict[str, int], worker_manager_id: bytes
     ) -> "WorkerManagerHeartbeat":
         return WorkerManagerHeartbeat(
             _message.WorkerManagerHeartbeat(

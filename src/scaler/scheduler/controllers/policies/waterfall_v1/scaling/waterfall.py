@@ -53,7 +53,7 @@ class WaterfallScalingPolicy(ScalingPolicy):
     def _find_rule(self, manager_id: bytes) -> Optional[WaterfallRule]:
         """Find the rule whose prefix matches *manager_id*."""
         for rule in self._rules:
-            if self._manager_matches_rule(manager_id, rule.worker_manager_id):
+            if self._manager_matches_rule(manager_id, rule.adapter_id_prefix):
                 return rule
         return None
 
@@ -62,7 +62,7 @@ class WaterfallScalingPolicy(ScalingPolicy):
     ) -> List[WorkerManagerSnapshot]:
         """Return all manager snapshots whose runtime ID matches *rule*'s prefix."""
         return [
-            s for s in snapshots.values() if self._manager_matches_rule(s.worker_manager_id, rule.worker_manager_id)
+            s for s in snapshots.values() if self._manager_matches_rule(s.worker_manager_id, rule.adapter_id_prefix)
         ]
 
     def get_scaling_commands(

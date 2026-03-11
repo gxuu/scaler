@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Set
 
 from scaler.protocol.python.message import InformationSnapshot, Task, WorkerManagerCommand, WorkerManagerHeartbeat
 from scaler.protocol.python.status import ScalingManagerStatus
-from scaler.scheduler.controllers.mixins import PolicyController
+from scaler.scheduler.controllers.policies.mixins import ScalerPolicy
 from scaler.scheduler.controllers.policies.simple_policy.allocation.types import AllocatePolicyStrategy
 from scaler.scheduler.controllers.policies.simple_policy.allocation.utility import create_allocate_policy
 from scaler.scheduler.controllers.policies.simple_policy.scaling.types import (
@@ -17,9 +17,9 @@ from scaler.utility.identifiers import TaskID, WorkerID
 _DEFAULT_ALLOCATE_POLICY = AllocatePolicyStrategy.EVEN_LOAD
 
 
-class WaterfallV1PolicyController(PolicyController):
+class WaterfallV1Policy(ScalerPolicy):
     """
-    Policy controller for waterfall scaling across prioritized worker managers.
+    Policy for waterfall scaling across prioritized worker managers.
 
     Uses even_load allocation by default. Cross-manager state (worker_manager_snapshots)
     is built by WorkerManagerController and passed through the call chain.
