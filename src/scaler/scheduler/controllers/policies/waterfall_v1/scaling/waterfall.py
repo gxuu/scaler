@@ -25,10 +25,10 @@ class WaterfallScalingPolicy(ScalingPolicy):
     Priority-1 managers fill first; overflow goes to priority-2, then priority-3, etc.
     Shutdown is reversed: highest priority number (least preferred) drains first.
 
-    Rules specify worker manager ID prefixes (e.g. ``NAT``, ``ECS``). At runtime each manager
-    generates a full ID like ``NAT|<pid>``. Matching uses prefix: a manager ID matches
-    a rule when ``manager_id == rule_prefix`` or ``manager_id`` starts with
-    ``rule_prefix + b"|"``.
+    Rules specify worker types (e.g. ``native``, ``ecs``). At runtime each worker manager
+    generates a full worker manager ID like ``native|<uuid>``. Matching uses worker type as
+    prefix: a manager ID matches a rule when ``manager_id == worker_type`` or ``manager_id``
+    starts with ``worker_type + b"|"``.
 
     All configuration (rules, thresholds) is immutable after construction.
     All mutable state is passed as function parameters.
@@ -42,27 +42,27 @@ class WaterfallScalingPolicy(ScalingPolicy):
         self._upper_task_ratio = 10
 
     @staticmethod
-    def _manager_matches_rule(manager_id: bytes, rule_prefix: bytes) -> bool:
-        """Check if a runtime manager ID matches a rule's prefix.
+    def _manager_matches_rule(manager_id: bytes, worker_type: bytes) -> bool:
+        """Check if a runtime worker manager ID matches a rule's worker type.
 
-        Matches when the manager ID equals the prefix exactly, or starts with
-        the prefix followed by ``|`` (the delimiter used by all managers).
+        Matches when the manager ID equals the worker type exactly, or starts with
+        the worker type followed by ``|`` (the delimiter used by all managers).
         """
-        return manager_id == rule_prefix or manager_id.startswith(rule_prefix + b"|")
+        return manager_id == worker_type or manager_id.startswith(worker_type + b"|")
 
     def _find_rule(self, manager_id: bytes) -> Optional[WaterfallRule]:
-        """Find the rule whose prefix matches *manager_id*."""
+        """Find the rule whose worker type matches *manager_id*."""
         for rule in self._rules:
-            if self._manager_matches_rule(manager_id, rule.adapter_id_prefix):
+            if self._manager_matches_rule(manager_id, rule.worker_type):
                 return rule
         return None
 
     def _find_matching_snapshots(
         self, rule: WaterfallRule, snapshots: Dict[bytes, WorkerManagerSnapshot]
     ) -> List[WorkerManagerSnapshot]:
-        """Return all manager snapshots whose runtime ID matches *rule*'s prefix."""
+        """Return all manager snapshots whose runtime ID matches *rule*'s worker type."""
         return [
-            s for s in snapshots.values() if self._manager_matches_rule(s.worker_manager_id, rule.adapter_id_prefix)
+            s for s in snapshots.values() if self._manager_matches_rule(s.worker_manager_id, rule.worker_type)
         ]
 
     def get_scaling_commands(
@@ -113,17 +113,17 @@ class WaterfallScalingPolicy(ScalingPolicy):
 
             matching_snapshots = self._find_matching_snapshots(rule, worker_manager_snapshots)
             if not matching_snapshots:
-                # All managers for this prefix are offline or never seen, skip
+                # All managers for this worker type are offline or never seen, skip
                 continue
 
             for snapshot in matching_snapshots:
-                effective_capacity = min(rule.max_workers, snapshot.max_worker_groups)
+                effective_capacity = min(rule.max_task_concurrency, snapshot.max_worker_groups)
                 if snapshot.worker_group_count < effective_capacity:
                     # Higher-priority manager still has room, let it fill first
                     return []
 
         # Check this manager's effective capacity
-        effective_capacity = min(current_rule.max_workers, worker_manager_heartbeat.max_worker_groups)
+        effective_capacity = min(current_rule.max_task_concurrency, worker_manager_heartbeat.max_worker_groups)
         if len(worker_groups) >= effective_capacity:
             return []
 

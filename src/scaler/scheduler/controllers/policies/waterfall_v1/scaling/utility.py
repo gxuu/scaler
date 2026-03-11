@@ -8,9 +8,9 @@ def parse_waterfall_rules(policy_content: str) -> List[WaterfallRule]:
 
     Expected format (one rule per line, ``#`` comments supported)::
 
-        #priority,adapter_id_prefix,max_workers
-        1,adapter_a,10
-        2,adapter_b,20
+        #priority,worker_type,max_task_concurrency
+        1,native,10
+        2,ecs,20
 
     Raises ``ValueError`` on malformed input.
     """
@@ -25,19 +25,19 @@ def parse_waterfall_rules(policy_content: str) -> List[WaterfallRule]:
         if len(parts) != 3:
             raise ValueError(
                 f"waterfall_v1 policy_content line {line_number}: "
-                f"expected 'priority,adapter_id_prefix,max_workers', got {raw_line.strip()!r}"
+                f"expected 'priority,worker_type,max_task_concurrency', got {raw_line.strip()!r}"
             )
 
-        raw_priority, adapter_id_prefix, raw_max_workers = parts
+        raw_priority, worker_type, raw_max_task_concurrency = parts
 
-        if not adapter_id_prefix:
-            raise ValueError(f"waterfall_v1 policy_content line {line_number}: adapter_id_prefix cannot be empty")
+        if not worker_type:
+            raise ValueError(f"waterfall_v1 policy_content line {line_number}: worker_type cannot be empty")
 
         rules.append(
             WaterfallRule(
                 priority=int(raw_priority),
-                adapter_id_prefix=adapter_id_prefix.encode(),
-                max_workers=int(raw_max_workers),
+                worker_type=worker_type.encode(),
+                max_task_concurrency=int(raw_max_task_concurrency),
             )
         )
 
