@@ -41,28 +41,6 @@ class WaterfallScalingPolicy(ScalingPolicy):
         # Scale up when tasks/workers > 10 (tasks significantly outnumber workers, overloaded)
         self._upper_task_ratio = 10
 
-    @staticmethod
-    def _manager_matches_rule(manager_id: bytes, worker_type: bytes) -> bool:
-        """Check if a runtime worker manager ID matches a rule's worker type.
-
-        Matches when the manager ID equals the worker type exactly, or starts with
-        the worker type followed by ``|`` (the delimiter used by all managers).
-        """
-        return manager_id == worker_type or manager_id.startswith(worker_type + b"|")
-
-    def _find_rule(self, manager_id: bytes) -> Optional[WaterfallRule]:
-        """Find the rule whose worker type matches *manager_id*."""
-        for rule in self._rules:
-            if self._manager_matches_rule(manager_id, rule.worker_type):
-                return rule
-        return None
-
-    def _find_matching_snapshots(
-        self, rule: WaterfallRule, snapshots: Dict[bytes, WorkerManagerSnapshot]
-    ) -> List[WorkerManagerSnapshot]:
-        """Return all manager snapshots whose runtime ID matches *rule*'s worker type."""
-        return [s for s in snapshots.values() if self._manager_matches_rule(s.worker_manager_id, rule.worker_type)]
-
     def get_scaling_commands(
         self,
         information_snapshot: InformationSnapshot,
@@ -167,3 +145,25 @@ class WaterfallScalingPolicy(ScalingPolicy):
                 worker_group_id=min_worker_group_id, command=WorkerManagerCommandType.ShutdownWorkerGroup
             )
         ]
+
+    @staticmethod
+    def _manager_matches_rule(manager_id: bytes, worker_type: bytes) -> bool:
+        """Check if a runtime worker manager ID matches a rule's worker type.
+
+        Matches when the manager ID equals the worker type exactly, or starts with
+        the worker type followed by ``|`` (the delimiter used by all managers).
+        """
+        return manager_id == worker_type or manager_id.startswith(worker_type + b"|")
+
+    def _find_rule(self, manager_id: bytes) -> Optional[WaterfallRule]:
+        """Find the rule whose worker type matches *manager_id*."""
+        for rule in self._rules:
+            if self._manager_matches_rule(manager_id, rule.worker_type):
+                return rule
+        return None
+
+    def _find_matching_snapshots(
+        self, rule: WaterfallRule, snapshots: Dict[bytes, WorkerManagerSnapshot]
+    ) -> List[WorkerManagerSnapshot]:
+        """Return all manager snapshots whose runtime ID matches *rule*'s worker type."""
+        return [s for s in snapshots.values() if self._manager_matches_rule(s.worker_manager_id, rule.worker_type)]
