@@ -438,6 +438,7 @@ def _create_mock_worker_heartbeat(capabilities: dict, queued_tasks: int = 0) -> 
         task_lock=False,
         processors=[],
         capabilities=capabilities,
+        worker_manager_id=b"test",
     )
 
 

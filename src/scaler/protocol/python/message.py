@@ -336,7 +336,7 @@ class WorkerHeartbeat(Message):
         task_lock: bool,
         processors: List[ProcessorStatus],
         capabilities: Dict[str, int],
-        worker_manager_id: bytes = b"",
+        worker_manager_id: bytes,
     ) -> "WorkerHeartbeat":
         return WorkerHeartbeat(
             _message.WorkerHeartbeat(
