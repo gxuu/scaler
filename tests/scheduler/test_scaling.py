@@ -163,7 +163,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         task = _create_mock_task(task_id, {"gpu": 1})
 
         information_snapshot = InformationSnapshot(tasks={task_id: task}, workers={})
-        worker_manager_heartbeat = _create_worker_manager_heartbeat()
+        worker_manager_heartbeat = _create_worker_manager_heartbeat(b"test")
 
         commands = self.policy.get_scaling_commands(
             information_snapshot,
@@ -185,7 +185,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_heartbeat = _create_mock_worker_heartbeat({"gpu": -1}, queued_tasks=0)
 
         information_snapshot = InformationSnapshot(tasks={task_id: task}, workers={worker_id: worker_heartbeat})
-        worker_manager_heartbeat = _create_worker_manager_heartbeat()
+        worker_manager_heartbeat = _create_worker_manager_heartbeat(b"test")
 
         commands = self.policy.get_scaling_commands(
             information_snapshot,
@@ -211,7 +211,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_heartbeat = _create_mock_worker_heartbeat({"gpu": -1}, queued_tasks=5)
 
         information_snapshot = InformationSnapshot(tasks=tasks, workers={worker_id: worker_heartbeat})
-        worker_manager_heartbeat = _create_worker_manager_heartbeat()
+        worker_manager_heartbeat = _create_worker_manager_heartbeat(b"test")
 
         commands = self.policy.get_scaling_commands(
             information_snapshot,
@@ -234,7 +234,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         tpu_task = _create_mock_task(tpu_task_id, {"tpu": 1})
 
         information_snapshot = InformationSnapshot(tasks={gpu_task_id: gpu_task, tpu_task_id: tpu_task}, workers={})
-        worker_manager_heartbeat = _create_worker_manager_heartbeat()
+        worker_manager_heartbeat = _create_worker_manager_heartbeat(b"test")
 
         # Should return 2 start commands (one for each capability set)
         commands = self.policy.get_scaling_commands(
@@ -262,7 +262,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         worker_heartbeat = _create_mock_worker_heartbeat({"gpu": -1, "cpu": -1}, queued_tasks=0)
 
         information_snapshot = InformationSnapshot(tasks={task_id: task}, workers={worker_id: worker_heartbeat})
-        worker_manager_heartbeat = _create_worker_manager_heartbeat()
+        worker_manager_heartbeat = _create_worker_manager_heartbeat(b"test")
 
         commands = self.policy.get_scaling_commands(
             information_snapshot,
@@ -282,7 +282,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         task = _create_mock_task(task_id, {})  # No capabilities required
 
         information_snapshot = InformationSnapshot(tasks={task_id: task}, workers={})  # No workers
-        worker_manager_heartbeat = _create_worker_manager_heartbeat()
+        worker_manager_heartbeat = _create_worker_manager_heartbeat(b"test")
 
         commands = self.policy.get_scaling_commands(
             information_snapshot,
@@ -313,7 +313,7 @@ class TestCapabilityScalingPolicy(unittest.TestCase):
         task1_id = TaskID.generate_task_id()
         task1 = _create_mock_task(task1_id, {"mqa": 1})
         information_snapshot1 = InformationSnapshot(tasks={task1_id: task1}, workers={})
-        worker_manager_heartbeat = _create_worker_manager_heartbeat()
+        worker_manager_heartbeat = _create_worker_manager_heartbeat(b"test")
 
         commands1 = self.policy.get_scaling_commands(
             information_snapshot1,
@@ -442,7 +442,7 @@ def _create_mock_worker_heartbeat(capabilities: dict, queued_tasks: int = 0) -> 
     )
 
 
-def _create_worker_manager_heartbeat(max_workers: int = 10, worker_manager_id: bytes = b"") -> WorkerManagerHeartbeat:
+def _create_worker_manager_heartbeat(worker_manager_id: bytes, max_workers: int = 10) -> WorkerManagerHeartbeat:
     return WorkerManagerHeartbeat.new_msg(max_workers=max_workers, capabilities={}, worker_manager_id=worker_manager_id)
 
 

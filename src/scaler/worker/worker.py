@@ -65,7 +65,7 @@ class Worker(multiprocessing.get_context("spawn").Process):  # type: ignore
         hard_processor_suspend: bool,
         logging_paths: Tuple[str, ...],
         logging_level: str,
-        worker_manager_id: bytes = b"",
+        worker_manager_id: bytes,
     ):
         multiprocessing.Process.__init__(self, name="Agent")
 

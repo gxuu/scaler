@@ -34,7 +34,9 @@ class NativeWorkerManager:
         self._object_storage_address = config.worker_manager_config.object_storage_address
         self._capabilities = config.worker_config.per_worker_capabilities.capabilities
         self._worker_manager_id = (
-            config.worker_manager_id.encode() if config.worker_manager_id else f"NAT|{os.getpid()}".encode()
+            config.worker_manager_id.encode()
+            if config.worker_manager_id
+            else f"NAT|{os.getpid()}|{uuid.uuid4()}".encode()
         )
         self._io_threads = config.worker_io_threads
         self._task_queue_size = config.worker_config.per_worker_task_queue_size

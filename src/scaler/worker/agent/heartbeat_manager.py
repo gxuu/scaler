@@ -18,7 +18,7 @@ class VanillaHeartbeatManager(Looper, HeartbeatManager):
         object_storage_address: Optional[ObjectStorageAddressConfig],
         capabilities: Dict[str, int],
         task_queue_size: int,
-        worker_manager_id: bytes = b"",
+        worker_manager_id: bytes,
     ):
         self._agent_process = psutil.Process()
         self._capabilities = capabilities

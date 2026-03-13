@@ -56,7 +56,7 @@ class SymphonyWorker(multiprocessing.get_context("spawn").Process):  # type: ign
         task_queue_size: int,
         io_threads: int,
         event_loop: str,
-        worker_manager_id: bytes = b"",
+        worker_manager_id: bytes,
     ):
         multiprocessing.Process.__init__(self, name="Agent")
 

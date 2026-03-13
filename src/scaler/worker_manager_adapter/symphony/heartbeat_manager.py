@@ -18,7 +18,7 @@ class SymphonyHeartbeatManager(Looper, HeartbeatManager):
         object_storage_address: Optional[ObjectStorageAddressConfig],
         capabilities: Dict[str, int],
         task_queue_size: int,
-        worker_manager_id: bytes = b"",
+        worker_manager_id: bytes,
     ):
         self._capabilities = capabilities
         self._task_queue_size = task_queue_size
