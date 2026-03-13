@@ -13,7 +13,6 @@ import logging
 import multiprocessing
 import os
 import signal
-import uuid
 from collections import deque
 from typing import Dict, Optional
 
@@ -112,7 +111,7 @@ class AWSBatchWorker(_SpawnProcess):  # type: ignore[valid-type, misc]
         self._heartbeat_received: bool = False
         self._backoff_message_queue: deque = deque()
 
-        self._worker_manager_id = f"AWS_HPC|{os.getpid()}|{uuid.uuid4()}".encode()
+        self._worker_manager_id = f"AWS_HPC|{os.getpid()}".encode()
 
     @property
     def identity(self) -> WorkerID:
