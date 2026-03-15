@@ -55,6 +55,8 @@ class NativeWorkerManagerConfig(ConfigClass):
         parser.add_argument("-n", "--num-of-workers", dest="max_workers", type=int, help=argparse.SUPPRESS)
 
     def __post_init__(self) -> None:
+        if not self.worker_manager_id:
+            raise ValueError("worker_manager_id cannot be an empty string.")
         if self.worker_io_threads <= 0:
             raise ValueError("worker_io_threads must be a positive integer.")
         if self.mode == NativeWorkerManagerMode.FIXED and self.worker_manager_config.max_workers < 0:

@@ -61,6 +61,8 @@ class ECSWorkerManagerConfig(ConfigClass):
     ecs_task_memory: int = dataclasses.field(default=30, metadata=dict(help="Task memory in GB for Fargate"))
 
     def __post_init__(self):
+        if not self.worker_manager_id:
+            raise ValueError("worker_manager_id cannot be an empty string.")
         # Validate numeric and collection values
         if self.ecs_task_cpu <= 0:
             raise ValueError("ecs_task_cpu must be a positive integer.")

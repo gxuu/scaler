@@ -44,8 +44,10 @@ def parse_waterfall_rules(policy_content: str) -> List[WaterfallRule]:
     if not rules:
         raise ValueError("waterfall_v1 policy_content: no rules specified")
 
-    ids = [r.worker_manager_id for r in rules]
-    if len(set(ids)) != len(ids):
-        raise ValueError("waterfall_v1 policy_content: duplicate worker_manager_id found")
+    seen: set = set()
+    for rule in rules:
+        if rule.worker_manager_id in seen:
+            raise ValueError(f"waterfall_v1 policy_content: duplicate worker_manager_id {rule.worker_manager_id!r}")
+        seen.add(rule.worker_manager_id)
 
     return rules

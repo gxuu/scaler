@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 from scaler.protocol.python.message import (
     InformationSnapshot,
@@ -72,9 +72,6 @@ class WaterfallScalingPolicy(ScalingPolicy):
 
     def get_status(self, managed_workers: Dict[bytes, List[WorkerID]]) -> ScalingManagerStatus:
         return ScalingManagerStatus.new_msg(managed_workers=managed_workers)
-
-    def get_known_manager_ids(self) -> Set[bytes]:
-        return set(self._rule_by_manager_id.keys())
 
     def _create_start_commands(
         self,

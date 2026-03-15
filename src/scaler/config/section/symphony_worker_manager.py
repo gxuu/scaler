@@ -31,6 +31,8 @@ class SymphonyWorkerManagerConfig(ConfigClass):
 
     def __post_init__(self):
         """Validates configuration values after initialization."""
+        if not self.worker_manager_id:
+            raise ValueError("worker_manager_id cannot be an empty string.")
         if not self.service_name:
             raise ValueError("service_name cannot be an empty string.")
         if self.worker_io_threads <= 0:
