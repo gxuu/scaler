@@ -13,6 +13,10 @@ class SymphonyWorkerManagerConfig(ConfigClass):
     service_name: str = dataclasses.field(metadata=dict(short="-sn", help="symphony service name"))
 
     worker_manager_config: WorkerManagerConfig
+    worker_manager_id: str = dataclasses.field(
+        metadata=dict(short="-wmi", help="worker manager ID to identify this manager")
+    )
+
     worker_config: WorkerConfig = dataclasses.field(default_factory=WorkerConfig)
     logging_config: LoggingConfig = dataclasses.field(default_factory=LoggingConfig)
     event_loop: str = dataclasses.field(

@@ -19,6 +19,10 @@ class NativeWorkerManagerMode(enum.Enum):
 @dataclasses.dataclass
 class NativeWorkerManagerConfig(ConfigClass):
     worker_manager_config: WorkerManagerConfig
+    worker_manager_id: str = dataclasses.field(
+        metadata=dict(short="-wmi", help="worker manager ID to identify which manager spawned these workers")
+    )
+
     preload: Optional[str] = None
     worker_config: WorkerConfig = dataclasses.field(default_factory=WorkerConfig)
     logging_config: LoggingConfig = dataclasses.field(default_factory=LoggingConfig)
@@ -43,11 +47,6 @@ class NativeWorkerManagerConfig(ConfigClass):
     worker_type: Optional[str] = dataclasses.field(
         default=None,
         metadata=dict(help="worker type prefix used in worker IDs; defaults to 'FIX' or 'NAT' based on mode"),
-    )
-
-    worker_manager_id: str = dataclasses.field(
-        default="",
-        metadata=dict(short="-wmi", help="worker manager ID to identify which manager spawned these workers"),
     )
 
     @classmethod
